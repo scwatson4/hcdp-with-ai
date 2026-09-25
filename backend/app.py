@@ -86,9 +86,19 @@ async def api_health(request: Request):
         "catalog_entries": len(request.app.state.navigator.catalog),
         "raster_cache_files": len(list(CACHE_DIR.glob("*.tif"))) if CACHE_DIR.exists() else 0,
         "frontend_built": (DIST / "index.html").exists(),
+        "rasterio": _rasterio_ok(),
         "navigator_calls_today": request.app.state.limiter.today_count,
         "system_prompt_chars": len(request.app.state.navigator.system_prompt()),
     }
+
+
+def _rasterio_ok() -> bool:
+    """False when the image lacks a system library rasterio needs (then rasters are served un-re-encoded and maps cannot render)."""
+    try:
+        import rasterio  # noqa: F401
+        return True
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def raster_params(dataset: str, period: str, date: str, extent: str) -> dict:

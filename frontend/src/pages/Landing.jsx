@@ -35,10 +35,10 @@ export function Sidebar() {
       <SidebarHeading>Climate Resources</SidebarHeading>
       <ul className="mt-2 space-y-1.5">{SIDEBAR.resources.map((r) => <li key={r.label}><ExtLink href={r.href}>{r.label}</ExtLink></li>)}</ul>
       <SidebarHeading><span className="mt-6 block">Social Media</span></SidebarHeading>
-      <ul className="mt-2 space-y-1.5">{SIDEBAR.social.map((r) => <li key={r.label}><ExtLink href={r.href}><Instagram className="h-3.5 w-3.5" aria-hidden="true" /> {r.label}</ExtLink></li>)}</ul>
+      <ul className="mt-2 space-y-1.5">{SIDEBAR.social.map((r) => <li key={r.label}><ExtLink href={r.href}><Instagram className="mr-1 inline h-3.5 w-3.5 align-[-2px]" aria-hidden="true" />{r.label}</ExtLink></li>)}</ul>
       <div className="mt-6"><Link to={SIDEBAR.cite.to} className="font-nav text-[11px] font-bold uppercase tracking-[0.14em] text-subtle hover:text-foreground hover:underline">{SIDEBAR.cite.label}</Link></div>
       <SidebarHeading><span className="mt-6 block">Contact Us</span></SidebarHeading>
-      <ul className="mt-2"><li><a href={SIDEBAR.contact.href} className="inline-flex items-center gap-1 hover:underline"><Mail className="h-3.5 w-3.5" aria-hidden="true" /> {SIDEBAR.contact.label}</a></li></ul>
+      <ul className="mt-2"><li><a href={SIDEBAR.contact.href} className="hover:underline"><Mail className="mr-1 inline h-3.5 w-3.5 align-[-2px]" aria-hidden="true" />{SIDEBAR.contact.label}</a></li></ul>
     </aside>
   )
 }

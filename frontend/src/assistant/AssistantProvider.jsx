@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { parseViewerPath } from '../viewer/urlGrammar'
 
@@ -29,7 +29,7 @@ export function AssistantProvider({ children }) {
     for (const a of actions) {
       if (a.type === 'navigate' && a.path && a.path.startsWith('/')) { navigate(a.path); navigated = true }
       else if (a.type === 'open' && a.url) { const w = window.open(a.url, '_blank', 'noopener,noreferrer'); if (!w) a.blocked = true; navigated = true }   // the message keeps a link if the tab was blocked
-      else if (a.type === 'handoff' && a.url) { const w = window.open(a.url, '_blank', 'noopener,noreferrer'); if (!w) a.blocked = true }
+      // handoff: no automatic tab — the AI interface asks for a sign-in first, so the message shows a button instead
     }
     return navigated
   }, [navigate])
@@ -59,10 +59,21 @@ export function AssistantProvider({ children }) {
   const open = useCallback(() => {
     if (mode === 'inline' && location.pathname === '/') { document.querySelector('[data-testid="assistant-input"]')?.focus(); return }
     setMode('panel')
+    setTimeout(() => document.querySelector('[data-testid="assistant-dock-panel"] [data-testid="assistant-input"]')?.focus(), 50)
   }, [mode, location.pathname])
   const minimize = useCallback(() => setMode('dock'), [])
   // Start over: the inline box on the landing page, the pill anywhere else.
   const reset = useCallback(() => { historyRef.current = []; setMessages([WELCOME]); setMode(location.pathname === '/' ? 'inline' : 'dock') }, [location.pathname])
+
+  useEffect(() => {
+    const onKey = (e) => {
+      const typing = /^(input|textarea|select)$/i.test(e.target?.tagName || '') || e.target?.isContentEditable
+      if (e.key === 'Escape' && mode === 'panel') { setMode('dock'); return }
+      if (e.key === '/' && !typing && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); open() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [mode, open])
 
   const value = useMemo(() => ({ messages, mode, busy, send, open, minimize, setMode, reset }), [messages, mode, busy, send, open, minimize, reset])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

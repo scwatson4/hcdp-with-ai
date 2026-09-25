@@ -26,8 +26,8 @@ export default function AssistantDock() {
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <span className="text-sm font-medium">HCDP assistant</span>
         <div className="flex items-center gap-1">
-          <button type="button" aria-label="Minimize" onClick={minimize} className="rounded p-1 text-subtle hover:text-foreground"><Minus className="h-4 w-4" /></button>
-          <button type="button" aria-label="Start over" onClick={reset} className="rounded p-1 text-subtle hover:text-foreground"><X className="h-4 w-4" /></button>
+          <button type="button" aria-label="Minimize (Esc)" onClick={minimize} className="grid h-8 w-8 place-items-center rounded text-subtle hover:bg-muted hover:text-foreground"><Minus className="h-4 w-4" /></button>
+          <button type="button" aria-label="Start over" onClick={reset} className="grid h-8 w-8 place-items-center rounded text-subtle hover:bg-muted hover:text-foreground"><X className="h-4 w-4" /></button>
         </div>
       </div>
       <AssistantPanel compact autoFocus />

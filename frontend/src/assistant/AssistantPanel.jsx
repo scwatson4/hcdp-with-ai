@@ -28,7 +28,8 @@ export default function AssistantPanel({ compact = false, autoFocus = false }) {
   const [text, setText] = useState('')
   const endRef = useRef(null)
   const inputRef = useRef(null)
-  useEffect(() => { endRef.current?.scrollIntoView?.({ block: 'nearest' }) }, [messages, busy])
+  const firstRender = useRef(true)
+  useEffect(() => { if (firstRender.current) { firstRender.current = false; return } endRef.current?.scrollIntoView?.({ block: 'nearest' }) }, [messages, busy])
   useEffect(() => { if (autoFocus) inputRef.current?.focus() }, [autoFocus])
   const submit = (e) => { e?.preventDefault(); const t = text; setText(''); send(t) }
   const showExamples = messages.length <= 1 && !compact
@@ -58,9 +59,9 @@ export default function AssistantPanel({ compact = false, autoFocus = false }) {
       <form onSubmit={submit} className={cn('flex items-end gap-2 border-t border-border', compact ? 'p-2' : 'p-2')}>
         <textarea ref={inputRef} value={text} onChange={(e) => setText(e.target.value.slice(0, 500))} rows={compact ? 1 : 2}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) submit(e) }}
-          placeholder={compact ? 'Ask for another page or map…' : 'What are you looking for? Ask me what I can do.'}
+          placeholder={compact ? 'Ask for another page or map…' : 'What are you looking for? Ask me what I can do.  (press / anywhere)'}
           aria-label="Ask the HCDP navigator" data-testid="assistant-input"
-          className="min-h-[38px] flex-1 resize-none rounded-md border border-border bg-canvas px-3 py-2 text-base sm:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+          className="min-h-[38px] flex-1 resize-none rounded-md border border-border bg-canvas px-3 py-2 text-[16px] sm:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
         <button type="submit" disabled={!text.trim() || busy} aria-label="Send" className="grid h-9 w-9 place-items-center rounded-full bg-accent text-accent-foreground disabled:opacity-40"><ArrowUp className="h-4 w-4" /></button>
       </form>
     </div>

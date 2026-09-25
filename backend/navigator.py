@@ -198,7 +198,7 @@ CATALOG (the only URLs you may use):
 {self.catalog_text()}
 
 RULES
-- Reply in one or two plain sentences, no markdown, no lists in the reply. Name what you opened and why.
+- Reply in one or two plain sentences, no markdown, no lists in the reply. Describe exactly the actions you return and nothing more: for a navigate action say "Taking you to …" (a page on this site); for an open action say "Opening … in a new tab"; never say you opened something you did not put in actions.
 - At most one navigate action, plus optional open actions. Never invent URLs or paths.
 - Always offer 2–4 alternatives (title, url or internal path, one-clause why) so the visitor can choose.
 - Prefer this site's own pages/viewer for maps; prefer the real HCDP page (open) for reports, downloads and tools this site does not replicate.

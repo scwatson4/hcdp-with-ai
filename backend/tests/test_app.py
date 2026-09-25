@@ -86,3 +86,9 @@ def test_viewer_links_get_their_own_title_for_link_previews(tmp_path, monkeypatc
     assert "<title>Rainfall, September 7, 2026, Kauaʻi — Hawaiʻi Climate Data Portal</title>" in html
     assert 'property="og:title"' in html
     assert "<title>Hawaiʻi Climate Data Portal</title>" in c.get("/about/team").text
+
+
+def test_map_png_validates_like_raster():
+    c = client()
+    assert c.get("/api/map.png", params={"dataset": "wind", "period": "day", "date": "2026-09-01"}).status_code == 400
+    assert c.get("/api/map.png", params={"dataset": "rainfall", "period": "month", "date": "2026-08", "ramp": "magma"}).status_code == 400

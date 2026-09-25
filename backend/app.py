@@ -32,6 +32,7 @@ from llm import NavigatorLLM  # noqa: E402
 from navigator import DATASETS, EXTENTS, STATEWIDE_ONLY, Navigator, describe_view, load_catalog, parse_viewer_path  # noqa: E402
 from rasters import reencode_geotiff  # noqa: E402
 from ratelimit import RateLimiter  # noqa: E402
+from mapimage import DEFAULT_RAMP, render_png  # noqa: E402
 
 HCDP_API_BASE = os.environ.get("HCDP_API_BASE", "https://api.hcdp.ikewai.org").rstrip("/")
 HCDP_TOKEN = os.environ.get("HCDP_API_TOKEN", "")
@@ -111,13 +112,12 @@ def raster_params(dataset: str, period: str, date: str, extent: str) -> dict:
     return {**ds["api"], "period": period, "date": date, "extent": "statewide" if dataset in STATEWIDE_ONLY else EXTENTS[extent]}
 
 
-@app.get("/api/raster")
-async def api_raster(dataset: str, period: str, date: str, extent: str = "statewide"):
+async def fetch_raster(dataset: str, period: str, date: str, extent: str) -> Path:
+    """The (re-encoded) GeoTIFF for a map, fetched from HCDP once and cached on disk."""
     params = raster_params(dataset, period, date, extent)
     key = hashlib.sha1(("&".join(f"{k}={v}" for k, v in sorted(params.items()))).encode()).hexdigest()
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     path = CACHE_DIR / f"{key}.tif"
-    recent = (dt.date.today() - dt.date.fromisoformat(date if period == "day" else date + "-01")).days < 45
     if not path.exists():
         async with httpx.AsyncClient(timeout=60) as client:
             r = await client.get(f"{HCDP_API_BASE}/raster", params=params, headers=_hcdp_headers())
@@ -131,7 +131,73 @@ async def api_raster(dataset: str, period: str, date: str, extent: str = "statew
         if not await run_in_threadpool(reencode_geotiff, tmp, path):
             tmp.replace(path)
         tmp.unlink(missing_ok=True)
-    return FileResponse(path, media_type="image/tiff", headers={"Cache-Control": f"public, max-age={3600 if recent else 86400 * 30}"})
+    return path
+
+
+def _is_recent(period: str, date: str) -> bool:
+    return (dt.date.today() - dt.date.fromisoformat(date if period == "day" else date + "-01")).days < 45
+
+
+@app.get("/api/raster")
+async def api_raster(dataset: str, period: str, date: str, extent: str = "statewide"):
+    path = await fetch_raster(dataset, period, date, extent)
+    return FileResponse(path, media_type="image/tiff", headers={"Cache-Control": f"public, max-age={3600 if _is_recent(period, date) else 86400 * 30}"})
+
+
+@app.get("/api/map.png")
+async def api_map_png(dataset: str, period: str, date: str, extent: str = "statewide", w: int = 1200, ramp: str = ""):
+    """A rendered PNG of a map (landing-page backdrops, previews); transparent where there is no data."""
+    ramp = ramp or DEFAULT_RAMP.get(dataset, "viridis_r")
+    if ramp not in ("viridis", "viridis_r"):
+        raise HTTPException(400, "ramp must be viridis or viridis_r")
+    w = max(200, min(int(w), 2400))
+    path = await fetch_raster(dataset, period, date, extent)
+    png_dir = CACHE_DIR / "png"; png_dir.mkdir(parents=True, exist_ok=True)
+    out = png_dir / f"{path.stem}_{w}_{ramp}.png"
+    if not out.exists():
+        try:
+            data = await run_in_threadpool(render_png, path, ramp, w)
+        except ValueError:
+            raise HTTPException(404, "no data in that map") from None
+        tmp = out.with_name(f"{out.stem}.{uuid.uuid4().hex}.part"); tmp.write_bytes(data); tmp.replace(out)
+    return FileResponse(out, media_type="image/png", headers={"Cache-Control": f"public, max-age={3600 if _is_recent(period, date) else 86400 * 30}"})
+
+
+async def date_range(request: Request, dataset: str, period: str, extent: str = "statewide"):
+    """(first, last) ISO dates for a dataset, from HCDP's /datasets/date/range (shape: two timestamps)."""
+    data = await api_dates(request, dataset, period, extent)
+    if isinstance(data, list) and len(data) >= 2:
+        first, last = str(data[0])[:10], str(data[-1])[:10]
+        if period == "month":
+            first, last = first[:7], last[:7]
+        return first, last
+    raise HTTPException(502, "unexpected date-range shape")
+
+
+@app.get("/api/backdrops")
+async def api_backdrops(request: Request):
+    """The maps the landing page fades between: the newest of a few datasets, statewide."""
+    cache = request.app.state.dates_cache
+    hit = cache.get("__backdrops__")
+    if hit and time.time() - hit[0] < 3600:
+        return hit[1]
+    wanted = [("rainfall", "month", 0), ("temperature-max", "day", 0), ("spi-3", "month", 0), ("rainfall", "month", 1), ("humidity", "day", 0), ("ndvi", "day", 0)]
+    items = []
+    for dataset, period, back in wanted:
+        try:
+            _, last = await date_range(request, dataset, period)
+        except HTTPException:
+            continue
+        date = last
+        if back:
+            d = dt.date.fromisoformat(last + "-01"); m = d.month - back
+            date = (d.replace(year=d.year + (m - 1) // 12, month=(m - 1) % 12 + 1)).strftime("%Y-%m")
+        label = f"{DATASETS[dataset]['label']} · " + (dt.date.fromisoformat(date).strftime("%-d %B %Y") if period == "day" else dt.date.fromisoformat(date + "-01").strftime("%B %Y"))
+        items.append({"dataset": dataset, "period": period, "date": date, "extent": "statewide", "label": label,
+                      "url": f"/api/map.png?dataset={dataset}&period={period}&date={date}&extent=statewide&w=1400"})
+    out = {"items": items}
+    cache["__backdrops__"] = (time.time(), out)
+    return out
 
 
 @app.get("/api/dates")

@@ -20,6 +20,8 @@ export const NAV = [
     { label: 'Cultural Resources', external: `${HCDP}/news/` },
     { label: 'Library', external: `${HCDP}/publications-list/` },
   ] },
+  { label: 'Cultural Resources', external: `${HCDP}/news/` },
+  { label: 'Library', external: `${HCDP}/publications-list/` },
   { label: 'Research', items: [
     { label: 'Research Highlights', external: `${HCDP}/research-highlights/` },
     { label: 'External Resources', external: `${HCDP}/contact/` },
@@ -44,3 +46,18 @@ export const ATLASES = [
   { label: 'Solar Radiation of Hawaiʻi', external: `${HCDP}/solar-radiation-atlas/` },
   { label: 'Climate of Hawaiʻi', external: `${HCDP}/climate-atlas` },
 ]
+
+// The portal home page's sidebar, as listed by the project lead (2026-09-25).
+export const SIDEBAR = {
+  resources: [
+    { label: 'Rainfall Atlas of Hawaiʻi', href: `${HCDP}/rainfall-atlas` },
+    { label: 'Evapotranspiration of Hawaiʻi', href: `${HCDP}/evapotranspiration-atlas` },
+    { label: 'Solar Radiation of Hawaiʻi', href: `${HCDP}/solar-radiation-atlas/` },
+    { label: 'Climate of Hawaiʻi', href: `${HCDP}/climate-atlas` },
+    { label: 'American Samoa Climate Data Portal', href: `${HCDP}/americansamoaportal/` },
+    { label: 'Guam Data Viewer', href: `${HCDP}/guam-data-viewer/` },
+  ],
+  social: [{ label: 'Instagram', href: 'https://www.instagram.com/hiclimateportal/' }],
+  cite: { label: 'How To Cite', to: '/about/how-to-cite', href: `${HCDP}/how-to-cite-3/` },
+  contact: { label: 'hcdp@hawaii.edu', href: 'mailto:hcdp@hawaii.edu' },
+}

@@ -837,3 +837,43 @@
   margin-left: 8px;
   margin-bottom: 8px;
 }
+
+
+/* ── HCDP with AI: rainbow accents used sparingly, and the dock's goo close ── */
+/* A 1.5 px rainbow border drawn with two backgrounds (card fill over the spectrum). */
+.hcdp-rainbow-border {
+  border: 1.5px solid transparent;
+  background-image: linear-gradient(hsl(var(--card)), hsl(var(--card))), var(--hcdp-rainbow);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+/* The ask box wears the spectrum only while it has focus. */
+.hcdp-ask:focus-within {
+  border-color: transparent;
+  background-image: linear-gradient(hsl(var(--canvas)), hsl(var(--canvas))), var(--hcdp-rainbow);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  box-shadow: 0 0 0 4px hsl(var(--accent) / 0.12);
+}
+/* Goo close: the panel squashes and pulls into the lower-right corner like a blob,
+   then the pill pops back. Reduced motion → a plain fade. */
+@keyframes hcdp-goo-close {
+  0%   { transform: scale(1, 1) translate(0, 0); border-radius: 12px; opacity: 1; }
+  35%  { transform: scale(1.06, 0.82) translate(0, 6%); border-radius: 22px 22px 30px 30px; opacity: 1; }
+  70%  { transform: scale(0.45, 0.6) translate(30%, 38%); border-radius: 50% 50% 55% 45%; opacity: 0.9; }
+  100% { transform: scale(0.06, 0.06) translate(48%, 48%); border-radius: 50%; opacity: 0; }
+}
+@keyframes hcdp-pill-pop {
+  0%   { transform: scale(0.4); opacity: 0; }
+  60%  { transform: scale(1.12); opacity: 1; }
+  80%  { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+.hcdp-goo-close { animation: hcdp-goo-close 480ms cubic-bezier(.55,.05,.35,1) forwards; transform-origin: 100% 100%; pointer-events: none; }
+.hcdp-goo-wrap { filter: url(#hcdp-goo); }
+.hcdp-pill-pop { animation: hcdp-pill-pop 420ms cubic-bezier(.34,1.56,.64,1) both; transform-origin: 100% 100%; }
+@media (prefers-reduced-motion: reduce) {
+  .hcdp-goo-close { animation: none; opacity: 0; transition: opacity 200ms; }
+  .hcdp-goo-wrap { filter: none; }
+  .hcdp-pill-pop { animation: none; }
+}

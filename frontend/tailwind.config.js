@@ -1,3 +1,15 @@
+// The HCDP portal's type (www.hawaii.edu/climate-data-portal: the OnePress
+// theme on Bootstrap 4.0.0-alpha.6), read from its CSS and confirmed in
+// Chromium (computed styles and the fonts actually painted), 2026-09-25:
+//  - body text, headings and buttons: Bootstrap's native system stack, no
+//    webfont (San Francisco on Apple, Segoe UI on Windows, Roboto on Android
+//    and ChromeOS, the distribution's UI font on Linux). HCDP's copy of the
+//    theme comments out its Open Sans body and Raleway heading rules, so
+//    headings are the body family, weight 500 (Bootstrap) unless set.
+//  - top navigation: Raleway 600 (Google Fonts, linked in index.html).
+//  - code: the theme's monospace stack, no webfont.
+const PORTAL_SANS = ['-apple-system', 'system-ui', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif']
+
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: ['class'],
@@ -70,11 +82,13 @@ export default {
         sm: 'calc(var(--radius) - 4px)',
       },
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-        // Newsreader, not Literata: Literata gives U+02BB (ʻokina) a zero
-        // advance width, so "Hawaiʻi" renders as "Hawaiï". Not fixable in CSS.
-        display: ['Newsreader', 'Georgia', 'serif'],
-        mono: ['"JetBrains Mono"', '"Fira Code"', 'monospace'],
+        sans: PORTAL_SANS,
+        // Headings: the same family as the body, as on the portal.
+        display: PORTAL_SANS,
+        // The portal's menu type (.onepress-menu a).
+        nav: ['Raleway', 'Helvetica', 'Arial', 'sans-serif'],
+        // The portal's code type (tt, kbd, pre, code, samp, var).
+        mono: ['Monaco', 'Consolas', '"Andale Mono"', '"DejaVu Sans Mono"', 'monospace'],
       },
       fontSize: {
         xs: ['0.75rem', { lineHeight: '1.1rem' }],

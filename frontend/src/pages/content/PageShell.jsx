@@ -38,7 +38,7 @@ export function PageShell({ title, lead, source, sourceLabel = 'This page on the
               <Icon className="h-5 w-5" aria-hidden="true" />
             </span>
           )}
-          <h1 className="text-balance font-display text-3xl">{title}</h1>
+          <h1 className="text-balance font-display text-2xl sm:text-3xl">{title}</h1>
         </div>
         {lead && <div className="mt-3 max-w-3xl text-base text-subtle">{lead}</div>}
         {actions && <div className="mt-5 flex flex-wrap gap-2">{actions}</div>}

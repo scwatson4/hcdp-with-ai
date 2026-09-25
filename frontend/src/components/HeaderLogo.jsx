@@ -32,7 +32,7 @@ export default function HeaderLogo({ className = '', level = 'full' }) {
       {level === 'full' && (
         <span
           aria-hidden="true"
-          className="flex flex-col justify-center font-mono text-[8.5px] font-semibold uppercase leading-[1.3] tracking-[0.07em] text-subtle"
+          className="flex flex-col justify-center font-nav text-[8.5px] font-semibold uppercase leading-[1.3] tracking-[0.07em] text-subtle"
         >
           <span>Hawaiʻi Climate</span>
           <span>Data Portal</span>

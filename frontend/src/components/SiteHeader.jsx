@@ -37,7 +37,7 @@ export default function SiteHeader() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-8 gap-1 px-2 text-sm">{n.label} <ChevronDown className="h-3 w-3" aria-hidden="true" /></Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">{n.items.map((it) => <MenuItem key={it.label} item={it} />)}</DropdownMenuContent>
+              <DropdownMenuContent align="start" className="font-nav font-semibold">{n.items.map((it) => <MenuItem key={it.label} item={it} />)}</DropdownMenuContent>
             </DropdownMenu>
           ) : (
             <NavLink key={n.label} to={n.to} end={n.to === '/'} className={({ isActive }) => cn('rounded-md px-2 py-1 text-sm hover:bg-muted', isActive && 'font-medium text-foreground')}>{n.label}</NavLink>

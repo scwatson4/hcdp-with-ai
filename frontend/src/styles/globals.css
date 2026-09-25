@@ -62,19 +62,30 @@
   #root {
     height: 100%;
   }
+  /* Type follows the HCDP portal (see fontFamily in tailwind.config.js):
+     the system stack for body and headings, no stylistic sets. */
   body {
     @apply bg-canvas text-foreground font-sans antialiased;
     font-size: 14px;
     line-height: 1.5;
-    font-feature-settings: 'ss01', 'cv11';
     -webkit-font-smoothing: antialiased;
   }
+  /* The portal's headings: the body family at Bootstrap's weight 500,
+     normal letter-spacing. The system face is wider than the old serif, so
+     a word longer than the whole line ("Acknowledgements" at 36 px on a
+     phone) breaks rather than widening the page; nothing else changes. */
   h1, h2, h3 {
-    @apply font-display font-normal tracking-tight;
-    letter-spacing: -0.015em;
+    @apply font-display font-medium tracking-normal;
+    overflow-wrap: anywhere;
   }
   button {
     @apply font-sans;
+  }
+  /* The portal's menu type (.onepress-menu a): Raleway 600. */
+  header nav[aria-label="Site"] :is(a, button),
+  [data-testid="mobile-nav"],
+  [data-testid="mobile-nav"] button {
+    @apply font-nav font-semibold;
   }
   /* R12 — selection in the warm sand/bronze token (same family as the
      user's chat bubble) instead of a translucent ink wash. */

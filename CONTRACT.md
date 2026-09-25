@@ -13,8 +13,9 @@ no sign-in, saves no conversation history (memory only, per tab), and has no vis
 
 ## Stack and layout
 - `frontend/` — React 18 + Vite + Tailwind. Same design system as the AI interface: tokens in
-  `src/styles/globals.css`, primitives in `src/components/ui/*`, fonts Inter / Newsreader / JetBrains
-  Mono, the HCDP mark in `HeaderLogo.jsx`, light and dark themes via `ThemeProvider`.
+  `src/styles/globals.css`, primitives in `src/components/ui/*`, the HCDP mark in `HeaderLogo.jsx`, light and
+  dark themes via `ThemeProvider`. Fonts are the portal's: the system stack (`-apple-system, Segoe UI, Roboto,
+  Helvetica Neue, Arial`) for body and headings, Raleway 600 for the menus (`font-nav`), Roboto in the map furniture.
   Router: `react-router-dom`. Alias `@` → `src`.
 - `backend/` — FastAPI (`app.py`). LLM calls go through `llm.py` to gpt-5.6-sol on the NAIRR
   resource (env `NAVIGATOR_API_BASE`, `NAVIGATOR_MODEL`, `AZURE_OPENAI_API_KEY`). The HCDP token
@@ -115,7 +116,7 @@ An array of entries; this is the knowledge the navigator reasons over. Keep it e
 Viewer entries carry `internal_path` templates such as `/viewer/rainfall/day/{date}/{extent}`.
 
 ## Design rules
-- Reuse the primitives and tokens; no new colours. Headings in `font-display`, body Inter, labels mono.
+- Reuse the primitives and tokens; no new colours (the portal's own image treatments, e.g. the tool tiles, are fine). Headings in `font-display`, menus in `font-nav`.
 - Match the real HCDP site's section names and order: Access Data, Hawaiʻi Mesonet, Climate Summary,
   Pacific Portal, Extreme Events, Climate Tools; top nav Home · About · Data Portal · Research · Climate Tools.
 - Every page works at phone width. External links open in a new tab and say so.

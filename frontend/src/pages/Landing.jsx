@@ -27,6 +27,12 @@ function ExtLink({ href, children }) {
 export function Sidebar() {
   return (
     <aside className="border-t border-border bg-surface px-5 py-6 text-[13px] leading-relaxed lg:border-l lg:border-t-0" data-testid="landing-sidebar" aria-label="Climate resources and contact">
+      <ul className="mb-6 space-y-2.5" data-testid="sidebar-buttons">
+        {SIDEBAR.buttons.map((b) => {
+          const cls = 'block rounded-md border border-black/60 px-3 py-2 text-center font-nav text-[12.5px] font-bold uppercase tracking-[0.04em] text-white shadow-sm transition-transform hover:-translate-y-px hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+          return <li key={b.label}>{b.to ? <Link to={b.to} className={cls} style={{ backgroundColor: b.color }}>{b.label}</Link> : <a href={b.href} target="_blank" rel="noopener noreferrer" className={cls} style={{ backgroundColor: b.color }}>{b.label}</a>}</li>
+        })}
+      </ul>
       <SidebarHeading>Climate Resources</SidebarHeading>
       <ul className="mt-2 space-y-1.5">{SIDEBAR.resources.map((r) => <li key={r.label}><ExtLink href={r.href}>{r.label}</ExtLink></li>)}</ul>
       <SidebarHeading><span className="mt-6 block">Social Media</span></SidebarHeading>
@@ -45,9 +51,10 @@ export default function Landing() {
       <div className="grid lg:grid-cols-[minmax(0,85fr)_minmax(210px,15fr)]">
         <section className="relative isolate flex min-h-[62vh] items-center overflow-hidden lg:min-h-[70vh]" data-testid="landing-hero">
           <MapBackdrop />
+          {/* The map fades to almost nothing behind the heading and the box, and stays visible around them. */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[5]" style={{ background: 'radial-gradient(ellipse 46% 42% at 50% 50%, hsl(var(--canvas) / 0.92) 0%, hsl(var(--canvas) / 0.7) 45%, hsl(var(--canvas) / 0) 100%)' }} />
           <div className="relative z-10 mx-auto w-full max-w-3xl px-4 py-12 sm:py-16">
             <h1 className="text-center font-display text-3xl font-semibold tracking-tight sm:text-4xl">What are you looking for?</h1>
-            <p className="mx-auto mt-2 max-w-xl text-center text-subtle">Maps, downloads, live stations, storm reports, the monthly summary. Tell the assistant and it takes you there.</p>
             {mode === 'inline' ? (
               <div className="hcdp-rainbow-border mt-6 rounded-xl bg-card/90 p-2 shadow-lg backdrop-blur" data-testid="landing-assistant">
                 <AssistantPanel rotateExamples />
@@ -55,7 +62,6 @@ export default function Landing() {
             ) : (
               <div className="mt-6 text-center"><button type="button" onClick={open} className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground">Continue with the assistant</button></div>
             )}
-            <p className="mt-2 text-center text-xs text-subtle">The assistant navigates; it does not analyse data. For numbers, charts and comparisons it hands you to the HCDP AI interface.</p>
           </div>
         </section>
         <Sidebar />

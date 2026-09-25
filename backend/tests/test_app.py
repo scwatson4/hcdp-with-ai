@@ -11,6 +11,9 @@ import app as appmod  # noqa: E402
 class StubNavigator:
     catalog = [{"id": "x", "title": "X"}]
 
+    def system_prompt(self, context=None):
+        return "stub prompt"
+
     def respond(self, message, history, context):
         return {"intent": "info", "reply": f"echo {message} on {context.get('path')}", "actions": [], "alternatives": [], "minimize": False, "history_len": len(history)}
 
@@ -41,6 +44,8 @@ def test_raster_validates_before_touching_the_network():
     assert c.get("/api/raster", params={"dataset": "rainfall", "period": "day", "date": "2026-09", "extent": "oahu"}).status_code == 400
     assert c.get("/api/raster", params={"dataset": "rainfall", "period": "day", "date": "2026-09-01", "extent": "bigisland"}).status_code == 400
     assert appmod.raster_params("temperature-max", "month", "2026-08", "maui") == {"datatype": "temperature", "aggregation": "max", "period": "month", "date": "2026-08", "extent": "mn"}
+    # SPI grids exist statewide only: an island link fetches the statewide grid (the viewer zooms in)
+    assert appmod.raster_params("spi-3", "month", "2026-08", "maui")["extent"] == "statewide"
 
 
 def test_health_and_catalog():
@@ -71,3 +76,13 @@ def test_navigate_rate_limit_returns_a_friendly_429():
     assert c.post("/api/navigate", json={"message": "b"}).status_code == 200
     r = c.post("/api/navigate", json={"message": "c"})
     assert r.status_code == 429 and r.json()["intent"] == "info" and r.json()["alternatives"]
+
+
+def test_viewer_links_get_their_own_title_for_link_previews(tmp_path, monkeypatch):
+    (tmp_path / "index.html").write_text('<html><head><title>Hawaiʻi Climate Data Portal</title><meta name="description" content="generic" /></head><body></body></html>')
+    monkeypatch.setattr(appmod, "DIST", tmp_path)
+    c = client()
+    html = c.get("/viewer/rainfall/day/2026-09-07/kauai").text
+    assert "<title>Rainfall, September 7, 2026, Kauaʻi — Hawaiʻi Climate Data Portal</title>" in html
+    assert 'property="og:title"' in html
+    assert "<title>Hawaiʻi Climate Data Portal</title>" in c.get("/about/team").text

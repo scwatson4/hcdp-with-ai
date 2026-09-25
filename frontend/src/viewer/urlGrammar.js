@@ -114,10 +114,13 @@ export function formatViewerPath({ dataset, period, date, extent, opts = {} }) {
   return `/viewer/${dataset}/${period}/${date}/${extent}${s ? `?${s}` : ''}`
 }
 
+// HCDP publishes SPI grids statewide only: an island link shows the statewide grid zoomed to the island.
+export const STATEWIDE_ONLY = new Set(Object.keys(DATASETS).filter((k) => k.startsWith('spi-')))
+
 // Query parameters for the backend raster proxy.
 export function apiParamsFor({ dataset, period, date, extent }) {
   const ds = DATASETS[dataset]
-  return { ...ds.api, period, date, extent: EXTENTS[extent].api }
+  return { ...ds.api, period, date, extent: STATEWIDE_ONLY.has(dataset) ? 'statewide' : EXTENTS[extent].api }
 }
 
 // A human sentence for titles and the assistant's confirmations.

@@ -28,8 +28,8 @@ export function AssistantProvider({ children }) {
     let navigated = false
     for (const a of actions) {
       if (a.type === 'navigate' && a.path && a.path.startsWith('/')) { navigate(a.path); navigated = true }
-      else if (a.type === 'open' && a.url) { window.open(a.url, '_blank', 'noopener,noreferrer'); navigated = true }
-      else if (a.type === 'handoff' && a.url) { window.open(a.url, '_blank', 'noopener,noreferrer') }
+      else if (a.type === 'open' && a.url) { const w = window.open(a.url, '_blank', 'noopener,noreferrer'); if (!w) a.blocked = true; navigated = true }   // the message keeps a link if the tab was blocked
+      else if (a.type === 'handoff' && a.url) { const w = window.open(a.url, '_blank', 'noopener,noreferrer'); if (!w) a.blocked = true }
     }
     return navigated
   }, [navigate])
@@ -48,17 +48,21 @@ export function AssistantProvider({ children }) {
       try { data = await res.json() } catch { data = null }
       if (!res.ok && !(data && data.reply)) data = { intent: 'info', reply: `Something went wrong (${res.status}). Try again in a moment.`, actions: [], alternatives: [] }
       historyRef.current = [...historyRef.current, { role: 'user', content: q }, { role: 'assistant', content: data.reply || '' }]
-      setMessages((m) => [...m, { role: 'assistant', content: data.reply || '', intent: data.intent, actions: data.actions || [], alternatives: data.alternatives || [] }])
       const navigated = runActions(data.actions)
+      setMessages((m) => [...m, { role: 'assistant', content: data.reply || '', intent: data.intent, actions: data.actions || [], alternatives: data.alternatives || [] }])
       if (navigated || data.minimize) setMode('dock')
     } catch (e) {
       setMessages((m) => [...m, { role: 'assistant', content: 'I could not reach the navigator. Check the connection and try again.' }])
     } finally { setBusy(false) }
   }, [busy, context, runActions])
 
-  const open = useCallback(() => setMode((m) => (m === 'inline' ? 'inline' : 'panel')), [])
+  const open = useCallback(() => {
+    if (mode === 'inline' && location.pathname === '/') { document.querySelector('[data-testid="assistant-input"]')?.focus(); return }
+    setMode('panel')
+  }, [mode, location.pathname])
   const minimize = useCallback(() => setMode('dock'), [])
-  const reset = useCallback(() => { historyRef.current = []; setMessages([WELCOME]); setMode('inline') }, [])
+  // Start over: the inline box on the landing page, the pill anywhere else.
+  const reset = useCallback(() => { historyRef.current = []; setMessages([WELCOME]); setMode(location.pathname === '/' ? 'inline' : 'dock') }, [location.pathname])
 
   const value = useMemo(() => ({ messages, mode, busy, send, open, minimize, setMode, reset }), [messages, mode, busy, send, open, minimize, reset])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

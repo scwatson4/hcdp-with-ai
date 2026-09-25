@@ -1,0 +1,1229 @@
+{
+  "as_of": "2026-09-25",
+  "cases": [
+    {
+      "id": "rain-yesterday-kauai",
+      "persona": "citizen",
+      "query": "show me yesterday's rain on Kauai",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "rainfall-daily-map"
+      ],
+      "expected_path_prefix": "/viewer/rainfall/day/2026-09-24/kauai",
+      "notes": "Yesterday is the newest daily map."
+    },
+    {
+      "id": "rain-map-specific-date-big-island",
+      "persona": "climate-scientist",
+      "query": "rainfall map for October 21 2025 on the Big Island",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "rainfall-daily-map"
+      ],
+      "expected_path_prefix": "/viewer/rainfall/day/2025-10-21/hawaii",
+      "notes": "Big Island = extent hawaii."
+    },
+    {
+      "id": "monthly-rain-august-statewide",
+      "persona": "citizen",
+      "query": "how wet was it across the islands in august",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "rainfall-monthly-map",
+        "climate-summary"
+      ],
+      "expected_path_prefix": "/viewer/rainfall/month/2026-08/",
+      "notes": "A monthly rainfall map for the last complete month; the Climate Summary (ranks, anomalies) is a good alternative."
+    },
+    {
+      "id": "temperature-typo-big-island",
+      "persona": "citizen",
+      "query": "temprature map for august big island",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "temperature-mean-map"
+      ],
+      "expected_path_prefix": "/viewer/temperature-mean/month/2026-08/hawaii",
+      "notes": "Typo in 'temperature'; mean temperature is the sensible default."
+    },
+    {
+      "id": "hottest-places-last-month",
+      "persona": "citizen",
+      "query": "where was it hottest last month?",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "temperature-max-map"
+      ],
+      "expected_path_prefix": "/viewer/temperature-max/month/2026-08/statewide",
+      "notes": "A maximum-temperature map answers 'where'; a ranked list of places would be analysis."
+    },
+    {
+      "id": "coldest-nights-upcountry",
+      "persona": "farmer-rancher",
+      "query": "how cold did it get at night upcountry maui in july",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "temperature-min-map"
+      ],
+      "expected_path_prefix": "/viewer/temperature-min/month/2026-07/maui",
+      "notes": "Monthly minimum temperature, Maui."
+    },
+    {
+      "id": "humidity-honolulu-july-4",
+      "persona": "citizen",
+      "query": "humidity map for Honolulu on July 4 2026",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "humidity-daily-map"
+      ],
+      "expected_path_prefix": "/viewer/humidity/day/2026-07-04/oahu",
+      "notes": "Honolulu = Oʻahu; humidity is daily only."
+    },
+    {
+      "id": "ndvi-molokai-date",
+      "persona": "climate-scientist",
+      "query": "NDVI molokai 2026-09-15",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "ndvi-daily-map"
+      ],
+      "expected_path_prefix": "/viewer/ndvi/day/2026-09-15/molokai",
+      "notes": "Terse but precise."
+    },
+    {
+      "id": "fire-risk-maui-today",
+      "persona": "emergency-responder",
+      "query": "fire risk map for maui today",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "ignition-daily-map",
+        "ignition-forecast"
+      ],
+      "expected_path_prefix": "/viewer/ignition/day/2026-09-24/maui",
+      "notes": "Today's map does not exist yet: show the latest day (yesterday) and offer the 1–3 day predictions in Access Data."
+    },
+    {
+      "id": "drought-upcountry-maui",
+      "persona": "farmer-rancher",
+      "query": "is upcountry maui in drought right now",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "spi-3-map",
+        "climate-summary",
+        "h-rip"
+      ],
+      "expected_path_prefix": "/viewer/spi-3/month/2026-08/statewide",
+      "notes": "SPI-3 for the last complete month; HCDP publishes SPI statewide only, so the extent stays statewide (zoom to Maui)."
+    },
+    {
+      "id": "spi12-august",
+      "persona": "water-utility",
+      "query": "12 month SPI for august",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "spi-12-map"
+      ],
+      "expected_path_prefix": "/viewer/spi-12/month/2026-08/statewide",
+      "notes": "Long-term drought for water supply."
+    },
+    {
+      "id": "spi3-march-2026",
+      "persona": "researcher",
+      "query": "SPI-3 drought map March 2026",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "spi-3-map"
+      ],
+      "expected_path_prefix": "/viewer/spi-3/month/2026-03/statewide",
+      "notes": "Precise request."
+    },
+    {
+      "id": "side-by-side-augusts-maui",
+      "persona": "citizen",
+      "query": "side by side rainfall maps, August 2026 vs August 2025 on Maui",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "rainfall-monthly-map"
+      ],
+      "expected_path_prefix": "/viewer/rainfall/month/2026-08/maui",
+      "notes": "The viewer's ?compare=2025-08 option shows two maps; this is a visual comparison, not a computed one."
+    },
+    {
+      "id": "lanai-city-rain-last-week",
+      "persona": "citizen",
+      "query": "did it rain in lanai city last saturday",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "rainfall-daily-map"
+      ],
+      "expected_path_prefix": "/viewer/rainfall/day/2026-09-19/lanai",
+      "notes": "Lanai City = Lānaʻi; last Saturday is 2026-09-19."
+    },
+    {
+      "id": "kaunakakai-rain-this-month-typo",
+      "persona": "citizen",
+      "query": "rainfal kaunakakai this month",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "rainfall-daily-map",
+        "rainfall-monthly-map"
+      ],
+      "expected_path_prefix": "/viewer/rainfall/day/2026-09-24/molokai",
+      "notes": "Typo; Kaunakakai = Molokaʻi. September's monthly map does not exist until October, so show recent daily maps."
+    },
+    {
+      "id": "nolo-tracker",
+      "persona": "emergency-responder",
+      "query": "Nolo storm tracker with rainfall totals by station",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "nolo",
+        "nolo-tracker-fullscreen"
+      ],
+      "expected_path_prefix": "/extreme-events#nolo",
+      "notes": "The live Mesonet tracker is the primary answer."
+    },
+    {
+      "id": "nolo-one-word",
+      "persona": "citizen",
+      "query": "nolo",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "nolo",
+        "nolo-tracker-fullscreen"
+      ],
+      "notes": "A bare storm name still deserves the tracker."
+    },
+    {
+      "id": "lowell-report-journalist",
+      "persona": "journalist",
+      "query": "I'm writing about Hurricane Lowell, where's HCDP's report?",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "lowell"
+      ],
+      "expected_path_prefix": "/extreme-events#lowell",
+      "notes": "Open the report; UH News story as an alternative."
+    },
+    {
+      "id": "lowell-download-rainfall",
+      "persona": "researcher",
+      "query": "download rainfall data from Hurricane Lowell",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "lowell",
+        "data-downloads",
+        "access-data"
+      ],
+      "notes": "Report for context; GeoTIFFs for 6–8 Sept 2026 come from Access Data's export."
+    },
+    {
+      "id": "lowell-typo-map",
+      "persona": "citizen",
+      "query": "huricane lowel rain map",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "lowell-rainfall-map",
+        "lowell",
+        "rainfall-daily-map"
+      ],
+      "expected_path_prefix": "/viewer/rainfall/day/2026-09-0",
+      "notes": "Typos; the storm-day daily map on Kauaʻi."
+    },
+    {
+      "id": "lowell-stations-side-by-side",
+      "persona": "emergency-responder",
+      "query": "wind gusts during lowell, all kauai stations side by side",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "lowell-kauai-oahu-focus",
+        "lowell-mesonet-viewer"
+      ],
+      "notes": "The Kauaʻi/Oʻahu focus page plots every station on a shared scale."
+    },
+    {
+      "id": "lala-big-island-map",
+      "persona": "citizen",
+      "query": "Hurricane Lala rain map for the big island",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "lala-rainfall-map",
+        "lala",
+        "rainfall-daily-map"
+      ],
+      "expected_path_prefix": "/viewer/rainfall/day/2026-08-1",
+      "notes": "Any of 14–16 August 2026 on hawaii (15 August had the wettest hour)."
+    },
+    {
+      "id": "lala-report",
+      "persona": "journalist",
+      "query": "what did HCDP publish about hurricane lala",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "lala",
+        "uh-news-lala"
+      ],
+      "expected_path_prefix": "/extreme-events#lala",
+      "notes": "Report first, UH News story as alternative."
+    },
+    {
+      "id": "manoa-flash-flood",
+      "persona": "emergency-responder",
+      "query": "manoa palolo flash flood in march",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "kona-low-2"
+      ],
+      "expected_path_prefix": "/extreme-events#kona-lows",
+      "notes": "The second Kona low viewer has the Mānoa/Pālolo highlight."
+    },
+    {
+      "id": "haleakala-record-rain",
+      "persona": "climate-scientist",
+      "query": "haleakala record 24 hour rain march 2026",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "kona-low-1"
+      ],
+      "notes": "First Kona low viewer (Haleakalā Summit and Kuiki stations)."
+    },
+    {
+      "id": "march-floods-vague",
+      "persona": "citizen",
+      "query": "the big floods in march",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "kona-lows",
+        "kona-low-1",
+        "kona-low-2",
+        "march-2026-rainfall-map"
+      ],
+      "notes": "Both Kona lows; either viewer or the monthly map is fine."
+    },
+    {
+      "id": "march-floods-story",
+      "persona": "journalist",
+      "query": "the UH story about 2 trillion gallons of rain in march",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "uh-news-march-2026-floods",
+        "kona-lows"
+      ],
+      "notes": "UH News article."
+    },
+    {
+      "id": "hurricane-lane",
+      "persona": "climate-scientist",
+      "query": "Hurricane Lane 2018 rainfall",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "hurricane-lane-2018",
+        "rainfall-daily-map"
+      ],
+      "notes": "Research highlight; daily maps for 22–25 Aug 2018 on hawaii are an alternative."
+    },
+    {
+      "id": "storms-vague",
+      "persona": "citizen",
+      "query": "storms",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "extreme-events"
+      ],
+      "expected_path_prefix": "/extreme-events",
+      "notes": "Vague; the Extreme Events index."
+    },
+    {
+      "id": "raining-hilo-now",
+      "persona": "citizen",
+      "query": "is it raining in hilo rn",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "mesonet-live-data",
+        "mesonet-data-map",
+        "hawaii-mesonet-app"
+      ],
+      "notes": "Slang 'rn' = right now; live station readings."
+    },
+    {
+      "id": "wind-now",
+      "persona": "emergency-responder",
+      "query": "how windy is it right now across the state",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "mesonet-wind-map",
+        "mesonet-live-data"
+      ],
+      "notes": "Live wind map."
+    },
+    {
+      "id": "nearest-station-kailua",
+      "persona": "citizen",
+      "query": "which mesonet station is closest to kailua",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "mesonet-station-map",
+        "mesonet-station-list"
+      ],
+      "notes": "Kailua on Oʻahu; the station map."
+    },
+    {
+      "id": "mesonet-app",
+      "persona": "citizen",
+      "query": "is there a mesonet app for my phone",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "hawaii-mesonet-app"
+      ],
+      "notes": "The PWA."
+    },
+    {
+      "id": "mesonet-csv",
+      "persona": "researcher",
+      "query": "download 5 minute mesonet data for one station as csv",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "mesonet-station-reports",
+        "api-mesonet"
+      ],
+      "notes": "Station reports; the API for scripted pulls."
+    },
+    {
+      "id": "mesonet-what-is",
+      "persona": "teacher",
+      "query": "what is the hawaii mesonet? my students want to know",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "mesonet"
+      ],
+      "expected_path_prefix": "/mesonet",
+      "notes": "The Mesonet page answers it (info is also acceptable)."
+    },
+    {
+      "id": "found-a-station",
+      "persona": "citizen",
+      "query": "I found a weather station on a hiking trail with a QR code",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "mesonet-qr-landing",
+        "mesonet"
+      ],
+      "notes": "The station QR landing page."
+    },
+    {
+      "id": "api-key",
+      "persona": "developer",
+      "query": "how do i get an api key",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "api"
+      ],
+      "expected_path_prefix": "/data/api",
+      "notes": "Token sign-up form."
+    },
+    {
+      "id": "python-rasters",
+      "persona": "developer",
+      "query": "python example for pulling HCDP rasters",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "api-python-notebook",
+        "api-gridded-maps",
+        "api-docs"
+      ],
+      "notes": "Notebook on GitHub."
+    },
+    {
+      "id": "mesonet-api-docs",
+      "persona": "developer",
+      "query": "mesonet api docs for 5-minute data",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "api-mesonet",
+        "api-docs"
+      ],
+      "notes": "Swagger docs."
+    },
+    {
+      "id": "bulk-daily-2025",
+      "persona": "developer",
+      "query": "bulk download every daily rainfall grid for 2025",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "api-bulk-packages",
+        "data-downloads"
+      ],
+      "notes": "genzip or the portal's emailed export."
+    },
+    {
+      "id": "geotiff-url-pattern",
+      "persona": "developer",
+      "query": "direct url for the august 2026 monthly rainfall tif",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "hcdp-public-files"
+      ],
+      "notes": "Public ikeauth download URL."
+    },
+    {
+      "id": "station-metadata-csv",
+      "persona": "researcher",
+      "query": "mesonet station list with coordinates as a csv",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "mesonet-station-metadata-csv",
+        "mesonet-station-list"
+      ],
+      "notes": "GitHub CSV or the table search."
+    },
+    {
+      "id": "rain-1950s",
+      "persona": "researcher",
+      "query": "rainfall maps from the 1950s",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "legacy-rainfall-maps",
+        "access-data"
+      ],
+      "expected_path_prefix": "/data",
+      "notes": "Legacy 1920–2012 maps are in Access Data only."
+    },
+    {
+      "id": "normals-geotiff",
+      "persona": "researcher",
+      "query": "1991-2020 rainfall normals geotiff",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "climatology-normals",
+        "data-downloads"
+      ],
+      "expected_path_prefix": "/data",
+      "notes": "Contemporary climatology."
+    },
+    {
+      "id": "rcp85-downscaling",
+      "persona": "climate-scientist",
+      "query": "dynamical downscaling rcp8.5 end of century rainfall",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "future-projections-hawaii"
+      ],
+      "notes": "Projections live in Access Data."
+    },
+    {
+      "id": "standard-error-maps",
+      "persona": "climate-scientist",
+      "query": "standard error maps for monthly rainfall",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "data-downloads",
+        "api-gridded-maps"
+      ],
+      "notes": "Export tab file types (se, anom, anom_se, metadata)."
+    },
+    {
+      "id": "cite-rainfall-maps",
+      "persona": "researcher",
+      "query": "how do I cite the HCDP rainfall maps in my paper",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "how-to-cite"
+      ],
+      "expected_path_prefix": "/about/how-to-cite",
+      "notes": "How to Cite page."
+    },
+    {
+      "id": "data-portal-plain",
+      "persona": "citizen",
+      "query": "open the data portal",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "access-data"
+      ],
+      "expected_path_prefix": "/data",
+      "notes": "Plain request."
+    },
+    {
+      "id": "portal-tutorial",
+      "persona": "teacher",
+      "query": "how do I use the data portal to make a map for class",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "tutorial-make-a-map",
+        "tutorials"
+      ],
+      "expected_path_prefix": "/data/tutorials",
+      "notes": "Map tutorial."
+    },
+    {
+      "id": "ranch-drought-big-island",
+      "persona": "farmer-rancher",
+      "query": "drought and rain conditions for ranches on the big island",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "h-rip",
+        "spi-3-map"
+      ],
+      "notes": "H-RIP."
+    },
+    {
+      "id": "farm-portfolio-kula",
+      "persona": "farmer-rancher",
+      "query": "climate portfolio for my farm in kula",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "ccvd-portfolios"
+      ],
+      "notes": "CCVD portfolio by email."
+    },
+    {
+      "id": "groundwater-recharge",
+      "persona": "water-utility",
+      "query": "groundwater recharge tool",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "groundwater-recharge-tool"
+      ],
+      "notes": "Climate Tools entry."
+    },
+    {
+      "id": "evapotranspiration-typo",
+      "persona": "water-utility",
+      "query": "evapotransperation grids for irrigation planning",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "evapotranspiration-atlas"
+      ],
+      "notes": "Typo; ET atlas downloads."
+    },
+    {
+      "id": "solar-kona",
+      "persona": "citizen",
+      "query": "how sunny is kona compared to hilo, is there a solar map",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "solar-radiation-atlas"
+      ],
+      "notes": "Solar Radiation atlas."
+    },
+    {
+      "id": "avg-rain-manoa",
+      "persona": "citizen",
+      "query": "average annual rainfall at my house in manoa",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "rainfall-atlas-interactive-map",
+        "rainfall-atlas",
+        "climatology-normals"
+      ],
+      "notes": "Rainfall Atlas interactive map (click the spot)."
+    },
+    {
+      "id": "slr-waikiki",
+      "persona": "citizen",
+      "query": "sea level rise map for waikiki",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "sea-level-rise-viewer"
+      ],
+      "notes": "PacIOOS viewer."
+    },
+    {
+      "id": "monthly-summary-oahu",
+      "persona": "teacher",
+      "query": "monthly climate summary for oahu",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "climate-summary"
+      ],
+      "expected_path_prefix": "/climate-summary",
+      "notes": "Climate Summary with island selected."
+    },
+    {
+      "id": "subscribe-maui",
+      "persona": "water-utility",
+      "query": "subscribe to monthly climate report emails for maui",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "climate-summary",
+        "climate-summary-guide"
+      ],
+      "expected_path_prefix": "/climate-summary",
+      "notes": "Email reports around the 1st of each month."
+    },
+    {
+      "id": "annual-report-pdf",
+      "persona": "journalist",
+      "query": "HCDP 2025 annual climate report pdf",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "annual-climate-report-2025-pdf",
+        "annual-climate-report-2025"
+      ],
+      "notes": "PDF."
+    },
+    {
+      "id": "american-samoa-rain",
+      "persona": "researcher",
+      "query": "rainfall data for american samoa",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "american-samoa-data-viewer",
+        "american-samoa-portal"
+      ],
+      "expected_path_prefix": "/pacific",
+      "notes": "AS viewer (1980–2024)."
+    },
+    {
+      "id": "american-samoa-stream-live",
+      "persona": "emergency-responder",
+      "query": "live stream gauge readings in american samoa",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "american-samoa-mesonet",
+        "american-samoa-live-climate-data"
+      ],
+      "notes": "AS Mesonet."
+    },
+    {
+      "id": "guam-rain-maps",
+      "persona": "researcher",
+      "query": "guam rainfall maps",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "guam-data-viewer",
+        "guam-climate-data-portal"
+      ],
+      "expected_path_prefix": "/pacific",
+      "notes": "Guam viewer."
+    },
+    {
+      "id": "palau-climate",
+      "persona": "researcher",
+      "query": "climate resources for palau",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "pacific-countries",
+        "pacific-portal"
+      ],
+      "expected_path_prefix": "/pacific",
+      "notes": "Country pages (under development)."
+    },
+    {
+      "id": "hawaiian-rain-words",
+      "persona": "teacher",
+      "query": "hawaiian words for rain for my 4th grade class",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "climate-glossary"
+      ],
+      "notes": "Glossary."
+    },
+    {
+      "id": "moon-calendar",
+      "persona": "teacher",
+      "query": "moon calendar",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "hawaiian-moon-calendar"
+      ],
+      "notes": "Two words, clear target."
+    },
+    {
+      "id": "hcdp-videos",
+      "persona": "teacher",
+      "query": "videos explaining the climate data portal",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "presentations"
+      ],
+      "notes": "Recorded talks."
+    },
+    {
+      "id": "forecast-kona",
+      "persona": "citizen",
+      "query": "will it rain tomorrow in kona",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "nws-honolulu"
+      ],
+      "notes": "HCDP has no forecasts: open the NWS Honolulu office and say so."
+    },
+    {
+      "id": "flash-flood-warning",
+      "persona": "emergency-responder",
+      "query": "flash flood warning oahu",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "nws-honolulu"
+      ],
+      "notes": "Warnings come from the NWS."
+    },
+    {
+      "id": "an-hilo-lala-total",
+      "persona": "citizen",
+      "query": "total rainfall in Hilo during Hurricane Lala",
+      "expected_intent": "analysis",
+      "expected_ids": [],
+      "notes": "A number over a storm window at a place."
+    },
+    {
+      "id": "an-most-rain-yesterday",
+      "persona": "emergency-responder",
+      "query": "which mesonet station recorded the most rain yesterday?",
+      "expected_intent": "analysis",
+      "expected_ids": [],
+      "notes": "Ranking stations."
+    },
+    {
+      "id": "an-honolulu-vs-normal",
+      "persona": "climate-scientist",
+      "query": "average temperature in Honolulu for August 2026 vs the 1991-2020 normal",
+      "expected_intent": "analysis",
+      "expected_ids": [],
+      "notes": "Comparison with a normal."
+    },
+    {
+      "id": "an-kula-chart",
+      "persona": "farmer-rancher",
+      "query": "chart monthly rainfall at Kula since 1990",
+      "expected_intent": "analysis",
+      "expected_ids": [],
+      "notes": "Chart over a long series."
+    },
+    {
+      "id": "an-maui-gallons-march",
+      "persona": "journalist",
+      "query": "how many gallons of rain fell on Maui in March 2026",
+      "expected_intent": "analysis",
+      "expected_ids": [],
+      "notes": "Volume computation for one island (UH published only a statewide figure)."
+    },
+    {
+      "id": "an-rank-islands-august",
+      "persona": "journalist",
+      "query": "rank the islands by rainfall in august",
+      "expected_intent": "analysis",
+      "expected_ids": [],
+      "notes": "Ranking."
+    },
+    {
+      "id": "an-kauai-trend",
+      "persona": "climate-scientist",
+      "query": "trend in annual rainfall on kauai since 1920",
+      "expected_intent": "analysis",
+      "expected_ids": [],
+      "notes": "Trend."
+    },
+    {
+      "id": "an-lihue-gust-lowell",
+      "persona": "emergency-responder",
+      "query": "what was the max wind gust at lihue during lowell",
+      "expected_intent": "analysis",
+      "expected_ids": [],
+      "notes": "A value from station data; the Lowell viewer is a good alternative."
+    },
+    {
+      "id": "an-drought-percent",
+      "persona": "water-utility",
+      "query": "what percent of the state is in drought right now",
+      "expected_intent": "analysis",
+      "expected_ids": [],
+      "notes": "A number; the Climate Summary drought panel is a good alternative."
+    },
+    {
+      "id": "an-ndvi-rain-correlation",
+      "persona": "researcher",
+      "query": "compute the correlation between rainfall and NDVI on molokai",
+      "expected_intent": "analysis",
+      "expected_ids": [],
+      "notes": "Computation."
+    },
+    {
+      "id": "an-oct-2025-anomaly",
+      "persona": "climate-scientist",
+      "query": "how much wetter than normal was october 2025 on the big island, in percent",
+      "expected_intent": "analysis",
+      "expected_ids": [],
+      "notes": "Anomaly in percent."
+    },
+    {
+      "id": "an-wettest-ahupuaa",
+      "persona": "water-utility",
+      "query": "which ahupuaa got the most rain in july",
+      "expected_intent": "analysis",
+      "expected_ids": [],
+      "notes": "Ranking by division."
+    },
+    {
+      "id": "an-lala-vs-lowell",
+      "persona": "journalist",
+      "query": "compare lala and lowell total rainfall statewide",
+      "expected_intent": "analysis",
+      "expected_ids": [],
+      "notes": "Comparison of two storms."
+    },
+    {
+      "id": "an-kona-highs-decade",
+      "persona": "citizen",
+      "query": "average daily high in kona in july over the last 10 years",
+      "expected_intent": "analysis",
+      "expected_ids": [],
+      "notes": "Average over years."
+    },
+    {
+      "id": "an-dry-days-kihei",
+      "persona": "farmer-rancher",
+      "query": "how many dry days has north kihei had this year",
+      "expected_intent": "analysis",
+      "expected_ids": [],
+      "notes": "Counting days."
+    },
+    {
+      "id": "info-what-can-you-do",
+      "persona": "citizen",
+      "query": "what can you do?",
+      "expected_intent": "info",
+      "expected_ids": [],
+      "notes": "Answer with intent info and list the main tools (Access Data, Mesonet, Climate Summary, Extreme Events, Climate Tools) as alternatives."
+    },
+    {
+      "id": "info-who-runs",
+      "persona": "journalist",
+      "query": "who runs HCDP",
+      "expected_intent": "info",
+      "expected_ids": [
+        "about-hcdp",
+        "team"
+      ],
+      "notes": "UH Mānoa (WRRC, Hawaiʻi Data Science Institute / ITS, Sea Grant); NSF and Hawaiʻi EPSCoR funding."
+    },
+    {
+      "id": "info-update-frequency",
+      "persona": "researcher",
+      "query": "how often is the data updated",
+      "expected_intent": "info",
+      "expected_ids": [
+        "rainfall-daily-map",
+        "rainfall-monthly-map",
+        "mesonet"
+      ],
+      "notes": "Daily maps about a day behind, monthly maps after month end, Mesonet every 15 minutes."
+    },
+    {
+      "id": "info-is-it-free",
+      "persona": "citizen",
+      "query": "is this data free",
+      "expected_intent": "info",
+      "expected_ids": [
+        "conditions-of-use",
+        "api"
+      ],
+      "notes": "Free to view and download; non-commercial terms with credit; the API needs a free token; Mesonet reports are CC BY-NC-ND."
+    },
+    {
+      "id": "info-forecasts",
+      "persona": "citizen",
+      "query": "does HCDP have forecasts?",
+      "expected_intent": "info",
+      "expected_ids": [
+        "nws-honolulu",
+        "ignition-forecast"
+      ],
+      "notes": "No weather forecasts (NWS does that); ignition probability predictions 1–3 days ahead exist."
+    },
+    {
+      "id": "info-how-far-back",
+      "persona": "researcher",
+      "query": "how far back does the rainfall data go",
+      "expected_intent": "info",
+      "expected_ids": [
+        "legacy-rainfall-maps",
+        "rainfall-monthly-map",
+        "access-data"
+      ],
+      "notes": "Monthly maps from 1920 (legacy to 2012), new product from 1990, daily from 1990."
+    },
+    {
+      "id": "info-atlas-vs-portal",
+      "persona": "teacher",
+      "query": "what's the difference between the rainfall atlas and the data portal",
+      "expected_intent": "info",
+      "expected_ids": [
+        "rainfall-atlas",
+        "access-data"
+      ],
+      "notes": "Atlas = 1978–2007 averages; portal = maps for specific days and months."
+    },
+    {
+      "id": "info-what-is-spi",
+      "persona": "farmer-rancher",
+      "query": "what does SPI mean on the drought map",
+      "expected_intent": "info",
+      "expected_ids": [
+        "spi-3-map",
+        "research-spi-dataset"
+      ],
+      "notes": "Standardized Precipitation Index; below −1 is drought."
+    },
+    {
+      "id": "info-how-many-stations",
+      "persona": "journalist",
+      "query": "how many mesonet stations are there",
+      "expected_intent": "info",
+      "expected_ids": [
+        "mesonet"
+      ],
+      "notes": "About 80 active and 25 planned (September 2026), plus 10 in American Samoa."
+    },
+    {
+      "id": "info-humidity-monthly",
+      "persona": "researcher",
+      "query": "is there a monthly humidity map?",
+      "expected_intent": "info",
+      "expected_ids": [
+        "humidity-daily-map",
+        "access-data"
+      ],
+      "notes": "Relative humidity is daily only."
+    },
+    {
+      "id": "clarify-waimea",
+      "persona": "citizen",
+      "query": "rain in waimea last week",
+      "expected_intent": "clarify",
+      "expected_ids": [
+        "rainfall-daily-map"
+      ],
+      "notes": "Waimea is on Hawaiʻi Island and on Kauaʻi; ask which (or show both as alternatives)."
+    },
+    {
+      "id": "clarify-show-me-the-map",
+      "persona": "citizen",
+      "query": "show me the map",
+      "expected_intent": "clarify",
+      "expected_ids": [
+        "rainfall-daily-map",
+        "access-data"
+      ],
+      "notes": "No variable, date or place; one short question (or a sensible default with alternatives)."
+    },
+    {
+      "id": "clarify-the-storm",
+      "persona": "emergency-responder",
+      "query": "data for the storm",
+      "expected_intent": "clarify",
+      "expected_ids": [
+        "nolo",
+        "lowell",
+        "lala",
+        "kona-lows"
+      ],
+      "notes": "Several storms; ask which (Nolo is live)."
+    },
+    {
+      "id": "clarify-temperature",
+      "persona": "researcher",
+      "query": "I need temperature",
+      "expected_intent": "clarify",
+      "expected_ids": [
+        "temperature-mean-map",
+        "access-data",
+        "station-data"
+      ],
+      "notes": "Map, station series or download? Which period?"
+    },
+    {
+      "id": "clarify-samoa",
+      "persona": "researcher",
+      "query": "climate data for samoa",
+      "expected_intent": "clarify",
+      "expected_ids": [
+        "american-samoa-portal",
+        "pacific-countries"
+      ],
+      "notes": "American Samoa (HCDP partner portal) or independent Samoa (Pacific Portal country page)?"
+    },
+    {
+      "id": "fu-now-maui",
+      "persona": "citizen",
+      "query": "now show Maui",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "rainfall-daily-map"
+      ],
+      "expected_path_prefix": "/viewer/rainfall/day/2026-09-07/maui",
+      "context": {
+        "path": "/viewer/rainfall/day/2026-09-07/kauai"
+      },
+      "notes": "Keep dataset and date, change the extent."
+    },
+    {
+      "id": "fu-same-map-august",
+      "persona": "citizen",
+      "query": "same map for August",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "rainfall-monthly-map"
+      ],
+      "expected_path_prefix": "/viewer/rainfall/month/2026-08/oahu",
+      "context": {
+        "path": "/viewer/rainfall/month/2026-07/oahu"
+      },
+      "notes": "Keep dataset and extent, change the month."
+    },
+    {
+      "id": "fu-zoom-out-state",
+      "persona": "citizen",
+      "query": "zoom out to the whole state",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "temperature-max-map"
+      ],
+      "expected_path_prefix": "/viewer/temperature-max/month/2026-08/statewide",
+      "context": {
+        "path": "/viewer/temperature-max/month/2026-08/maui"
+      },
+      "notes": "Extent statewide."
+    },
+    {
+      "id": "fu-day-after",
+      "persona": "emergency-responder",
+      "query": "what about the day after?",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "rainfall-daily-map",
+        "lowell-rainfall-map"
+      ],
+      "expected_path_prefix": "/viewer/rainfall/day/2026-09-08/kauai",
+      "context": {
+        "path": "/viewer/rainfall/day/2026-09-07/kauai"
+      },
+      "notes": "Next day, same island."
+    },
+    {
+      "id": "fu-twelve-month",
+      "persona": "water-utility",
+      "query": "show the 12 month one instead",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "spi-12-map"
+      ],
+      "expected_path_prefix": "/viewer/spi-12/month/2026-08/statewide",
+      "context": {
+        "path": "/viewer/spi-3/month/2026-08/statewide"
+      },
+      "notes": "Switch SPI timescale."
+    },
+    {
+      "id": "fu-inches",
+      "persona": "citizen",
+      "query": "switch to inches",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "rainfall-daily-map",
+        "lala-rainfall-map"
+      ],
+      "expected_path_prefix": "/viewer/rainfall/day/2026-08-15/hawaii",
+      "context": {
+        "path": "/viewer/rainfall/day/2026-08-15/hawaii"
+      },
+      "notes": "Same map with ?units=in."
+    },
+    {
+      "id": "fu-max-instead",
+      "persona": "teacher",
+      "query": "show max temps instead",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "temperature-max-map"
+      ],
+      "expected_path_prefix": "/viewer/temperature-max/month/2026-08/oahu",
+      "context": {
+        "path": "/viewer/temperature-mean/month/2026-08/oahu"
+      },
+      "notes": "Switch temperature aggregation."
+    },
+    {
+      "id": "fu-go-to-lanai",
+      "persona": "climate-scientist",
+      "query": "go to lanai",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "ndvi-daily-map"
+      ],
+      "expected_path_prefix": "/viewer/ndvi/day/2026-09-15/lanai",
+      "context": {
+        "path": "/viewer/ndvi/day/2026-09-15/molokai"
+      },
+      "notes": "Change extent only."
+    },
+    {
+      "id": "fu-back-a-week",
+      "persona": "citizen",
+      "query": "go back a week",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "rainfall-daily-map"
+      ],
+      "expected_path_prefix": "/viewer/rainfall/day/2026-09-17/statewide",
+      "context": {
+        "path": "/viewer/rainfall/day/2026-09-24/statewide"
+      },
+      "notes": "Seven days earlier."
+    },
+    {
+      "id": "fu-rain-map-from-event-page",
+      "persona": "citizen",
+      "query": "show me the rainfall map",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "lowell-rainfall-map",
+        "rainfall-daily-map"
+      ],
+      "expected_path_prefix": "/viewer/rainfall/day/2026-09-0",
+      "context": {
+        "path": "/extreme-events#lowell"
+      },
+      "notes": "On the Lowell section: a storm-day daily map (6–8 Sept 2026), Kauaʻi preferred."
+    },
+    {
+      "id": "fu-state-total-august",
+      "persona": "journalist",
+      "query": "total for the whole state in august?",
+      "expected_intent": "analysis",
+      "expected_ids": [],
+      "context": {
+        "path": "/viewer/rainfall/month/2026-08/statewide"
+      },
+      "notes": "A number from the map on screen: hand off."
+    },
+    {
+      "id": "fu-monthly-humidity",
+      "persona": "researcher",
+      "query": "monthly instead",
+      "expected_intent": "info",
+      "expected_ids": [
+        "humidity-daily-map",
+        "access-data"
+      ],
+      "context": {
+        "path": "/viewer/humidity/day/2026-09-20/oahu"
+      },
+      "notes": "Humidity has no monthly maps; say so and offer daily dates."
+    },
+    {
+      "id": "fu-mesonet-app",
+      "persona": "citizen",
+      "query": "is there an app for this",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "hawaii-mesonet-app"
+      ],
+      "context": {
+        "path": "/mesonet"
+      },
+      "notes": "On the Mesonet page."
+    }
+  ]
+}

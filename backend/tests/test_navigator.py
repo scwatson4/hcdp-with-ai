@@ -6,7 +6,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from navigator import Navigator, parse_viewer_path, valid_internal_path, SEED_CATALOG  # noqa: E402
+from navigator import Navigator, describe_view, parse_viewer_path, valid_internal_path, SEED_CATALOG  # noqa: E402
 
 
 class FakeLLM:
@@ -78,6 +78,10 @@ def test_analysis_gets_a_server_built_handoff():
     out = nav.respond("what was the total rainfall at Hilo during Lowell?")
     assert out["intent"] == "analysis"
     assert out["actions"] == [{"type": "handoff", "url": "https://ai.example.org/?ask=what%20was%20the%20total%20rainfall%20at%20Hilo%20during%20Lowell%3F"}]
+    # from a viewer page the hand-off carries what the visitor was looking at
+    nav2, _ = make({"intent": "analysis", "reply": "", "actions": [], "alternatives": []})
+    out2 = nav2.respond("which gauge had the most?", [], {"path": "/viewer/rainfall/day/2026-09-07/kauai", "viewer": {"dataset": "rainfall", "period": "day", "date": "2026-09-07", "extent": "kauai"}})
+    assert "I%20was%20looking%20at%20the%20Rainfall%20map%20for%202026-09-07%2C%20kauai" in out2["actions"][0]["url"]
     assert "analysis" in out["reply"]
     assert out["minimize"] is False
 
@@ -102,3 +106,15 @@ def test_history_is_trimmed_and_typed():
     nav.respond("hello", hist)
     msgs = llm.calls[0][1]
     assert len(msgs) == 9 and all(m["role"] in ("user", "assistant") for m in msgs)
+
+
+def test_describe_view_matches_the_frontend_wording():
+    assert describe_view({"dataset": "rainfall", "period": "day", "date": "2026-09-07", "extent": "kauai"}) == "Rainfall, September 7, 2026, Kauaʻi"
+    assert describe_view({"dataset": "spi-3", "period": "month", "date": "2026-08", "extent": "statewide"}) == "Drought index SPI 3-month, August 2026, Statewide"
+
+
+def test_today_is_hawaii_time_when_not_overridden():
+    import datetime as dt
+    from zoneinfo import ZoneInfo
+    nav = Navigator(FakeLLM({}), SEED_CATALOG)
+    assert nav.today() == dt.datetime.now(ZoneInfo("Pacific/Honolulu")).date()

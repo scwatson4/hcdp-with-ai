@@ -13,6 +13,7 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import os
+import re
 import uuid
 import time
 from pathlib import Path
@@ -20,7 +21,7 @@ from pathlib import Path
 import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
@@ -28,7 +29,7 @@ ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT.parent / ".env")  # local development; containers get the env from compose
 
 from llm import NavigatorLLM  # noqa: E402
-from navigator import DATASETS, EXTENTS, Navigator, load_catalog  # noqa: E402
+from navigator import DATASETS, EXTENTS, STATEWIDE_ONLY, Navigator, describe_view, load_catalog, parse_viewer_path  # noqa: E402
 from rasters import reencode_geotiff  # noqa: E402
 from ratelimit import RateLimiter  # noqa: E402
 
@@ -85,6 +86,7 @@ async def api_health(request: Request):
         "raster_cache_files": len(list(CACHE_DIR.glob("*.tif"))) if CACHE_DIR.exists() else 0,
         "frontend_built": (DIST / "index.html").exists(),
         "navigator_calls_today": request.app.state.limiter.today_count,
+        "system_prompt_chars": len(request.app.state.navigator.system_prompt()),
     }
 
 
@@ -106,7 +108,7 @@ def raster_params(dataset: str, period: str, date: str, extent: str) -> dict:
     except ValueError:
         raise HTTPException(400, "date must be YYYY-MM-DD for daily maps or YYYY-MM for monthly maps") from None
     # No returnEmptyNotFound: HCDP then answers an unpublished date with 404 instead of an all-nodata grid.
-    return {**ds["api"], "period": period, "date": date, "extent": EXTENTS[extent]}
+    return {**ds["api"], "period": period, "date": date, "extent": "statewide" if dataset in STATEWIDE_ONLY else EXTENTS[extent]}
 
 
 @app.get("/api/raster")
@@ -161,4 +163,25 @@ async def spa(full_path: str):
     if full_path and candidate.is_file() and str(candidate).startswith(str(DIST.resolve())):
         headers = {"Cache-Control": "public, max-age=31536000, immutable"} if full_path.startswith("assets/") else {}
         return FileResponse(candidate, headers=headers)
-    return FileResponse(DIST / "index.html", headers={"Cache-Control": "no-cache"})
+    return HTMLResponse(index_html_for("/" + full_path), headers={"Cache-Control": "no-cache"})
+
+
+_index_cache = {}
+
+
+def index_html_for(path: str) -> str:
+    """index.html with a title and description that describe a viewer deep link, so a pasted link previews as
+    'Rainfall, September 7, 2026, Kauaʻi' instead of the generic site title."""
+    p = DIST / "index.html"
+    mtime = p.stat().st_mtime
+    if _index_cache.get("mtime") != mtime:
+        _index_cache.update(mtime=mtime, html=p.read_text(encoding="utf-8"))
+    html = _index_cache["html"]
+    v = parse_viewer_path(path)
+    if not v:
+        return html
+    title = f"{describe_view(v)} — Hawaiʻi Climate Data Portal"
+    desc = f"HCDP climate viewer: {describe_view(v)}. A shareable map link from the Hawaiʻi Climate Data Portal."
+    html = re.sub(r"<title>.*?</title>", f"<title>{title}</title>", html, count=1, flags=re.S)
+    html = re.sub(r'<meta name="description" content=".*?" />', f'<meta name="description" content="{desc}" />', html, count=1)
+    return html.replace("</head>", f'<meta property="og:title" content="{title}" /><meta property="og:description" content="{desc}" /></head>', 1)

@@ -9,9 +9,10 @@ import AssistantPanel from './AssistantPanel'
 export default function AssistantDock() {
   const { mode, setMode, minimize, reset } = useAssistant()
   const { pathname } = useLocation()
+  // On the landing page the inline box IS the assistant; anywhere else (a shared deep link, a content page)
+  // the pill is the way in.
   if (mode === 'inline' && pathname === '/') return null
-  if (mode === 'inline') return null
-  if (mode === 'dock') {
+  if (mode === 'inline' || mode === 'dock') {
     return (
       <button type="button" onClick={() => setMode('panel')} data-testid="assistant-dock"
         className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full border border-border bg-card/95 px-3 py-2 text-sm shadow-lg backdrop-blur hover:border-foreground">

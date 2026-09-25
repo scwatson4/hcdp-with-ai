@@ -12,6 +12,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 import re
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from urllib.parse import quote, urlparse
 
@@ -35,6 +36,9 @@ DATASETS = {
     "spi-24": {"label": "Drought index SPI 24-month", "periods": ["month"], "api": {"datatype": "spi", "timescale": "timescale024"}},
 }
 EXTENTS = {"statewide": "statewide", "hawaii": "bi", "maui": "mn", "molokai": "mn", "lanai": "mn", "oahu": "oa", "kauai": "ka"}
+# HCDP publishes SPI grids statewide only; an island link shows the statewide grid zoomed to the island.
+STATEWIDE_ONLY = {k for k in DATASETS if k.startswith("spi-")}
+HST = "Pacific/Honolulu"
 
 ROUTES = [
     "/", "/about", "/about/team", "/about/history", "/about/acknowledgements", "/about/how-to-cite",
@@ -63,7 +67,7 @@ SEED_CATALOG = [
      "summary": "The monthly Hawaiʻi climate report: rainfall and temperature by island with ranks against the record.", "when_to_use": "How wet or warm last month was, statewide or by island.", "example_queries": ["how wet was August", "monthly climate report"], "region": "hawaii", "tags": ["report", "monthly"]},
     {"id": "pacific-portal", "kind": "page", "title": "Pacific Portal", "url": "https://www.hawaii.edu/climate-data-portal/pacific-portal/", "internal_path": "/pacific",
      "summary": "Climate data portals for American Samoa and Guam.", "when_to_use": "Anything about American Samoa or Guam.", "example_queries": ["American Samoa rainfall"], "region": "pacific", "tags": ["american samoa", "guam"]},
-    {"id": "extreme-events", "kind": "page", "title": "Extreme Events", "url": "https://www.hawaii.edu/climate-data-portal/extreme-event/", "internal_path": "/extreme-events",
+    {"id": "extreme-events", "kind": "page", "title": "Extreme Events", "url": "https://www.hawaii.edu/climate-data-portal/extreme-events/", "internal_path": "/extreme-events",
      "summary": "Storm trackers and reports for recent extreme events.", "when_to_use": "A named storm or extreme event.", "example_queries": ["hurricane reports"], "region": "hawaii", "tags": ["storm", "hurricane"]},
     {"id": "nolo", "kind": "event", "title": "Tropical Storm Nolo tracker", "url": "https://cherryleh.github.io/climate-summary/nolo/", "internal_path": "/extreme-events#nolo",
      "summary": "Live Mesonet tracker for Tropical Storm Nolo (from 22 September 2026).", "when_to_use": "Nolo rainfall, wind, station observations.", "example_queries": ["Nolo tracker"], "region": "hawaii", "dates": {"start": "2026-09-22", "end": None}, "tags": ["storm", "nolo", "live"]},
@@ -71,7 +75,7 @@ SEED_CATALOG = [
      "summary": "Rainfall totals, station observations and downloads for Hurricane Lowell, 6 to 8 September 2026.", "when_to_use": "Anything about Hurricane Lowell.", "example_queries": ["download rainfall data from Hurricane Lowell"], "region": "hawaii", "dates": {"start": "2026-09-06", "end": "2026-09-08"}, "tags": ["storm", "lowell", "rainfall"]},
     {"id": "lala", "kind": "event", "title": "Hurricane Lala report", "url": "https://www.hawaii.edu/climate-data-portal/hurricane-lala/", "internal_path": "/extreme-events#lala",
      "summary": "Report for Hurricane Lala, 14 to 16 August 2026.", "when_to_use": "Anything about Hurricane Lala.", "example_queries": ["Lala rainfall"], "region": "hawaii", "dates": {"start": "2026-08-14", "end": "2026-08-16"}, "tags": ["storm", "lala"]},
-    {"id": "kona-lows", "kind": "event", "title": "Kona Low storm viewers (March 2026)", "url": "https://www.hawaii.edu/climate-data-portal/extreme-event/", "internal_path": "/extreme-events#kona-lows",
+    {"id": "kona-lows", "kind": "event", "title": "Kona Low storm viewers (March 2026)", "url": "https://www.hawaii.edu/climate-data-portal/extreme-events/", "internal_path": "/extreme-events#kona-lows",
      "summary": "Two Kona Low events, 10 to 16 and 17 to 23 March 2026.", "when_to_use": "The March 2026 Kona lows.", "example_queries": ["kona low March"], "region": "hawaii", "dates": {"start": "2026-03-10", "end": "2026-03-23"}, "tags": ["storm", "kona low"]},
     {"id": "climate-tools", "kind": "page", "title": "Climate Tools", "url": "https://www.hawaii.edu/climate-data-portal/climate-tools/", "internal_path": "/tools",
      "summary": "Rainfall Atlas, climate portfolios, rangeland drought, groundwater recharge, sea-level rise and other tools.", "when_to_use": "A specialised tool rather than raw data.", "example_queries": ["what tools do you have"], "region": "hawaii", "tags": ["tools"]},
@@ -119,6 +123,14 @@ def parse_viewer_path(path: str) -> dict | None:
     return d
 
 
+def describe_view(v: dict) -> str:
+    """Python twin of urlGrammar.describeViewer: 'Rainfall, September 7, 2026, Kauaʻi'."""
+    labels = {"statewide": "Statewide", "hawaii": "Hawaiʻi Island", "maui": "Maui", "molokai": "Molokaʻi", "lanai": "Lānaʻi", "oahu": "Oʻahu", "kauai": "Kauaʻi"}
+    d = v["date"]
+    when = dt.date.fromisoformat(d).strftime("%B %-d, %Y") if len(d) == 10 else dt.date.fromisoformat(d + "-01").strftime("%B %Y")
+    return f"{DATASETS[v['dataset']]['label']}, {when}, {labels[v['extent']]}"
+
+
 def valid_internal_path(path: str) -> bool:
     if not isinstance(path, str) or not path.startswith("/"):
         return False
@@ -141,7 +153,8 @@ class Navigator:
 
     # ----- prompt -----------------------------------------------------------
     def today(self) -> dt.date:
-        return self._today or dt.date.today()
+        # Hawaiʻi's date, whatever the server's clock zone: "yesterday's map" must mean yesterday in Hawaiʻi.
+        return self._today or dt.datetime.now(ZoneInfo(HST)).date()
 
     def catalog_text(self) -> str:
         lines = []
@@ -179,7 +192,7 @@ VIEWER DEEP LINKS: /viewer/{{dataset}}/{{period}}/{{date}}/{{extent}}
   period: month (date YYYY-MM) or day (date YYYY-MM-DD)
   extent: statewide, hawaii (Hawaiʻi Island / Big Island), maui, molokai, lanai, oahu, kauai
   Examples: /viewer/rainfall/day/2026-09-07/kauai   /viewer/spi-3/month/2026-08/statewide   /viewer/temperature-max/month/2026-08/oahu
-  A storm's rainfall is best shown as daily rainfall on its peak day for the island hit hardest; a drought question as spi-3 for the last complete month.
+  A storm's rainfall is best shown as daily rainfall on its peak day for the island hit hardest; a drought question as spi-3 for the last complete month (SPI links may name an island: the statewide grid is shown zoomed to it).
 
 CATALOG (the only URLs you may use):
 {self.catalog_text()}
@@ -208,11 +221,17 @@ Respond with ONLY a JSON object:
             out = self.fallback(message)
             out["error"] = type(e).__name__
             return out
-        return self.normalize(raw, message)
+        return self.normalize(raw, message, context)
 
-    def handoff_url(self, message: str) -> str:
+    def handoff_url(self, message: str, context: dict | None = None) -> str:
+        """The analysis assistant gets the question plus what the visitor was looking at."""
         base = self.ai_interface_url or "https://hcdp-ai-interface.cis251375.projects.jetstream-cloud.org"
-        return f"{base}/?ask={quote(message)}"
+        ask = message
+        viewer = (context or {}).get("viewer") or {}
+        if viewer.get("dataset") and viewer.get("date"):
+            label = DATASETS.get(viewer["dataset"], {}).get("label", viewer["dataset"])
+            ask = f"{message} (I was looking at the {label} map for {viewer['date']}, {viewer.get('extent', 'statewide')})"
+        return f"{base}/?ask={quote(ask)}"
 
     def allowed_url(self, url) -> bool:
         if not isinstance(url, str):
@@ -220,7 +239,7 @@ Respond with ONLY a JSON object:
         u = urlparse(url)
         return u.scheme in ("http", "https") and (u.hostname or "") in self.hosts
 
-    def normalize(self, raw: dict, message: str) -> dict:
+    def normalize(self, raw: dict, message: str, context: dict | None = None) -> dict:
         intent = raw.get("intent") if raw.get("intent") in INTENTS else "info"
         reply = str(raw.get("reply") or "").strip()[:600]
         actions, navigated = [], False
@@ -234,9 +253,9 @@ Respond with ONLY a JSON object:
             elif t == "open" and self.allowed_url(a.get("url")):
                 actions.append({"type": "open", "url": a["url"]})
             elif t == "handoff":
-                actions.append({"type": "handoff", "url": self.handoff_url(message)})
+                actions.append({"type": "handoff", "url": self.handoff_url(message, context)})
         if intent == "analysis" and not any(a["type"] == "handoff" for a in actions):
-            actions.append({"type": "handoff", "url": self.handoff_url(message)})
+            actions.append({"type": "handoff", "url": self.handoff_url(message, context)})
         if intent == "analysis" and not reply:
             reply = "That is a data-analysis question; the HCDP AI interface can work it out for you."
         alternatives = []

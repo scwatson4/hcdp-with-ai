@@ -41,6 +41,7 @@ describe('viewer URL grammar', () => {
   it('maps to the HCDP API parameters', () => {
     expect(apiParamsFor({ dataset: 'temperature-max', period: 'day', date: '2026-09-01', extent: 'maui' })).toEqual({ datatype: 'temperature', aggregation: 'max', period: 'day', date: '2026-09-01', extent: 'mn' })
     expect(apiParamsFor({ dataset: 'spi-12', period: 'month', date: '2026-08', extent: 'statewide' })).toEqual({ datatype: 'spi', timescale: 'timescale012', period: 'month', date: '2026-08', extent: 'statewide' })
+    expect(apiParamsFor({ dataset: 'spi-3', period: 'month', date: '2026-08', extent: 'maui' }).extent).toBe('statewide')   // SPI: statewide grid, zoomed
   })
   it('describes a view in plain words', () => {
     expect(describeViewer({ dataset: 'rainfall', period: 'day', date: '2026-09-07', extent: 'kauai' })).toBe('Rainfall, September 7, 2026, Kauaʻi')

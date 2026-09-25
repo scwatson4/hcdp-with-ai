@@ -39,6 +39,9 @@ export default function AssistantPanel({ compact = false, autoFocus = false }) {
           <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
             <div className={cn('max-w-[92%] rounded-lg px-3 py-2 text-sm leading-relaxed', m.role === 'user' ? 'bg-accent text-accent-foreground' : 'bg-surface border border-border')}>
               {m.content}
+              {m.actions?.filter((a) => a.type === 'open').map((a, j) => (
+                <div key={j} className="mt-2"><a className="inline-flex items-center gap-1 rounded-md border border-border bg-canvas px-2.5 py-1 text-xs font-medium hover:border-foreground" href={a.url} target="_blank" rel="noopener noreferrer">{a.blocked ? 'Your browser blocked the new tab — open it here' : 'Opened in a new tab — open again'} <ExternalLink className="h-3 w-3" aria-hidden="true" /></a></div>
+              ))}
               {m.intent === 'analysis' && <div className="mt-2"><a className="inline-flex items-center gap-1 rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground" href={m.actions?.find((a) => a.type === 'handoff')?.url || AI_INTERFACE} target="_blank" rel="noopener noreferrer"><Sparkles className="h-3 w-3" aria-hidden="true" /> Open the analysis AI</a></div>}
               {m.alternatives?.length > 0 && <div className="mt-2 space-y-1">{m.alternatives.map((a, j) => <Alternative key={j} a={a} />)}</div>}
             </div>
@@ -57,7 +60,7 @@ export default function AssistantPanel({ compact = false, autoFocus = false }) {
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) submit(e) }}
           placeholder={compact ? 'Ask for another page or map…' : 'What are you looking for? Ask me what I can do.'}
           aria-label="Ask the HCDP navigator" data-testid="assistant-input"
-          className="min-h-[38px] flex-1 resize-none rounded-md border border-border bg-canvas px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+          className="min-h-[38px] flex-1 resize-none rounded-md border border-border bg-canvas px-3 py-2 text-base sm:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
         <button type="submit" disabled={!text.trim() || busy} aria-label="Send" className="grid h-9 w-9 place-items-center rounded-full bg-accent text-accent-foreground disabled:opacity-40"><ArrowUp className="h-4 w-4" /></button>
       </form>
     </div>

@@ -70,6 +70,10 @@ class NavigatorLLM:
             try:
                 resp = self._client.chat.completions.create(**kw)
                 self.stats["last_ms"] = int((time.monotonic() - t0) * 1000)
+                u = getattr(resp, "usage", None)
+                if u is not None:
+                    cached = getattr(getattr(u, "prompt_tokens_details", None), "cached_tokens", None)
+                    self.stats["last_usage"] = {"prompt_tokens": u.prompt_tokens, "completion_tokens": u.completion_tokens, "cached_tokens": cached}
                 return parse_json(resp.choices[0].message.content or "")
             except Exception as e:  # noqa: BLE001 - we decide below whether to retry
                 last = e

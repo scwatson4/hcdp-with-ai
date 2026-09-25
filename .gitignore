@@ -7,3 +7,4 @@ __pycache__/
 *.pyc
 backend/cache/
 .pytest_cache/
+frontend/.npm-install-done

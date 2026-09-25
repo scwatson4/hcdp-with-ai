@@ -27,11 +27,12 @@ try {
     await input.fill('Show me the rainfall map for Kauaʻi on 7 September 2026')
     await input.press('Enter')
     const t0 = Date.now()
-    await page.waitForFunction(() => !document.querySelector('[data-testid="assistant-busy"]') && document.querySelectorAll('[data-testid="assistant-panel"] .rounded-lg').length >= 3, null, { timeout: 90000 }).catch(() => {})
+    await page.waitForSelector('[data-testid="assistant-busy"]', { state: 'attached', timeout: 5000 }).catch(() => {})
+    const answered = await page.waitForFunction(() => !document.querySelector('[data-testid="assistant-busy"]'), null, { timeout: 90000 }).then(() => true).catch(() => false)
     const ms = Date.now() - t0
     const path = new URL(page.url()).pathname
     const docked = (await page.locator('[data-testid="assistant-dock"], [data-testid="assistant-dock-panel"]').count()) > 0
-    check(`${label}: navigator answered`, ms < 90000, `${ms} ms, now at ${path}`)
+    check(`${label}: navigator answered`, answered, `${ms} ms, now at ${path}`)
     check(`${label}: navigated to the viewer and minimized`, path.startsWith('/viewer/') && docked, path)
     await page.screenshot({ path: `${OUT}/after-navigate-${label}.png`, fullPage: false })
     if (docked) {

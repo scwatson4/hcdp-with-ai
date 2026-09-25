@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './styles/globals.css'
 import { ThemeProvider } from './components/ThemeProvider'
+import { TooltipProvider } from './components/ui/tooltip'
 import { AssistantProvider } from './assistant/AssistantProvider'
 import App from './App'
 import Landing from './pages/Landing'
@@ -19,6 +20,7 @@ import NotFound from './pages/NotFound'
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ThemeProvider defaultTheme="light">
+      <TooltipProvider delayDuration={300}>
       <BrowserRouter>
         <AssistantProvider>
           <Routes>
@@ -43,6 +45,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           </Routes>
         </AssistantProvider>
       </BrowserRouter>
+      </TooltipProvider>
     </ThemeProvider>
   </React.StrictMode>,
 )

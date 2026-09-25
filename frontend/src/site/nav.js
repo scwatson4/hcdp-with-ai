@@ -53,7 +53,7 @@ export const SIDEBAR = {
   // one shade deeper each so white type stays legible; linked to this site's pages where it has them.
   buttons: [
     { label: "Access Data", to: "/data", href: "https://www.hawaii.edu/climate-data-portal/data-portal/", color: "#357c78" },
-    { label: "Hawaiʻi Mesonet", to: "/mesonet", href: "https://www.hawaii.edu/climate-data-portal/hawaii-mesonet/", color: "#5e8a3a" },
+    { label: "Hawaiʻi Mesonet", to: "/mesonet", href: "https://www.hawaii.edu/climate-data-portal/hawaii-mesonet/", color: "#4f7a30" },
     { label: "Climate Summary", to: "/climate-summary", href: "https://www.hawaii.edu/climate-data-portal/climate-summary/", color: "#a85a1c" },
     { label: "Pacific Portal", to: "/pacific", href: "https://www.hawaii.edu/climate-data-portal/pacific-portal/", color: "#303078" },
     { label: "Extreme Events", to: "/extreme-events", href: "https://www.hawaii.edu/climate-data-portal/extreme-event/", color: "#b8452f" },

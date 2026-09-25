@@ -19,16 +19,16 @@ function SidebarHeading({ children }) {
 }
 
 function ExtLink({ href, children }) {
-  return <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:underline">{children}<ExternalLink className="h-3 w-3 shrink-0 text-subtle" aria-label="opens in a new tab" /></a>
+  return <a href={href} target="_blank" rel="noopener noreferrer" className="hover:underline">{children}<ExternalLink className="ml-1 inline h-3 w-3 align-[-2px] text-subtle" aria-label="opens in a new tab" /></a>
 }
 
 // The portal's home-page sidebar, as on www.hawaii.edu/climate-data-portal.
 export function Sidebar() {
   return (
-    <aside className="border-t border-border bg-surface px-5 py-6 text-[13px] leading-relaxed lg:border-l lg:border-t-0" data-testid="landing-sidebar" aria-label="Climate resources and contact">
-      <ul className="mb-6 space-y-2.5" data-testid="sidebar-buttons">
+    <aside className="border-t border-border bg-surface px-5 py-5 text-[13px] leading-snug lg:border-l lg:border-t-0" data-testid="landing-sidebar" aria-label="Climate resources and contact">
+      <ul className="mb-5 space-y-2" data-testid="sidebar-buttons">
         {SIDEBAR.buttons.map((b) => {
-          const cls = 'block rounded-md border border-black/60 px-3 py-2 text-center font-nav text-[12.5px] font-bold uppercase tracking-[0.04em] text-white shadow-sm transition-transform hover:-translate-y-px hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+          const cls = 'block rounded-md border border-black/60 px-3 py-1.5 text-center font-nav text-[12.5px] font-bold uppercase tracking-[0.04em] text-white shadow-sm transition-transform hover:-translate-y-px hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
           return <li key={b.label}>{b.to ? <Link to={b.to} className={cls} style={{ backgroundColor: b.color }}>{b.label}</Link> : <a href={b.href} target="_blank" rel="noopener noreferrer" className={cls} style={{ backgroundColor: b.color }}>{b.label}</a>}</li>
         })}
       </ul>
@@ -46,14 +46,14 @@ export function Sidebar() {
 export default function Landing() {
   return (
     <div className="mx-auto w-full max-w-[1440px]">
-      <div className="grid lg:grid-cols-[minmax(0,85fr)_minmax(210px,15fr)]">
+      <div className="grid lg:grid-cols-[minmax(0,85fr)_minmax(210px,15fr)] lg:items-start">
         <section className="relative isolate flex min-h-[62vh] items-center overflow-hidden lg:min-h-[70vh]" data-testid="landing-hero">
           <MapBackdrop />
           {/* The map fades to almost nothing behind the heading and the box, and stays visible around them. */}
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[5]" style={{ background: 'radial-gradient(ellipse 46% 42% at 50% 50%, hsl(var(--canvas) / 0.92) 0%, hsl(var(--canvas) / 0.7) 45%, hsl(var(--canvas) / 0) 100%)' }} />
           <div className="relative z-10 mx-auto w-full max-w-3xl px-4 py-12 sm:py-16">
             <h1 className="text-center font-display text-3xl font-semibold tracking-tight sm:text-4xl">What are you looking for?</h1>
-            <div className="hcdp-rainbow-border mt-6 rounded-xl bg-card/90 p-2 shadow-lg backdrop-blur" data-testid="landing-assistant">
+            <div className="mt-6 rounded-xl border border-border bg-card/90 p-2 shadow-lg backdrop-blur" data-testid="landing-assistant">
               <AssistantPanel rotateExamples />
             </div>
           </div>

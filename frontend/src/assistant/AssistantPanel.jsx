@@ -76,13 +76,13 @@ export default function AssistantPanel({ compact = false, autoFocus = false, rot
           {EXAMPLES.map((ex) => <button key={ex} type="button" onClick={() => send(ex)} className="rounded-full border border-border bg-surface px-2.5 py-1 text-xs text-subtle hover:border-foreground hover:text-foreground">{ex}</button>)}
         </div>
       )}
-      <form onSubmit={submit} className={cn('flex items-end gap-2 border-t border-border', compact ? 'p-2' : 'p-2')}>
+      <form onSubmit={submit} className={cn('flex items-end gap-2 p-2', (compact || !rotateExamples || messages.length > 1) && 'border-t border-border')}>
         <div className="hcdp-ask relative flex flex-1 rounded-md border border-border bg-canvas">
         <textarea ref={inputRef} value={text} onChange={(e) => setText(e.target.value.slice(0, 500))} rows={compact ? 1 : 2}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) submit(e); else if (e.key === 'Tab' && !e.shiftKey && ghostQuery) { e.preventDefault(); setText(ghostQuery) } }}
           aria-describedby={ghostQuery ? 'ask-ghost-hint' : undefined}
           placeholder={compact ? 'Ask for another page or map…' : 'What are you looking for?'}
-          aria-label="Ask the HCDP navigator" data-testid="assistant-input"
+          aria-label="Ask AI" data-testid="assistant-input"
           className={cn('min-h-[38px] flex-1 resize-none rounded-md bg-transparent px-3 py-2 text-[16px] sm:text-sm focus-visible:outline-none', ghostQuery ? 'placeholder:text-transparent' : 'placeholder:text-subtle')} />
         {ghostQuery && (
           <>

@@ -1,0 +1,110 @@
+/*
+ * HCDP design tokens.
+ * All values are HSL triplets so Tailwind's hsl(var(--x)) wrappers work.
+ * Light is the default; dark is activated via `.dark` class on <html>.
+ *
+ * Palette follows the Claude Design redesign: "bone" light (pure white
+ * surfaces, neutral gray lines, monochrome ink accent) and "ink" dark.
+ */
+
+:root {
+  /* Surfaces (bone — max chic) */
+  --canvas: 0 0% 100%;           /* #FFFFFF */
+  --surface: 0 0% 100%;          /* #FFFFFF */
+  --muted: 0 0% 94%;             /* #F0F0F0 */
+  --muted-foreground: 0 0% 10%;  /* #1A1A1A */
+  --inset: 0 0% 96%;             /* #F5F5F5 */
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 4%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 4%;
+  --input: 0 0% 90%;
+
+  /* Borders */
+  --border: 0 0% 90%;            /* #E6E6E6 */
+  --border-strong: 0 0% 76%;     /* #C2C2C2 */
+
+  /* Text */
+  --foreground: 0 0% 4%;         /* #0A0A0A — body */
+  --subtle-foreground: 0 0% 42%; /* #6B6B6B — AA on white */
+
+  /* Accent — monochrome ink (interactive = darkest neutral, not a hue) */
+  --accent: 0 0% 4%;             /* #0A0A0A */
+  --accent-foreground: 0 0% 100%;
+  --accent-soft: 0 0% 96%;       /* #F5F5F5 */
+  --ring: 0 0% 4%;
+
+  /* Feedback */
+  --destructive: 0 72% 45%;      /* #C92A2A */
+  --destructive-foreground: 0 0% 100%;
+  --success: 104 27% 33%;        /* #4A6B3E — verdant ok */
+  --warning: 28 100% 35%;        /* #B35400 — volcanic ember */
+
+  /* The user's chat bubble (B4) — the one deliberate warm tint in the
+     monochrome shell: sand in light, bronze in dark. Deliberately NOT
+     accent-soft (a neutral interaction surface) so warming the user's
+     voice doesn't warm every hover state. */
+  --user-bubble: 42 61% 89%;     /* #F4EAD2 — warm sand */
+
+  /* Data / categorical palette — muted earth & ocean (charts keep hue) */
+  --data-1: 14 38% 48%;          /* terracotta  */
+  --data-2: 201 38% 40%;         /* ocean       */
+  --data-3: 38 42% 54%;          /* sand        */
+  --data-4: 8 55% 40%;           /* lava        */
+  --data-5: 130 22% 40%;         /* moss        */
+
+  /* Severity (My Agents) — routine neutral, watch ember, alert red.
+     Tinted backgrounds derive via hsl(var(--sev-*) / α). Routine == subtle
+     ink, so a monochrome reading degrades gracefully. */
+  --sev-routine: 0 0% 42%;       /* == subtle-foreground */
+  --sev-watch: 28 100% 35%;      /* == warning / volcanic ember */
+  --sev-alert: 0 72% 45%;        /* == destructive */
+
+  /* Geometry */
+  --radius: 0.375rem;            /* 6px — tighter, editorial */
+  --sidebar-w: 260px;
+  --viz-w: 360px;
+  --nav-h: 56px;
+}
+
+.dark {
+  /* Surfaces (ink) */
+  --canvas: 240 7% 6%;           /* #0E0E10 */
+  --surface: 240 11% 9%;         /* #15151A */
+  --muted: 240 11% 15%;          /* #22222A */
+  --muted-foreground: 45 20% 81%;/* #D8D3C4 */
+  --inset: 240 11% 11%;          /* #1A1A20 */
+  --card: 240 10% 12%;           /* #1C1C22 */
+  --card-foreground: 47 31% 94%;
+  --popover: 240 10% 12%;
+  --popover-foreground: 47 31% 94%;
+  --input: 240 11% 15%;
+
+  --border: 240 7% 18%;          /* #2A2A30 */
+  --border-strong: 240 6% 28%;
+
+  --foreground: 47 31% 94%;      /* #F5F3EC */
+  --subtle-foreground: 42 7% 51%;/* #8B867A */
+
+  --accent: 47 31% 94%;          /* monochrome — light ink */
+  --accent-foreground: 240 7% 6%;
+  --accent-soft: 240 8% 16%;
+  --ring: 47 31% 94%;
+
+  --destructive: 0 62% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --success: 104 25% 55%;
+  --warning: 28 85% 55%;
+
+  --user-bubble: 44 25% 18%;     /* #3A3423 — deep bronze */
+
+  --data-1: 14 45% 62%;
+  --data-2: 201 42% 60%;
+  --data-3: 38 50% 66%;
+  --data-4: 8 55% 60%;
+  --data-5: 130 25% 58%;
+
+  --sev-routine: 42 7% 51%;
+  --sev-watch: 28 85% 55%;
+  --sev-alert: 0 62% 55%;
+}

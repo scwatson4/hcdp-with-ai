@@ -60,7 +60,8 @@ def lut(ramp: str = "viridis", n: int = 256) -> np.ndarray:
     return np.stack([np.interp(t, pos, cols[:, c]) for c in range(3)], axis=1).round().astype(np.uint8)
 
 
-def render_png(tif: Path, ramp: str = "viridis", width: int = 1200, lo_pct: float = 2, hi_pct: float = 98) -> bytes:
+def render_png(tif: Path, ramp: str = "viridis", width: int = 1200, lo_pct: float = 2, hi_pct: float = 98, bg: str | None = None) -> bytes:
+    """`bg`: a hex colour (e.g. "bfe0f7") to fill no-data with — an "ocean" behind the islands; None keeps it transparent."""
     import rasterio  # heavy import kept local
     with rasterio.open(tif) as src:
         a = src.read(1).astype("float32")
@@ -78,7 +79,12 @@ def render_png(tif: Path, ramp: str = "viridis", width: int = 1200, lo_pct: floa
     t = np.clip((np.where(mask, a, vmin) - vmin) / (vmax - vmin), 0, 1)
     idx = (t * 255).astype(np.uint8)
     rgb = lut(ramp if ramp in ("viridis", "viridis_r") else "viridis")[idx]
-    rgba = np.dstack([rgb, (mask * 255).astype(np.uint8)])
+    if bg:
+        ocean = np.array(_hex("#" + bg.lstrip("#")), dtype=np.uint8)
+        rgb = np.where(mask[..., None], rgb, ocean)
+        rgba = np.dstack([rgb, np.full(mask.shape, 255, dtype=np.uint8)])
+    else:
+        rgba = np.dstack([rgb, (mask * 255).astype(np.uint8)])
     img = Image.fromarray(rgba, "RGBA")
     width = max(200, min(int(width), 2400))
     img = img.resize((width, max(1, round(h0 * width / w0))), Image.LANCZOS)

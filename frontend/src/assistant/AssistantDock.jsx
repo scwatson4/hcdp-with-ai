@@ -27,7 +27,8 @@ export default function AssistantDock() {
     return () => clearTimeout(t)
   }, [mode])
 
-  if (mode === 'inline' && pathname === '/' && !closing) return null
+  // Never on the landing page: there the inline box is the assistant.
+  if (pathname === '/' && !closing) return null
   const showPill = (mode === 'inline' || mode === 'dock') && !closing
   return (
     <>

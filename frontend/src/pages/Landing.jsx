@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom'
 import { Map, RadioTower, CalendarDays, Globe2, CloudLightning, Wrench, ArrowRight, ExternalLink, Instagram, Mail } from 'lucide-react'
 import { TOOL_CARDS, SIDEBAR } from '../site/nav'
 import AssistantPanel from '../assistant/AssistantPanel'
-import { useAssistant } from '../assistant/AssistantProvider'
 import { Card } from '../components/ui/card'
 import MapBackdrop from '../components/MapBackdrop'
 
@@ -45,7 +44,6 @@ export function Sidebar() {
 }
 
 export default function Landing() {
-  const { mode, open } = useAssistant()
   return (
     <div className="mx-auto w-full max-w-[1440px]">
       <div className="grid lg:grid-cols-[minmax(0,85fr)_minmax(210px,15fr)]">
@@ -55,13 +53,9 @@ export default function Landing() {
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[5]" style={{ background: 'radial-gradient(ellipse 46% 42% at 50% 50%, hsl(var(--canvas) / 0.92) 0%, hsl(var(--canvas) / 0.7) 45%, hsl(var(--canvas) / 0) 100%)' }} />
           <div className="relative z-10 mx-auto w-full max-w-3xl px-4 py-12 sm:py-16">
             <h1 className="text-center font-display text-3xl font-semibold tracking-tight sm:text-4xl">What are you looking for?</h1>
-            {mode === 'inline' ? (
-              <div className="hcdp-rainbow-border mt-6 rounded-xl bg-card/90 p-2 shadow-lg backdrop-blur" data-testid="landing-assistant">
-                <AssistantPanel rotateExamples />
-              </div>
-            ) : (
-              <div className="mt-6 text-center"><button type="button" onClick={open} className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground">Continue with the assistant</button></div>
-            )}
+            <div className="hcdp-rainbow-border mt-6 rounded-xl bg-card/90 p-2 shadow-lg backdrop-blur" data-testid="landing-assistant">
+              <AssistantPanel rotateExamples />
+            </div>
           </div>
         </section>
         <Sidebar />

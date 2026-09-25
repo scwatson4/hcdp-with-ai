@@ -31,6 +31,8 @@ def test_render_png_is_transparent_where_there_is_no_data(tmp_path):
     assert a[10, 10, 3] == 0            # no data → transparent
     assert a[100, 200, 3] == 255        # data → opaque
     assert not np.array_equal(a[50, 110, :3], a[150, 290, :3])   # low and high values get different colours
+    ocean = np.array(Image.open(io.BytesIO(render_png(p, "viridis_r", width=400, bg="bfe0f7"))))
+    assert tuple(ocean[10, 10]) == (0xBF, 0xE0, 0xF7, 255)   # no data → the ocean colour, opaque
     with pytest.raises(ValueError):
         render_png(_all_nodata(tmp_path), "viridis")
 

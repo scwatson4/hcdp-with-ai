@@ -155,18 +155,21 @@ async def api_raster(dataset: str, period: str, date: str, extent: str = "statew
 
 
 @app.get("/api/map.png")
-async def api_map_png(dataset: str, period: str, date: str, extent: str = "statewide", w: int = 1200, ramp: str = ""):
+async def api_map_png(dataset: str, period: str, date: str, extent: str = "statewide", w: int = 1200, ramp: str = "", bg: str = ""):
     """A rendered PNG of a map (landing-page backdrops, previews); transparent where there is no data."""
     ramp = ramp or DEFAULT_RAMP.get(dataset, "viridis_r")
     if ramp not in ("viridis", "viridis_r"):
         raise HTTPException(400, "ramp must be viridis or viridis_r")
     w = max(200, min(int(w), 2400))
+    bg = bg.lstrip("#").lower()
+    if bg and not re.fullmatch(r"[0-9a-f]{6}", bg):
+        raise HTTPException(400, "bg must be a 6-digit hex colour")
     path = await fetch_raster(dataset, period, date, extent)
     png_dir = CACHE_DIR / "png"; png_dir.mkdir(parents=True, exist_ok=True)
-    out = png_dir / f"{path.stem}_{w}_{ramp}.png"
+    out = png_dir / f"{path.stem}_{w}_{ramp}{"_" + bg if bg else ""}.png"
     if not out.exists():
         try:
-            data = await run_in_threadpool(render_png, path, ramp, w)
+            data = await run_in_threadpool(render_png, path, ramp, w, 2, 98, bg or None)
         except ValueError:
             raise HTTPException(404, "no data in that map") from None
         tmp = out.with_name(f"{out.stem}.{uuid.uuid4().hex}.part"); tmp.write_bytes(data); tmp.replace(out)

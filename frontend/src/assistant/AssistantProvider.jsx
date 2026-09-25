@@ -65,6 +65,9 @@ export function AssistantProvider({ children }) {
   // Start over: the inline box on the landing page, the pill anywhere else.
   const reset = useCallback(() => { historyRef.current = []; setMessages([WELCOME]); setMode(location.pathname === '/' ? 'inline' : 'dock') }, [location.pathname])
 
+  // Arriving on the landing page brings the conversation back into the inline box.
+  useEffect(() => { if (location.pathname === '/') setMode('inline') }, [location.pathname])
+
   useEffect(() => {
     const onKey = (e) => {
       const typing = /^(input|textarea|select)$/i.test(e.target?.tagName || '') || e.target?.isContentEditable

@@ -1,16 +1,15 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { ChevronDown, ExternalLink, MessageSquareText, Menu } from 'lucide-react'
+import { ChevronDown, ExternalLink, Menu } from 'lucide-react'
 import { useState } from 'react'
 import ThemeToggle from './ThemeToggle'
 import { Button } from './ui/button'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from './ui/dropdown-menu'
 import { NAV } from '../site/nav'
-import { useAssistant } from '../assistant/AssistantProvider'
 import { cn } from '../lib/utils'
 
 // The portal's header: the logo centred on its own row, the menu centred under it in
-// Raleway small caps (tightened: 20 px gaps, 12.5 px type). "Ask AI" and the theme
-// toggle sit at the right edge of the logo row.
+// Raleway small caps (tightened: 20 px gaps, 12.5 px type). The theme toggle sits at
+// the right edge of the logo row; the assistant is the bottom-right "Ask AI" pill.
 function MenuItem({ item }) {
   if (item.external) {
     return (
@@ -27,7 +26,6 @@ function MenuItem({ item }) {
 const NAV_ITEM = 'font-nav text-[12.5px] font-semibold uppercase tracking-[0.06em] text-foreground/80 hover:text-foreground'
 
 export default function SiteHeader() {
-  const { open } = useAssistant()
   const navigate = useNavigate()
   const [mobile, setMobile] = useState(false)
   return (
@@ -39,9 +37,6 @@ export default function SiteHeader() {
           <img src="/hcdp_logo_dark.png" alt="" width="1120" height="150" decoding="async" className="hidden h-8 w-auto sm:h-[52px] dark:block" />
         </Link>
         <div className="absolute right-4 top-1/2 flex -translate-y-1/2 items-center gap-1">
-          <Button variant="outline" size="sm" className="h-8 gap-1.5 px-2.5 text-xs" onClick={() => open()} data-testid="ask-hcdp">
-            <MessageSquareText className="h-3.5 w-3.5" aria-hidden="true" /> <span className="hidden sm:inline">Ask AI</span><span className="sr-only sm:hidden">Ask AI</span>
-          </Button>
           <ThemeToggle />
           <Button variant="ghost" size="sm" className="h-8 w-8 p-0 md:hidden" aria-label="Menu" aria-expanded={mobile} onClick={() => setMobile((v) => !v)}><Menu className="h-4 w-4" /></Button>
         </div>

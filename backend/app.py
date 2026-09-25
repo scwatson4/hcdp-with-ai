@@ -13,6 +13,7 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import os
+import uuid
 import time
 from pathlib import Path
 
@@ -104,7 +105,8 @@ def raster_params(dataset: str, period: str, date: str, extent: str) -> dict:
             dt.date.fromisoformat(date + "-01")
     except ValueError:
         raise HTTPException(400, "date must be YYYY-MM-DD for daily maps or YYYY-MM for monthly maps") from None
-    return {**ds["api"], "period": period, "date": date, "extent": EXTENTS[extent], "returnEmptyNotFound": "true"}
+    # No returnEmptyNotFound: HCDP then answers an unpublished date with 404 instead of an all-nodata grid.
+    return {**ds["api"], "period": period, "date": date, "extent": EXTENTS[extent]}
 
 
 @app.get("/api/raster")
@@ -121,7 +123,7 @@ async def api_raster(dataset: str, period: str, date: str, extent: str = "statew
             raise HTTPException(404, "no map for that date")
         if r.status_code != 200:
             raise HTTPException(502, f"HCDP API returned {r.status_code}")
-        tmp = path.with_suffix(".part")
+        tmp = path.with_name(f"{key}.{uuid.uuid4().hex}.part")   # unique: concurrent identical requests must not collide
         tmp.write_bytes(r.content)
         # Lossless deflate+predictor re-encode: 10× smaller for the browser (see rasters.py).
         if not await run_in_threadpool(reencode_geotiff, tmp, path):
@@ -133,7 +135,7 @@ async def api_raster(dataset: str, period: str, date: str, extent: str = "statew
 @app.get("/api/dates")
 async def api_dates(request: Request, dataset: str, period: str, extent: str = "statewide"):
     params = raster_params(dataset, period, "2020-01-01" if period == "day" else "2020-01", extent)
-    params.pop("date"); params.pop("returnEmptyNotFound")
+    params.pop("date")
     key = "&".join(f"{k}={v}" for k, v in sorted(params.items()))
     cache = request.app.state.dates_cache
     hit = cache.get(key)

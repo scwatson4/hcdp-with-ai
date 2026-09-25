@@ -40,7 +40,7 @@ def test_raster_validates_before_touching_the_network():
     assert c.get("/api/raster", params={"dataset": "humidity", "period": "month", "date": "2026-09"}).status_code == 400
     assert c.get("/api/raster", params={"dataset": "rainfall", "period": "day", "date": "2026-09", "extent": "oahu"}).status_code == 400
     assert c.get("/api/raster", params={"dataset": "rainfall", "period": "day", "date": "2026-09-01", "extent": "bigisland"}).status_code == 400
-    assert appmod.raster_params("temperature-max", "month", "2026-08", "maui") == {"datatype": "temperature", "aggregation": "max", "period": "month", "date": "2026-08", "extent": "mn", "returnEmptyNotFound": "true"}
+    assert appmod.raster_params("temperature-max", "month", "2026-08", "maui") == {"datatype": "temperature", "aggregation": "max", "period": "month", "date": "2026-08", "extent": "mn"}
 
 
 def test_health_and_catalog():

@@ -69,7 +69,8 @@ options  ramp=<name>      colour ramp (see viewer/rasterSpec.reference.js NAMED_
 Examples: `/viewer/rainfall/day/2025-10-21/hawaii`, `/viewer/spi-3/month/2026-08/statewide`,
 `/viewer/rainfall/month/2026-09/kauai?units=in&stations=1`.
 `frontend/src/viewer/urlGrammar.js` is the single source of truth: `parseViewerPath()`,
-`formatViewerPath()`, `DATASETS`, `EXTENTS`. Do not duplicate its logic.
+`formatViewerPath()`, `DATASETS`, `EXTENTS`; dates must be real calendar dates. Do not duplicate its logic.
+Colour ramps live in `frontend/src/viewer/map/ramps.js` (extracted from the AI interface's rasterSpec).
 
 Mapping to the HCDP API (the backend does this in `/api/raster`):
 rainfall → datatype=rainfall&production=new; temperature-* → datatype=temperature&aggregation=mean|max|min;

@@ -43,9 +43,11 @@ const monthIndex = (s) => {
   return i >= 0 ? i + 1 : null
 }
 const pad = (n) => String(n).padStart(2, '0')
+const daysInMonth = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate()
+export const isRealDate = (iso) => { const p = parseDateSegments([iso]); return p === iso }
 
 // Accepts: 2025-10-21 · 2025-10 · 2025/10/21 · october/21/2025 · 2025/october/21 · oct/2025 · 2025/oct
-export function parseDateSegments(segs) {
+export function parseDateSegments(segs, { calendar = true } = {}) {
   const parts = segs.flatMap((s) => String(s).split(/[-/]/)).filter(Boolean)
   if (!parts.length) return null
   let y = null, m = null, d = null
@@ -64,6 +66,7 @@ export function parseDateSegments(segs) {
   if (y == null) return null
   if (m == null) return null
   if (d != null && (d < 1 || d > 31)) return null
+  if (calendar && d != null && d > daysInMonth(y, m)) return null   // 2026-02-30 is not a date
   return d != null ? `${y}-${pad(m)}-${pad(d)}` : `${y}-${pad(m)}`
 }
 
@@ -79,15 +82,18 @@ export function parseViewerPath(pathname, search = '') {
   // the extent is the last segment; the date is everything in between
   const extent = rest[rest.length - 1].toLowerCase()
   if (!EXTENTS[extent]) return { error: `unknown extent "${rest[rest.length - 1]}"` }
+  const loose = parseDateSegments(rest.slice(2, -1), { calendar: false })
+  if (!loose) return { error: 'unreadable date' }
   const date = parseDateSegments(rest.slice(2, -1))
-  if (!date) return { error: 'unreadable date' }
+  if (!date) return { error: `no such date ${loose}` }
   const isDay = date.length === 10
   if (period === 'day' && !isDay) return { error: 'a daily map needs a full date (YYYY-MM-DD)' }
   if (period === 'month' && isDay) return { error: 'a monthly map takes YYYY-MM' }
   if (!DATASETS[dataset].periods.includes(period)) return { error: `${DATASETS[dataset].label} is not available by ${period}` }
   const q = new URLSearchParams(search)
   const opts = {}
-  for (const k of ['ramp', 'scale', 'units', 'compare']) if (q.get(k)) opts[k] = q.get(k)
+  for (const k of ['ramp', 'scale', 'units']) if (q.get(k)) opts[k] = q.get(k)
+  if (q.get('compare') && isRealDate(q.get('compare'))) opts.compare = q.get('compare')   // YYYY-MM or YYYY-MM-DD
   if (q.get('stations') === '1') opts.stations = true
   if (q.get('lat') && q.get('lng')) opts.view = { lat: Number(q.get('lat')), lng: Number(q.get('lng')), z: q.get('z') ? Number(q.get('z')) : undefined }
   return { dataset, period, date, extent, opts }

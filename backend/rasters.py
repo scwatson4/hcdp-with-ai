@@ -25,7 +25,7 @@ def reencode_geotiff(src: Path, dst: Path) -> bool:
             data = s.read()
         profile.update(driver="GTiff", compress="deflate", predictor=3 if profile.get("dtype", "").startswith("float") else 2,
                        tiled=True, blockxsize=256, blockysize=256, zlevel=6)
-        tmp = dst.with_suffix(".enc.part")
+        tmp = dst.with_name(f"{dst.stem}.{src.stem}.enc.part")   # unique per source temp file
         with rasterio.open(tmp, "w", **profile) as d:
             d.write(data)
         tmp.replace(dst)

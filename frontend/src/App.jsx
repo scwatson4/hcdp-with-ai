@@ -8,7 +8,8 @@ import AssistantDock from './assistant/AssistantDock'
 // dock (which renders nothing until the assistant has minimized).
 export default function App() {
   const { pathname } = useLocation()
-  useEffect(() => { window.scrollTo({ top: 0 }) }, [pathname])
+  // New page → top; the viewer's own URL changes (date, island…) keep the scroll position.
+  useEffect(() => { if (!pathname.startsWith('/viewer/')) window.scrollTo({ top: 0 }) }, [pathname])
   return (
     <div className="flex min-h-screen flex-col bg-canvas text-foreground">
       <SiteHeader />

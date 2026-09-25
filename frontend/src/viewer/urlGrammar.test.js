@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseViewerPath, formatViewerPath, parseDateSegments, apiParamsFor, describeViewer } from './urlGrammar'
+import { parseViewerPath, formatViewerPath, parseDateSegments, apiParamsFor, describeViewer, isRealDate } from './urlGrammar'
 
 describe('viewer URL grammar', () => {
   it('parses the canonical forms', () => {
@@ -28,6 +28,15 @@ describe('viewer URL grammar', () => {
     expect(parseViewerPath('/viewer/wind/day/2026-08-01/statewide').error).toMatch(/unknown dataset/)
     expect(parseViewerPath('/viewer/rainfall/day/2026-08-01/bigisland').error).toMatch(/unknown extent/)
     expect(parseViewerPath('/about')).toBeNull()
+  })
+  it('only accepts real calendar dates', () => {
+    expect(parseDateSegments(['2026-02-30'])).toBeNull()
+    expect(parseDateSegments(['february', '29', '2024'])).toBe('2024-02-29')
+    expect(parseDateSegments(['february', '29', '2026'])).toBeNull()
+    expect(parseViewerPath('/viewer/rainfall/day/2026-02-30/oahu').error).toBe('no such date 2026-02-30')
+    expect(isRealDate('2026-09-31')).toBe(false)
+    expect(parseViewerPath('/viewer/rainfall/day/2026-09-07/kauai', '?compare=2026-09-06').opts.compare).toBe('2026-09-06')
+    expect(parseViewerPath('/viewer/rainfall/day/2026-09-07/kauai', '?compare=2026-13').opts.compare).toBeUndefined()
   })
   it('maps to the HCDP API parameters', () => {
     expect(apiParamsFor({ dataset: 'temperature-max', period: 'day', date: '2026-09-01', extent: 'maui' })).toEqual({ datatype: 'temperature', aggregation: 'max', period: 'day', date: '2026-09-01', extent: 'mn' })

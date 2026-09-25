@@ -19,7 +19,8 @@ no sign-in, saves no conversation history (memory only, per tab), and has no vis
 - `backend/` — FastAPI (`app.py`). LLM calls go through `llm.py` to gpt-5.6-sol on the NAIRR
   resource (env `NAVIGATOR_API_BASE`, `NAVIGATOR_MODEL`, `AZURE_OPENAI_API_KEY`). The HCDP token
   (`HCDP_API_TOKEN`) never reaches the browser: rasters and date ranges go through `/api/raster`
-  and `/api/dates`.
+  and `/api/dates`. `/api/raster` re-encodes each GeoTIFF once, losslessly (deflate + floating-point
+  predictor, tiled): statewide grids shrink from 2–16 MB to about 1 MB.
 - `deploy/` — Dockerfile (builds the SPA, serves it from the backend), compose, Caddyfile.
 
 ## Ownership (parallel work — touch only your files)

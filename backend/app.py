@@ -28,6 +28,7 @@ load_dotenv(ROOT.parent / ".env")  # local development; containers get the env f
 
 from llm import NavigatorLLM  # noqa: E402
 from navigator import DATASETS, EXTENTS, Navigator, load_catalog  # noqa: E402
+from rasters import reencode_geotiff  # noqa: E402
 
 HCDP_API_BASE = os.environ.get("HCDP_API_BASE", "https://api.hcdp.ikewai.org").rstrip("/")
 HCDP_TOKEN = os.environ.get("HCDP_API_TOKEN", "")
@@ -109,7 +110,10 @@ async def api_raster(dataset: str, period: str, date: str, extent: str = "statew
             raise HTTPException(502, f"HCDP API returned {r.status_code}")
         tmp = path.with_suffix(".part")
         tmp.write_bytes(r.content)
-        tmp.replace(path)
+        # Lossless deflate+predictor re-encode: 10× smaller for the browser (see rasters.py).
+        if not await run_in_threadpool(reencode_geotiff, tmp, path):
+            tmp.replace(path)
+        tmp.unlink(missing_ok=True)
     return FileResponse(path, media_type="image/tiff", headers={"Cache-Control": f"public, max-age={3600 if recent else 86400 * 30}"})
 
 

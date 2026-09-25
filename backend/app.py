@@ -29,6 +29,7 @@ load_dotenv(ROOT.parent / ".env")  # local development; containers get the env f
 from llm import NavigatorLLM  # noqa: E402
 from navigator import DATASETS, EXTENTS, Navigator, load_catalog  # noqa: E402
 from rasters import reencode_geotiff  # noqa: E402
+from ratelimit import RateLimiter  # noqa: E402
 
 HCDP_API_BASE = os.environ.get("HCDP_API_BASE", "https://api.hcdp.ikewai.org").rstrip("/")
 HCDP_TOKEN = os.environ.get("HCDP_API_TOKEN", "")
@@ -40,6 +41,8 @@ app = FastAPI(title="HCDP with AI — navigator", docs_url=None, redoc_url=None)
 app.state.llm = NavigatorLLM()
 app.state.navigator = Navigator(app.state.llm, load_catalog(), ai_interface_url=AI_INTERFACE_URL)
 app.state.dates_cache = {}
+app.state.limiter = RateLimiter(per_minute=int(os.environ.get("NAV_PER_MINUTE", "12")), per_hour=int(os.environ.get("NAV_PER_HOUR", "120")),
+                                 global_per_day=int(os.environ.get("NAV_GLOBAL_PER_DAY", "5000")))
 
 
 def _hcdp_headers() -> dict:
@@ -55,6 +58,15 @@ class NavigateBody(BaseModel):
 @app.post("/api/navigate")
 async def api_navigate(body: NavigateBody, request: Request):
     nav = request.app.state.navigator
+    verdict = request.app.state.limiter.check(request.client.host if request.client else "?")
+    if verdict == "ip":
+        return JSONResponse({"intent": "info", "reply": "That is a lot of questions from one connection in a short time. Wait a minute and try again, or browse the tools below.",
+                             "actions": [], "alternatives": [{"title": "Access Data", "url": "/data", "why": "maps and downloads"}, {"title": "Hawaiʻi Mesonet", "url": "/mesonet", "why": "live stations"}], "minimize": False}, status_code=429)
+    if verdict == "global":
+        # The model budget for today is spent: answer from the catalog by keyword instead.
+        out = nav.fallback(body.message)
+        out["reply"] = "The assistant has reached today's limit, so here are the closest matches by keyword."
+        return out
     return await run_in_threadpool(nav.respond, body.message, body.history[-24:], body.context)
 
 
@@ -71,6 +83,7 @@ async def api_health(request: Request):
         "catalog_entries": len(request.app.state.navigator.catalog),
         "raster_cache_files": len(list(CACHE_DIR.glob("*.tif"))) if CACHE_DIR.exists() else 0,
         "frontend_built": (DIST / "index.html").exists(),
+        "navigator_calls_today": request.app.state.limiter.today_count,
     }
 
 
@@ -138,7 +151,7 @@ async def api_dates(request: Request, dataset: str, period: str, extent: str = "
 # ----- the built site ---------------------------------------------------------
 @app.get("/{full_path:path}", include_in_schema=False)
 async def spa(full_path: str):
-    if full_path.startswith("api/"):
+    if full_path.startswith("api/") or any(seg.startswith(".") for seg in full_path.split("/")) or full_path.endswith((".php", ".asp", ".aspx", ".cgi", ".sql", ".bak")):
         raise HTTPException(404)
     if not DIST.exists():
         return JSONResponse({"error": "frontend not built"}, status_code=503)

@@ -44,7 +44,9 @@ export function AssistantProvider({ children }) {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: q, history: historyRef.current.slice(-8), context: context() }),
       })
-      const data = res.ok ? await res.json() : { intent: 'info', reply: `Something went wrong (${res.status}). Try again in a moment.`, actions: [], alternatives: [] }
+      let data
+      try { data = await res.json() } catch { data = null }
+      if (!res.ok && !(data && data.reply)) data = { intent: 'info', reply: `Something went wrong (${res.status}). Try again in a moment.`, actions: [], alternatives: [] }
       historyRef.current = [...historyRef.current, { role: 'user', content: q }, { role: 'assistant', content: data.reply || '' }]
       setMessages((m) => [...m, { role: 'assistant', content: data.reply || '', intent: data.intent, actions: data.actions || [], alternatives: data.alternatives || [] }])
       const navigated = runActions(data.actions)

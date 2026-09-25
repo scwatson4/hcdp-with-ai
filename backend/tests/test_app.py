@@ -53,3 +53,21 @@ def test_health_and_catalog():
 def test_unknown_api_path_is_404_not_index():
     c = client()
     assert c.get("/api/nope").status_code == 404
+
+
+def test_probe_paths_are_404_not_index(tmp_path, monkeypatch):
+    (tmp_path / "index.html").write_text("<html>site</html>")
+    monkeypatch.setattr(appmod, "DIST", tmp_path)
+    c = client()
+    assert c.get("/about/team").status_code == 200            # SPA fallback still works
+    for p in ["/.env", "/.env.backup", "/.git/config", "/wp-login.php", "/assets/../.env"]:
+        assert c.get(p).status_code == 404, p
+
+
+def test_navigate_rate_limit_returns_a_friendly_429():
+    c = client()
+    appmod.app.state.limiter = appmod.RateLimiter(per_minute=2, per_hour=10, global_per_day=100)
+    assert c.post("/api/navigate", json={"message": "a"}).status_code == 200
+    assert c.post("/api/navigate", json={"message": "b"}).status_code == 200
+    r = c.post("/api/navigate", json={"message": "c"})
+    assert r.status_code == 429 and r.json()["intent"] == "info" and r.json()["alternatives"]

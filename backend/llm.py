@@ -42,7 +42,8 @@ def _is_bad_request(err: Exception) -> bool:
 class NavigatorLLM:
     def __init__(self, base_url=None, api_key=None, model=None, reasoning_effort=None, timeout=60):
         self.base_url = base_url or os.environ.get("NAVIGATOR_API_BASE") or DEFAULT_BASE
-        self.api_key = api_key if api_key is not None else os.environ.get("AZURE_OPENAI_API_KEY", "")
+        # NAVIGATOR_API_KEY lets the navigator use a different gateway (e.g. LiteLLM) than the rest of the env.
+        self.api_key = api_key if api_key is not None else (os.environ.get("NAVIGATOR_API_KEY") or os.environ.get("AZURE_OPENAI_API_KEY", ""))
         self.model = model or os.environ.get("NAVIGATOR_MODEL") or DEFAULT_MODEL
         self.reasoning_effort = reasoning_effort or os.environ.get("NAVIGATOR_REASONING") or "low"
         self._client = OpenAI(base_url=self.base_url, api_key=self.api_key, timeout=timeout, max_retries=1) if self.api_key else None

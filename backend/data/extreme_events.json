@@ -1,0 +1,371 @@
+{
+  "registry": "HCDP vetted extreme-event catalog",
+  "version": 2,
+  "as_of": "2026-09-17",
+  "description": "Machine-readable event identity, analysis windows, coverage, and provenance. Published claims are comparison targets only; quantitative answers must be recomputed from the listed HCDP data products.",
+  "events": [
+    {
+      "id": "hurricane-lala-2026",
+      "name": "Hurricane Lala",
+      "aliases": [
+        "Lala",
+        "Tropical Storm Lala",
+        "Hurricane Lala 2026"
+      ],
+      "event_type": "tropical_cyclone",
+      "status": "provisional",
+      "status_note": "Current public HCDP products as checked 2026-08-27; the source does not designate the rasters final.",
+      "timezone": "Pacific/Honolulu",
+      "official_lifecycle": {
+        "start_date": "2026-08-13",
+        "end_date_inclusive": "2026-08-27",
+        "source_id": "noaa-lala-archive"
+      },
+      "local_impact_window": {
+        "start_date": "2026-08-14",
+        "end_date_inclusive": "2026-08-16",
+        "basis": "HCDP Hurricane Lala rainfall product window",
+        "source_id": "hcdp-lala-page"
+      },
+      "rainfall_calculation": {
+        "product": "rainfall_new_day",
+        "coverage_scope": "eight_main_islands",
+        "dates": [
+          "2026-08-14",
+          "2026-08-15",
+          "2026-08-16"
+        ],
+        "included_islands": [
+          "Hawaiʻi",
+          "Maui",
+          "Oʻahu",
+          "Kauaʻi",
+          "Molokaʻi",
+          "Lānaʻi",
+          "Kahoʻolawe"
+        ],
+        "unavailable_islands": [
+          "Niʻihau"
+        ],
+        "area_method": "wgs84_ellipsoidal_cell_center_mask",
+        "method_version": "hcdp-rainfall-volume-v1",
+        "daily_mask_policy": "intersection_of_daily_valid_cells",
+        "island_union_policy": "union_of_island_cell_center_masks",
+        "island_mask_hash_algorithm": "hcdp-rasterized-mask-sha256-v1",
+        "expected_island_mask_sha256": {
+          "Hawaiʻi": "99729d7920c7bcecf69d73900ff2a15c1e8218c91f0beb7295fb4a764893949a",
+          "Maui": "ff60bbf58d27a02e5472b2f8804723d8a177e95d7be23631e5e8fb1fbec64c1d",
+          "Oʻahu": "70fea6edaba4bef6169a5d1f9d2b523e7b547f0ae6f2ed0c173065bc4a3740a5",
+          "Kauaʻi": "b52fcaa61941330cc758bb31afdc6e286666558c6fec5731002cfeb31924bb29",
+          "Molokaʻi": "e416cbea95075454ef5b4e0a7037cd1fb1fea3da3c8b875fb94a0dc0b9e9549a",
+          "Lānaʻi": "d5672a34cc442e44b045b69f321e4c11fd0186e973756b1dca5ee6fb62866025",
+          "Kahoʻolawe": "ce373f3d3c2e66187fe80d0b4762885fc66c455bcb9802ee4c845414293c3a69"
+        },
+        "grid_hash_algorithm": "hcdp-raster-content-sha256-v1",
+        "expected_grid_sha256": {
+          "2026-08-14": "81b2d7277136129c3533ef2d311d4447acef2fd6c734d5be7ede1459f2b9a897",
+          "2026-08-15": "80cdd57dd91bf312d62cc0034ae9b54f52b3beeb307c0e7d5aec4dd3e775d9d6",
+          "2026-08-16": "0b662ce5a71285b17191e161a3371253dd59f52de6b2c2bba1c9393026d414ef"
+        },
+        "normal_comparison": {
+          "product": "rainfall_climatology_1991_2010_month08",
+          "grid_sha256": "df9b508a4120f33898af4953b639ab9188ddf21da76bdc9013902126c621b3a7",
+          "mask_policy": "event_common_valid_intersect_normal_valid",
+          "scale": 0.0967741935483871,
+          "label": "1991–2010 August climatology prorated by 3/31",
+          "caveat": "This compares contemporary daily event data with a legacy-monthly-derived 1991–2010 climatology, uniformly prorated over the event window. It is context only, not an attribution model."
+        }
+      },
+      "published_claims": [
+        {
+          "id": "uh-news-statewide-rainfall-volume",
+          "metric": "rainfall_volume_us_gallons",
+          "value": 1300000000000,
+          "display": "1.3 trillion US gallons",
+          "tolerance": 50000000000,
+          "scope": "HCDP statewide Hurricane Lala rainfall product, August 14–16, 2026",
+          "source_id": "uh-news-lala"
+        }
+      ],
+      "sources": [
+        {
+          "id": "hcdp-lala-page",
+          "title": "HCDP Hurricane Lala",
+          "publisher": "Hawaiʻi Climate Data Portal, University of Hawaiʻi at Mānoa",
+          "citation": "Hawaiʻi Climate Data Portal (2026). Hurricane Lala. University of Hawaiʻi at Mānoa.",
+          "url": "https://www.hawaii.edu/climate-data-portal/hurricane-lala/"
+        },
+        {
+          "id": "uh-news-lala",
+          "title": "Hurricane Lala douses Hawaiʻi with 1.9M Olympic-size pools of water",
+          "publisher": "University of Hawaiʻi News",
+          "citation": "University of Hawaiʻi News (2026). Hurricane Lala douses Hawaiʻi with 1.9M Olympic-size pools of water.",
+          "url": "https://www.hawaii.edu/news/2026/08/20/hurricane-lala/"
+        },
+        {
+          "id": "noaa-lala-archive",
+          "title": "Hurricane Lala Advisory Archive",
+          "publisher": "NOAA National Hurricane Center",
+          "citation": "NOAA National Hurricane Center (2026). Hurricane Lala Advisory Archive.",
+          "url": "https://www.nhc.noaa.gov/archive/2026/LALA.shtml"
+        }
+      ]
+    },
+    {
+      "id": "march-2026-kona-storms",
+      "name": "March 2026 Kona storms",
+      "aliases": [
+        "March 2026 floods",
+        "March 2026 storms",
+        "March 2026 flooding",
+        "March 2026 flood",
+        "March 2026 rain bomb",
+        "March 2026 Kona lows",
+        "2026 Kona storms",
+        "March 2026",
+        "March floods",
+        "March storms",
+        "March flooding",
+        "March rain bomb",
+        "March Kona storms"
+      ],
+      "event_type": "kona_low_storm_sequence",
+      "status": "provisional",
+      "status_note": "Current public HCDP daily products as checked 2026-08-28; the source does not designate the rasters final. Note: the calculation window is the full calendar month to match the published claim's accounting scope; the storm cores were March 10-23. The daily-grid integration for this month runs below HCDP's monthly-grid March product; the published figure is consistent with the daily-grid total at its displayed rounding.",
+      "timezone": "Pacific/Honolulu",
+      "official_lifecycle": {
+        "start_date": "2026-03-01",
+        "end_date_inclusive": "2026-03-31",
+        "source_id": "uh-news-march-2026"
+      },
+      "local_impact_window": {
+        "start_date": "2026-03-01",
+        "end_date_inclusive": "2026-03-31",
+        "basis": "UH News statewide March 2026 rainfall accounting window (calendar month), matching the published volume claim's scope",
+        "source_id": "uh-news-march-2026"
+      },
+      "rainfall_calculation": {
+        "product": "rainfall_new_day",
+        "coverage_scope": "eight_main_islands",
+        "dates": [
+          "2026-03-01",
+          "2026-03-02",
+          "2026-03-03",
+          "2026-03-04",
+          "2026-03-05",
+          "2026-03-06",
+          "2026-03-07",
+          "2026-03-08",
+          "2026-03-09",
+          "2026-03-10",
+          "2026-03-11",
+          "2026-03-12",
+          "2026-03-13",
+          "2026-03-14",
+          "2026-03-15",
+          "2026-03-16",
+          "2026-03-17",
+          "2026-03-18",
+          "2026-03-19",
+          "2026-03-20",
+          "2026-03-21",
+          "2026-03-22",
+          "2026-03-23",
+          "2026-03-24",
+          "2026-03-25",
+          "2026-03-26",
+          "2026-03-27",
+          "2026-03-28",
+          "2026-03-29",
+          "2026-03-30",
+          "2026-03-31"
+        ],
+        "included_islands": [
+          "Hawaiʻi",
+          "Maui",
+          "Oʻahu",
+          "Kauaʻi",
+          "Molokaʻi",
+          "Lānaʻi",
+          "Kahoʻolawe"
+        ],
+        "unavailable_islands": [
+          "Niʻihau"
+        ],
+        "area_method": "wgs84_ellipsoidal_cell_center_mask",
+        "method_version": "hcdp-rainfall-volume-v1",
+        "daily_mask_policy": "intersection_of_daily_valid_cells",
+        "island_union_policy": "union_of_island_cell_center_masks",
+        "island_mask_hash_algorithm": "hcdp-rasterized-mask-sha256-v1",
+        "expected_island_mask_sha256": {
+          "Hawaiʻi": "99729d7920c7bcecf69d73900ff2a15c1e8218c91f0beb7295fb4a764893949a",
+          "Maui": "ff60bbf58d27a02e5472b2f8804723d8a177e95d7be23631e5e8fb1fbec64c1d",
+          "Oʻahu": "70fea6edaba4bef6169a5d1f9d2b523e7b547f0ae6f2ed0c173065bc4a3740a5",
+          "Kauaʻi": "b52fcaa61941330cc758bb31afdc6e286666558c6fec5731002cfeb31924bb29",
+          "Molokaʻi": "e416cbea95075454ef5b4e0a7037cd1fb1fea3da3c8b875fb94a0dc0b9e9549a",
+          "Lānaʻi": "d5672a34cc442e44b045b69f321e4c11fd0186e973756b1dca5ee6fb62866025",
+          "Kahoʻolawe": "ce373f3d3c2e66187fe80d0b4762885fc66c455bcb9802ee4c845414293c3a69"
+        },
+        "grid_hash_algorithm": "hcdp-raster-content-sha256-v1",
+        "expected_grid_sha256": {
+          "2026-03-01": "fde543ed6e51156e75e8ad68f224f64770bf424310f811d79a46007f29e48bb9",
+          "2026-03-02": "cd48609f43455a161e65546818d8d2de6a1c5a3dc0d357ee69e7f9eb9a0c0a73",
+          "2026-03-03": "23ab75dd0a5e4fe835af24c8e78c0a7f3ecc5f578890e088d7ce90cd05a48cdd",
+          "2026-03-04": "89ea2d28d8f40b4c2c70b41c8ae72bdc501938fcf4ab42bd23e6a6af2fae952d",
+          "2026-03-05": "4430beabfaae3d79e9c99cb4810ac721a342d5b042f56f91195d3a3f4ff11e56",
+          "2026-03-06": "2e7d1142f465b3c77c3a8226e17feac79aebc556b108f44b51be1c56b5ebd646",
+          "2026-03-07": "91c75fb178c3b6f8d37d0f6952b5915b5d3a54c0cd92ca7cb4e474a7fdf9df9c",
+          "2026-03-08": "ba022f7290e6074d09e5e665d7708e3ff5398e3a3a72029282b0e215a9b91d76",
+          "2026-03-09": "9467224679dd075fdea739c7547d72693639923361170349b948dd788b9a3c10",
+          "2026-03-10": "e035664a61c6cd94642acb6038ecd838381fdd40c540d94fbbc3f2b2eac86b07",
+          "2026-03-11": "3cf261bc1a82896eaa1f96e7eedbde6ae442f575cc97ac7e8b27761a41585f5f",
+          "2026-03-12": "3658d439056d8308223d878ac4d97283d4f216554a7282b25fccc6b1d3101cf1",
+          "2026-03-13": "052f1af859c428f1a5fb3f971f4282b886b93d4e7a13258bc48a00788acec1f2",
+          "2026-03-14": "46e7826bf6a06ffaf789903e521a21973032b2c8d81382b772f1608984a47203",
+          "2026-03-15": "1cfc6d1a17cb800f49c40525551d2cefee807ae6a88bd45c8fdb9d5e67eb5154",
+          "2026-03-16": "7f1f03b2ef3078bc607cc4da32bf6f2fb0e7b6515acbc780a92ffe68c1b4c888",
+          "2026-03-17": "7d9cfb8b15879cdfa7f260fc4c0b02dd45323940743e0a403c1937e28401412b",
+          "2026-03-18": "6914a178a08197bc2f0d85cbfee5748f0637337478ee89a8f117452a9d5ef5af",
+          "2026-03-19": "b6dcc6091b798f53ed754ae0dac419e668cea517a6d34bb36b67c3bd4da6683b",
+          "2026-03-20": "aa5221f9a0542ca4454a0cd9e6c9a9c7fae6872915389173ea9e044a8d3f29b8",
+          "2026-03-21": "8ffa976035d1484672186470074336f065e38dc3da89032dc6e4970eaba9dc9f",
+          "2026-03-22": "2f8d0758ca5bd333df6c6c5fcc0ba922a08573ffb464dfcc83efc7e3d68bea7d",
+          "2026-03-23": "808cd280788253e1732d01c5a60831759956c1d435409a92b393cda5f93678bd",
+          "2026-03-24": "a42cdd5b4f580a96884da2fe7e36e73144127c69a4f4cb54b0ccfea7c71f9434",
+          "2026-03-25": "36ca7d18afc0cd4cf4ee38f88fd2ec7eb9ef32bd16c3a56962a47747eca34d45",
+          "2026-03-26": "d369852ac02039e70ce1b5f5960a834816f541dba60759768fd24752ad1437e9",
+          "2026-03-27": "8b4bac007ddd250c066e4cfa9cdaa286b587c99b2e58694e66f30a56cdf11a3f",
+          "2026-03-28": "91253372e79bc093756c0407ed73bb0f680719a134829f48cc5cc169533b247f",
+          "2026-03-29": "5ac4ecc3d1dc3c62d83104879008eb0303525413a8d46266c06b5a05ca3aebb0",
+          "2026-03-30": "1c324deb7751bfc936264be20ee93a18ddb3bb5a66b91b1cff34c92473e93b32",
+          "2026-03-31": "3e1fd2f8548963329cc74b0556714c4b5d854358d1271a3bd5a4ca0c8a672cca"
+        },
+        "normal_comparison": {
+          "product": "rainfall_climatology_1991_2010_month03",
+          "grid_sha256": "03a77ff3fcd48d756c649b3122868a930fe6ede7c42313826d5ded41db266554",
+          "mask_policy": "event_common_valid_intersect_normal_valid",
+          "scale": 1.0,
+          "label": "1991–2010 March climatology (full month)",
+          "caveat": "This compares contemporary daily event data with a legacy-monthly-derived 1991–2010 climatology over the full calendar month. It is context only, not an attribution model."
+        }
+      },
+      "published_claims": [
+        {
+          "id": "uh-news-march-statewide-rainfall-volume",
+          "metric": "rainfall_volume_us_gallons",
+          "value": 2000000000000,
+          "display": "more than 2 trillion US gallons",
+          "tolerance": 50000000000,
+          "scope": "UH News statewide March 2026 rainfall accounting (calendar month), Hawaiʻi Mesonet / HCDP data",
+          "source_id": "uh-news-march-2026"
+        }
+      ],
+      "sources": [
+        {
+          "id": "uh-news-march-2026",
+          "title": "More than 2 trillion gallons of water trigger historic flooding in Hawaiʻi",
+          "publisher": "University of Hawaiʻi News",
+          "citation": "University of Hawaiʻi News (2026). More than 2 trillion gallons of water trigger historic flooding in Hawaiʻi.",
+          "url": "https://www.hawaii.edu/news/2026/03/31/hawaii-mesonet-flooding-data/"
+        }
+      ]
+    },
+    {
+      "id": "hurricane-lowell-2026",
+      "name": "Hurricane Lowell",
+      "aliases": [
+        "Lowell",
+        "Tropical Storm Lowell",
+        "Hurricane Lowell 2026"
+      ],
+      "event_type": "tropical_cyclone",
+      "status": "provisional",
+      "status_note": "Added 2026-09-17 from official dates: HCDP lists the Hurricane Lowell report under 7 September 2026 and UH News (11 September) describes a three-day storm period around the 7 September closest pass, with Oʻahu's Koʻolau Ridge receiving 5+ inches on 6 September. No statewide rainfall-volume headline has been published (UH News gives station totals only: Mount Waiʻaleʻale >23 in on 7 September and nearly 36 in over the three days; Lower Limahuli 17 in; Waipā >14 in). The daily rasters are the current public products and have not been designated final.",
+      "timezone": "Pacific/Honolulu",
+      "official_lifecycle": {
+        "start_date": "2026-09-06",
+        "end_date_inclusive": "2026-09-08",
+        "source_id": "uh-news-lowell-report"
+      },
+      "local_impact_window": {
+        "start_date": "2026-09-06",
+        "end_date_inclusive": "2026-09-08",
+        "basis": "UH News three-day storm period around the 7 September closest pass; HCDP Hurricane Lowell report dated 7 September 2026",
+        "source_id": "hcdp-lowell-page"
+      },
+      "rainfall_calculation": {
+        "product": "rainfall_new_day",
+        "coverage_scope": "eight_main_islands",
+        "dates": [
+          "2026-09-06",
+          "2026-09-07",
+          "2026-09-08"
+        ],
+        "included_islands": [
+          "Hawaiʻi",
+          "Maui",
+          "Oʻahu",
+          "Kauaʻi",
+          "Molokaʻi",
+          "Lānaʻi",
+          "Kahoʻolawe"
+        ],
+        "unavailable_islands": [
+          "Niʻihau"
+        ],
+        "area_method": "wgs84_ellipsoidal_cell_center_mask",
+        "method_version": "hcdp-rainfall-volume-v1",
+        "daily_mask_policy": "intersection_of_daily_valid_cells",
+        "island_union_policy": "union_of_island_cell_center_masks",
+        "island_mask_hash_algorithm": "hcdp-rasterized-mask-sha256-v1",
+        "expected_island_mask_sha256": {
+          "Hawaiʻi": "99729d7920c7bcecf69d73900ff2a15c1e8218c91f0beb7295fb4a764893949a",
+          "Maui": "ff60bbf58d27a02e5472b2f8804723d8a177e95d7be23631e5e8fb1fbec64c1d",
+          "Oʻahu": "70fea6edaba4bef6169a5d1f9d2b523e7b547f0ae6f2ed0c173065bc4a3740a5",
+          "Kauaʻi": "b52fcaa61941330cc758bb31afdc6e286666558c6fec5731002cfeb31924bb29",
+          "Molokaʻi": "e416cbea95075454ef5b4e0a7037cd1fb1fea3da3c8b875fb94a0dc0b9e9549a",
+          "Lānaʻi": "d5672a34cc442e44b045b69f321e4c11fd0186e973756b1dca5ee6fb62866025",
+          "Kahoʻolawe": "ce373f3d3c2e66187fe80d0b4762885fc66c455bcb9802ee4c845414293c3a69"
+        },
+        "grid_hash_algorithm": "hcdp-raster-content-sha256-v1",
+        "expected_grid_sha256": {
+          "2026-09-06": "81d98bb37703bd75facea24e46576ff9098a936f55f97c6feaecc6bf9bdd4469",
+          "2026-09-07": "d47c51f3937e950fe88160d3ba0c8c6350fec3820127384ff11f05e438d0ce98",
+          "2026-09-08": "cd792669cdb36d3ddc69fb6ef5f43b5f46975ac12321ac28307dcb950fa9bb60"
+        },
+        "normal_comparison": {
+          "product": "rainfall_climatology_1991_2010_month09",
+          "grid_sha256": "239d9de2106c42effc30c5c3e99cb86c8b335c9aec8c9ecc3eb44b2d300ed33b",
+          "mask_policy": "event_common_valid_intersect_normal_valid",
+          "scale": 0.1,
+          "label": "1991–2010 September climatology prorated by 3/30",
+          "caveat": "This compares contemporary daily event data with a legacy-monthly-derived 1991–2010 climatology, uniformly prorated over the event window. It is context only, not an attribution model."
+        }
+      },
+      "published_claims": [],
+      "sources": [
+        {
+          "id": "hcdp-lowell-page",
+          "title": "HCDP Hurricane Lowell",
+          "publisher": "Hawaiʻi Climate Data Portal, University of Hawaiʻi at Mānoa",
+          "citation": "Hawaiʻi Climate Data Portal (2026). Hurricane Lowell. University of Hawaiʻi at Mānoa.",
+          "url": "https://www.hawaii.edu/climate-data-portal/hurricane-lowell/"
+        },
+        {
+          "id": "uh-news-lowell-report",
+          "title": "Hurricane Lowell brought 100+ mph winds, heavy rainfall to Kauaʻi, Niʻihau",
+          "publisher": "University of Hawaiʻi News",
+          "citation": "University of Hawaiʻi News (2026). Hurricane Lowell brought 100+ mph winds, heavy rainfall to Kauaʻi, Niʻihau.",
+          "url": "https://www.hawaii.edu/news/2026/09/11/hurricane-lowell/"
+        },
+        {
+          "id": "uh-news-lowell-tracker",
+          "title": "UH launches real-time Hurricane Lowell weather tracker",
+          "publisher": "University of Hawaiʻi News",
+          "citation": "University of Hawaiʻi News (2026). UH launches real-time Hurricane Lowell weather tracker.",
+          "url": "https://www.hawaii.edu/news/2026/09/09/hurricane-lowell-tracker-website/"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1116 @@
+{
+ "home": {
+  "title": "Extreme Events",
+  "link": "https://www.hawaii.edu/climate-data-portal/extreme-events/",
+  "modified": "2026-09-10T18:15:32",
+  "headings": [
+   "Hurricane Lowell",
+   "Hurricane Lala",
+   "Kona Low Storm (#2)",
+   "Kona Low Storm (#1)"
+  ],
+  "links": [
+   [
+    "Hurricane Report\n    Hurricane Lowell\n    September 7, 2026\n  \n  \n\n\n\n\n\n\n\n  \n      \n  \n  \n  \n  \n    Hurricane Report\n    Hurricane Lala\n    August 14 to 16, 2026",
+    "https://www.hawaii.edu/climate-data-portal/hurricane-lowell/"
+   ],
+   [
+    "Storm Report\n    Kona Low Storm (#2)\n    March 17 to 23, 2026",
+    "https://www.hawaii.edu/climate-data-portal/2026-kona-low-2"
+   ],
+   [
+    "Storm Report\n    Kona Low Storm (#1)\n    March 10 to 16, 2026",
+    "https://www.hawaii.edu/climate-data-portal/2026-kona-low-1"
+   ]
+  ],
+  "iframes": [],
+  "text": "Hurricane Report Hurricane Lowell September 7, 2026 Hurricane Report Hurricane Lala August 14 to 16, 2026 Storm Report Kona Low Storm (#2) March 17 to 23, 2026 Storm Report Kona Low Storm (#1) March 10 to 16, 2026",
+  "html_len": 5891
+ },
+ "data-portal": {
+  "title": "Data Portal",
+  "link": "https://www.hawaii.edu/climate-data-portal/data-portal/",
+  "modified": "2024-01-03T00:22:25",
+  "headings": [],
+  "links": [],
+  "iframes": [
+   "https://rainfall.ikewai.org"
+  ],
+  "text": "",
+  "html_len": 289
+ },
+ "hawaii-mesonet": {
+  "title": "Hawai‘i Mesonet",
+  "link": "https://www.hawaii.edu/climate-data-portal/hawaii-mesonet/",
+  "modified": "2025-05-02T19:42:53",
+  "headings": [
+   "Hawai‘i Mesonet Live Data Access",
+   "What is the Hawaiʻi Mesonet and why is it needed?",
+   "Do we need so many stations?",
+   "Who pays for building it?",
+   "How can we ensure that the Hawaiʻi Mesonet continues to operate for decades?",
+   "Who needs the data?",
+   "What does each station measure?"
+  ],
+  "links": [
+   [
+    "Live Data Access",
+    "https://www.hawaii.edu/climate-data-portal/hawaii-mesonet-data/#/"
+   ],
+   [
+    "The Hawaiʻi Mesonet",
+    "https://www.hawaii.edu/news/2021/10/10/hawaii-mesonet-project/"
+   ],
+   [
+    "telemetered stations",
+    "https://www.hawaii.edu/climate-data-portal/hawaii-mesonet-data-access/"
+   ]
+  ],
+  "iframes": [
+   "https://www.youtube.com/embed/umIhmY-gCO0?feature=oembed"
+  ],
+  "text": "Hawai‘i Mesonet Hawai‘i Mesonet Live Data Access Live Data Access What is the Hawaiʻi Mesonet and why is it needed? The Hawaiʻi Mesonet is a statewide advanced weather and climate monitoring network of approximately 100 telemetered stations , now under construction. Hawaiʻi is one of only 20 states that has not had a statewide Mesonet until now. While climate information has been gathered for over 100 years by various entities in the islands, the climate observing network in Hawai‘i is fragmented, unmanaged, declining in spatial coverage, and inadequate to meet the needs of researchers and the many stakeholders dependent on the data and the research the data supports. Until recent decades, the mainstay of the climate observing network consisted of stations operated by the sugarcane and pineapple industries. With the contraction and eventual cessation of large-scale agriculture in the islands, many stations were discontinued. Do we need so many stations? The Hawaiian Islands experience extreme spatial diversity of temperature, rainfall (average rainfall ranges from 8 to 400 inches/year), cloud cover, solar radiation, wind, humidity, and other variables driven by complex topography, varied wind patterns, and a persistent inversion layer known as the trade wind inversion (TWI). Rainfall gradients are among the steepest found anywhere on Earth; in West Maui, for example, average annual rainfall differs by more than 140 inches over a distance of 1 mile. To adequately monitor weather and climate requires a dense and well distributed network of stations. The new Hawaiʻi Mesonet station at Kīlauea, Kauaʻi, installed December 1, 2022. Who pays for building it? More than $1.5M for the purchase of equipment was obtained primarily from the National Science Foundation, with additional funds provided by the Hawaiʻi Commission on Water Resources Management and the Honolulu Board of Water Supply. Support for the costs of installation come from the Water Resources Research Center and the Office of the Vice Provost for Research and Scholarship at the University of Hawaiʻi at Mānoa. How can we ensure that the Hawaiʻi Mesonet continues to operate for decades? The cost of operating and maintaining the Hawaiʻi Mesonet and managing and making the data available is estimated to be around $600K per year. Around 40-50% of that amount will be derived from the National Mesonet program. The remaining funding will have to come from state, county, and private sources. Mean annual rainfall for the Hawaiian Islands, which ranges from less than 10 inches to more than 400 inches per year. Who needs the data? Data from the Hawaiʻi Mesonet is vitally important for a wide range of different uses, including weather forecasting, flood warning, fire warning, emergency management, water resource management, agriculture, ranching, cultural resource protection, ecosystem protection, recreation, research on weather, climate, hydrological processes, ecosystem processes, and many other topics. What does each station measure? Each Mesonet station measures a full array of variables needed for weather forecasting, emergency management, water resource management, agriculture, and many other applications. Each sensor is scanned every 4 seconds, and averages and other statistics are recorded every 5 minutes. All stations transmit their data to us every 15 minutes to provide real-time information from throughout the state. Measurements include: rainfall, air temperature, relative humidity, wind speed and direction, air pressure, solar radiation, reflected solar radiation, incoming and outgoing longwave radiation, net radiation, soil heat conduction, soil temperature at three depths, and soil moisture at three depths.",
+  "html_len": 11337
+ },
+ "climate-summary": {
+  "title": "Monthly Climate Summary",
+  "link": "https://www.hawaii.edu/climate-data-portal/climate-summary/",
+  "modified": "2026-06-16T19:22:13",
+  "headings": [],
+  "links": [],
+  "iframes": [],
+  "text": "",
+  "html_len": 1279
+ },
+ "pacific-portal": {
+  "title": "Pacific Portal New",
+  "link": "https://www.hawaii.edu/climate-data-portal/pacific-portal/",
+  "modified": "2024-01-09T02:26:40",
+  "headings": [
+   "Pacific Portal"
+  ],
+  "links": [
+   [
+    "Data",
+    "https://www.hawaii.edu/climate-data-portal/pacific-islands-data/"
+   ],
+   [
+    "Regional Organizations",
+    "https://www.hawaii.edu/climate-data-portal/pacific-portal-regional-partners/"
+   ],
+   [
+    "Countries & Territories",
+    "https://www.hawaii.edu/climate-data-portal/2826-2/"
+   ],
+   [
+    "Tools & Resources",
+    "https://www.hawaii.edu/climate-data-portal/pacific-islands-tools-and-resources/"
+   ]
+  ],
+  "iframes": [],
+  "text": "Pacific Portal Data Regional Organizations Countries & Territories Tools & Resources",
+  "html_len": 5732
+ },
+ "extreme-event": {
+  "missing": true
+ },
+ "team": {
+  "title": "Team",
+  "link": "https://www.hawaii.edu/climate-data-portal/team/",
+  "modified": "2026-01-26T23:52:46",
+  "headings": [
+   "Ryan Longman",
+   "Thomas Giambelluca",
+   "Sean Cleveland",
+   "Program Director, Pacific Islands Climate Adaptation Science Center, Hawaiʻi Sea Grant College Program; Associate Climatologist, Water Resources Research Center",
+   "Climatologist, Water Resources Research Center",
+   "Interim Director of Cyber Infrastructure, Hawai’i Data Science Institute",
+   "Keri Kodama",
+   "Han Tseng",
+   "Jared McLean",
+   "Deputy Director Hawai’i Mesonet &#8211; Field Operations",
+   "Lead Software Engineer",
+   "Climate Research &amp; Outreach Specialist, Hawaiʻi Sea Grant College Program; Assistant Atmospheric Scientist, Water Resources Research Center",
+   "Hydrometeorological Researcher, Water Resources Research Center",
+   "Research Software Engineer, Information Technology Services, University of Hawai’i at Mānoa",
+   "Matt Lucas",
+   "Chris Shuler",
+   "Roderick Tabalba",
+   "HCDP Product Development Lead",
+   "Deputy Director Hawaii Mesonet &#8211; Program Operations",
+   "Software Engineer",
+   "Spatial Climate Analysis Specialist, Water Resources Research Center",
+   "Assistant Specialist, Water Resources Research Center",
+   "Artificial Intelligence Research Software Engineer, Information Technology Services, University of Hawai’i at Mānoa",
+   "Cherryle Heu",
+   "Anke Kuegler",
+   "Jennifer Geis",
+   "HCDP Climate Data Analyst&nbsp;",
+   "Mesonet Field Technician",
+   "Software Engineer",
+   "Environmental Data Analyst, Hawaiʻi Sea Grant College Program",
+   "Mesonet Technician, Water Resources Research Center",
+   "Cyberinfrastructure Software Engineer, University of Hawaiʻi System",
+   "Aimee Schriber",
+   "Cory Yap",
+   "Marrisa Halim",
+   "Communications Specialist",
+   "Mesonet Technician",
+   "Data Visualization",
+   "Geospatial Research Technician, Water Resources Research Center",
+   "Research Associate, Water Resources Research Center"
+  ],
+  "links": [],
+  "iframes": [],
+  "text": "Team HCDP Hawai’i Mesonet Cyberinfrastructure Ryan Longman Thomas Giambelluca Sean Cleveland HCDP Director Program Director, Pacific Islands Climate Adaptation Science Center, Hawaiʻi Sea Grant College Program; Associate Climatologist, Water Resources Research Center Hawai’i Mesonet Director Climatologist, Water Resources Research Center Director of Cyber Infrastructure Interim Director of Cyber Infrastructure, Hawai’i Data Science Institute Keri Kodama Han Tseng Jared McLean HCDP Research Development Lead Deputy Director Hawai’i Mesonet – Field Operations Lead Software Engineer Climate Research & Outreach Specialist, Hawaiʻi Sea Grant College Program; Assistant Atmospheric Scientist, Water Resources Research Center Hydrometeorological Researcher, Water Resources Research Center Research Software Engineer, Information Technology Services, University of Hawai’i at Mānoa Matt Lucas Chris Shuler Roderick Tabalba HCDP Product Development Lead Deputy Director Hawaii Mesonet – Program Operations Software Engineer Spatial Climate Analysis Specialist, Water Resources Research Center Assistant Specialist, Water Resources Research Center Artificial Intelligence Research Software Engineer, Information Technology Services, University of Hawai’i at Mānoa Cherryle Heu Anke Kuegler Jennifer Geis HCDP Climate Data Analyst  Mesonet Field Technician Software Engineer Environmental Data Analyst, Hawaiʻi Sea Grant College Program Mesonet Technician, Water Resources Research Center Cyberinfrastructure Software Engineer, University of Hawaiʻi System Aimee Schriber Cory Yap Marrisa Halim Communications Specialist Mesonet Technician Data Visualization Geospatial Research Technician, Water Resources Research Center Research Associate, Water Resources Research Center Graduate student, Information and Computer Sciences Contributors Abby Frazier Aurora Kagawa-Viviani Sayed Bateni Assistant Professor, Geography, Clark University; Assistant Climatologist, Water Resources Research Center Assistant Professor, University of Hawai’i at Mānoa Department of Geography and Environment and Water Resources Research Center Professor, Water Resources Research Center; Professor, Department of Civil, Environmental, and Construction Engineering Yu-Fen Huang Derek Ford Kristen Sanfillipo Junior Researcher, Department of Natural Resources and Environmental Management, University of Hawaiʻi at Mānoa Geospatial Data Analyst, Pacific Drought Knowledge Exchange Hydrometeorological Researcher, Hawaiʻi Sea Grant College Program Katie Kamelamela Noelani Puniwai Thi Kieu Trang Tran  Assistant Professor, School of Ocean Futures, Arizona State University Associate Professor of Mālama ʻĀina, Hawaiʻinuiākea School of Hawaiian Knowledge, Kamakakūokalani Center for Hawaiian Studies, University of Hawaiʻi at Mānoa Graduate student, Department of Civil, Environmental & Construction Engineering",
+  "html_len": 42390
+ },
+ "climate-tools": {
+  "title": "Climate Tools",
+  "link": "https://www.hawaii.edu/climate-data-portal/climate-tools/",
+  "modified": "2026-08-05T01:36:02",
+  "headings": [
+   "Rainfall Atlas of Hawaiʻi",
+   "CCVD Portfolios",
+   "Hawaiʻi Rangeland Information Portal (H-RIP)",
+   "Hawaiʻi Groundwater Recharge Tool",
+   "Hawai&#8217;i Monthly Climate Summary",
+   "State of Hawaiʻi Sea Level Rise Viewer",
+   "American Samoa Data Viewer and Download",
+   "SOEST Coastal Viewer",
+   "Climate of Hawaiʻi",
+   "Avian Malaria-Risk &#038; Warning\n(Coming soon)"
+  ],
+  "links": [
+   [
+    "Rainfall Atlas of Hawaiʻi\n    Visualize rainfall across the state.",
+    "https://rainfall.geography.hawaii.edu/"
+   ],
+   [
+    "CCVD Portfolios\n    Generate a climate portfolio for anywhere in Hawaiʻi.",
+    "https://ccvd.manoa.hawaii.edu/"
+   ],
+   [
+    "Hawaiʻi Rangeland Information Portal (H-RIP)\n    View drought and rainfall conditions for ranches in Hawaiʻi.",
+    "http://hrip.manoa.hawaii.edu/"
+   ],
+   [
+    "Hawaiʻi Groundwater Recharge Tool\n    Explore how changes in land cover and climate can affect groundwater recharge.",
+    "https://recharge.ikewai.org/#/workspace"
+   ],
+   [
+    "Hawai’i Monthly Climate Summary\n    Receive monthly climate summaries for areas across the state.",
+    "https://www.hawaii.edu/climate-data-portal/climate-summary/#/"
+   ],
+   [
+    "State of Hawaiʻi Sea Level Rise Viewer\n    Visualize potential sea level rise impacts in Hawaiʻi.",
+    "https://www.pacioos.hawaii.edu/shoreline/slr-hawaii/"
+   ],
+   [
+    "American Samoa Data Viewer and Download\n    Visualize and download climate data for American Samoa.",
+    "https://hcdp.github.io/ascdp/"
+   ],
+   [
+    "SOEST Coastal Viewer\n    View coastal data for Hawaiʻi.",
+    "https://www.soest.hawaii.edu/crc/slr-viewer/"
+   ],
+   [
+    "Climate of Hawaiʻi\n    Download mean annual climate maps for Hawaiʻi.",
+    "https://www.hawaii.edu/climate-data-portal/climate-atlas/"
+   ]
+  ],
+  "iframes": [],
+  "text": "Rainfall Atlas of Hawaiʻi Visualize rainfall across the state. CCVD Portfolios Generate a climate portfolio for anywhere in Hawaiʻi. Hawaiʻi Rangeland Information Portal (H-RIP) View drought and rainfall conditions for ranches in Hawaiʻi. Hawaiʻi Groundwater Recharge Tool Explore how changes in land cover and climate can affect groundwater recharge. Hawai’i Monthly Climate Summary Receive monthly climate summaries for areas across the state. State of Hawaiʻi Sea Level Rise Viewer Visualize potential sea level rise impacts in Hawaiʻi. American Samoa Data Viewer and Download Visualize and download climate data for American Samoa. SOEST Coastal Viewer View coastal data for Hawaiʻi. Climate of Hawaiʻi Download mean annual climate maps for Hawaiʻi. Avian Malaria-Risk & Warning (Coming soon)",
+  "html_len": 13831
+ },
+ "hcdp-hawaii-mesonet-api": {
+  "title": "HCDP / Hawaiʻi Mesonet API",
+  "link": "https://www.hawaii.edu/climate-data-portal/hcdp-hawaii-mesonet-api/",
+  "modified": "2026-06-15T20:49:12",
+  "headings": [],
+  "links": [
+   [
+    "HCDP & Hawaiʻi Mesonet API Documentation",
+    "https://hcdp.github.io/hcdp_api_docs/"
+   ],
+   [
+    "Click here.",
+    "https://docs.google.com/forms/d/e/1FAIpQLSezcHP7aGTKsJldx0HSOBrw4hTgT9R3M-aR72BDZDbsrOJGkQ/viewform?embedded=true"
+   ]
+  ],
+  "iframes": [
+   "https://docs.google.com/forms/d/e/1FAIpQLSezcHP7aGTKsJldx0HSOBrw4hTgT9R3M-aR72BDZDbsrOJGkQ/viewform?embedded=true"
+  ],
+  "text": "If you want to download and interact with HCDP and Hawaiʻi Mesonet data by writing code, then sign up for the HCDP / Hawaiʻi Mesonet API using the form below! API documentation will be updated accordingly as new products and features will become available and can be found here: HCDP & Hawaiʻi Mesonet API Documentation Having trouble seeing the form? Click here. Loading…",
+  "html_len": 1449
+ },
+ "tutorials": {
+  "title": "Tutorials",
+  "link": "https://www.hawaii.edu/climate-data-portal/tutorials/",
+  "modified": "2024-08-22T02:32:07",
+  "headings": [
+   "Visualize Data Tutorial &#8211; Make A Map",
+   "Visualize Data Tutorial &#8211; Explore Station Data",
+   "Export Data Tutorial"
+  ],
+  "links": [
+   [
+    "HCDP@hawaii.edu",
+    "mailto:HCDP@hawaii.edu"
+   ],
+   [
+    "Visualize Data Tutorial – Make A Map",
+    "https://www.hawaii.edu/climate-data-portal/visualize-data-tutorial/"
+   ],
+   [
+    "Visualize Data Tutorial – Explore Station Data",
+    "https://www.hawaii.edu/climate-data-portal/visualize-data-tutorial-explore-station-data/"
+   ],
+   [
+    "Export Data Tutorial",
+    "https://www.hawaii.edu/climate-data-portal/export-data-tutorial/"
+   ]
+  ],
+  "iframes": [],
+  "text": "The HCDP is in the process of creating updated tutorials. If you have any questions, please email HCDP@hawaii.edu Visualize Data Tutorial – Make A Map Visualize Data Tutorial – Explore Station Data Export Data Tutorial",
+  "html_len": 5339
+ },
+ "hurricane-lowell": {
+  "title": "Hurricane Lowell",
+  "link": "https://www.hawaii.edu/climate-data-portal/hurricane-lowell/",
+  "modified": "2026-09-10T18:17:09",
+  "headings": [],
+  "links": [],
+  "iframes": [
+   "https://cherryleh.github.io/climate-summary/#/hurricane-lowell"
+  ],
+  "text": "",
+  "html_len": 912
+ },
+ "hurricane-lowell-viewer": {
+  "title": "Hurricane Lowell Mesonet Viewer",
+  "link": "https://www.hawaii.edu/climate-data-portal/hurricane-lowell-viewer/",
+  "modified": "2026-09-07T22:02:28",
+  "headings": [],
+  "links": [],
+  "iframes": [
+   "https://cherryleh.github.io/climate-summary/#/lowell-tracker"
+  ],
+  "text": "",
+  "html_len": 910
+ },
+ "nolo-mesonet-viewer": {
+  "title": "Tropical Storm Nolo Mesonet Viewer",
+  "link": "https://www.hawaii.edu/climate-data-portal/nolo-mesonet-viewer/",
+  "modified": "2026-09-24T07:11:07",
+  "headings": [],
+  "links": [],
+  "iframes": [
+   "https://cherryleh.github.io/climate-summary/#/nolo-viewer"
+  ],
+  "text": "",
+  "html_len": 907
+ },
+ "how-to-cite-3": {
+  "title": "How to Cite",
+  "link": "https://www.hawaii.edu/climate-data-portal/how-to-cite-3/",
+  "modified": "2024-08-22T02:43:47",
+  "headings": [
+   "Hawai‘i Climate Data Portal&nbsp;",
+   "HCDP Overview and Attributes",
+   "HCDP Application Programming Interface (API)",
+   "HCDP Data Download and Visualization Tool&nbsp;",
+   "HCDP Monthly Rainfall Maps&nbsp;",
+   "2020-present day",
+   "1990-2019 Maps and Mapping Methods",
+   "1920 -2012 “Legacy” Rainfall Maps and Methods",
+   "HCDP Rainfall Data",
+   "2020-present day Daily and Monthly Data",
+   "1990-2019",
+   "1990-2014",
+   "1920 -2012 “Legacy” Monthly Data&nbsp;",
+   "HCDP Daily and Monthly Temperature Maps",
+   "2020-present day",
+   "1990-2018 Maps and Mapping Methods",
+   "HCDP Daily and Monthly Temperature Data&nbsp;",
+   "2019-present day",
+   "1990-2018",
+   "Relative Humidity, Solar Radiation, Windspeed Data",
+   "Future Climate Projections&nbsp;",
+   "Products available on portal&nbsp;(bias corrected gridded products)",
+   "Dynamical Downscaling Methods for Rainfall and Temperature",
+   "Statistical Downscaling Methods Rainfall",
+   "Statistical Downscaling Methods Temperature",
+   "Standardized Precipitation Index&nbsp;",
+   "Maps and Methods 2012-2012",
+   "Trade Wind Inversion Data",
+   "Relevant Methods and Data not available on HCDP",
+   "Mean Climate",
+   "Rainfall Atlas of Hawai‘i Website&nbsp;",
+   "Evapotranspiration of Hawai‘i Website&nbsp;",
+   "Solar Radiation of Hawai‘i Website&nbsp;",
+   "Climate of Hawai‘i Website&nbsp;",
+   "Daily Rainfall and Temperature (Earlier Effort)",
+   "1990-2014"
+  ],
+  "links": [
+   [
+    "Journal",
+    "https://journals.ametsoc.org/view/journals/bams/aop/BAMS-D-23-0188.1/BAMS-D-23-0188.1.xml"
+   ],
+   [
+    "Journal",
+    "https://onlinelibrary.wiley.com/doi/10.1002/cpe.6727"
+   ],
+   [
+    "Journal",
+    "https://dl.acm.org/doi/abs/10.1145/3311790.3396668"
+   ],
+   [
+    "Journal",
+    "https://journals.ametsoc.org/view/journals/bams/aop/BAMS-D-23-0188.1/BAMS-D-23-0188.1.xml"
+   ],
+   [
+    "Journal",
+    "https://journals.ametsoc.org/view/journals/hydr/aop/JHM-D-21-0171.1/JHM-D-21-0171.1.xml"
+   ],
+   [
+    "Journal",
+    "https://journals.ametsoc.org/view/journals/apme/59/7/jamcD200007.xml"
+   ],
+   [
+    "Journal",
+    "https://rmets.onlinelibrary.wiley.com/doi/10.1002/joc.4437"
+   ],
+   [
+    "Journal",
+    "https://journals.ametsoc.org/view/journals/bams/aop/BAMS-D-23-0188.1/BAMS-D-23-0188.1.xml"
+   ],
+   [
+    "Journal",
+    "https://journals.ametsoc.org/view/journals/hydr/aop/JHM-D-21-0171.1/JHM-D-21-0171.1.xml"
+   ],
+   [
+    "Journal",
+    "https://journals.ametsoc.org/view/journals/hydr/20/3/jhm-d-18-0112_1.xml"
+   ],
+   [
+    "Journal",
+    "https://rmets.onlinelibrary.wiley.com/doi/10.1002/joc.4437"
+   ],
+   [
+    "Journal",
+    "https://journals.ametsoc.org/view/journals/bams/aop/BAMS-D-23-0188.1/BAMS-D-23-0188.1.xml"
+   ],
+   [
+    "Journal",
+    "https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2023EA002851"
+   ],
+   [
+    "Journal",
+    "https://journals.ametsoc.org/view/journals/bams/aop/BAMS-D-23-0188.1/BAMS-D-23-0188.1.xml"
+   ],
+   [
+    "Journal",
+    "https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2023EA002851"
+   ],
+   [
+    "Journal",
+    "https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2019JD031571"
+   ],
+   [
+    "Journal",
+    "https://www.nature.com/articles/sdata201812"
+   ],
+   [
+    "Journal",
+    "https://journals.ametsoc.org/view/journals/bams/aop/BAMS-D-23-0188.1/BAMS-D-23-0188.1.xml"
+   ],
+   [
+    "Journal",
+    "https://www.nature.com/articles/sdata201812"
+   ],
+   [
+    "Journal",
+    "https://journals.ametsoc.org/view/journals/bams/aop/BAMS-D-23-0188.1/BAMS-D-23-0188.1.xml"
+   ],
+   [
+    "Journal",
+    "https://journals.ametsoc.org/view/journals/clim/29/23/jcli-d-16-0038.1.xml"
+   ],
+   [
+    "Journal",
+    "https://agupubs.onlinelibrary.wiley.com/doi/10.1002/2014JD022059"
+   ],
+   [
+    "Journal",
+    "https://rmets.onlinelibrary.wiley.com/doi/10.1002/joc.5065"
+   ],
+   [
+    "Journal",
+    "https://www.mdpi.com/2306-5729/5/4/109"
+   ],
+   [
+    "Journal",
+    "https://journals.ametsoc.org/view/journals/clim/28/22/jcli-d-15-0006.1.xml"
+   ],
+   [
+    "Journal",
+    "https://journals.ametsoc.org/view/journals/bams/94/3/bams-d-11-00228.1.xml"
+   ],
+   [
+    "Website",
+    "http://rainfall.geography.hawaii.edu/"
+   ],
+   [
+    "Journal",
+    "http://evapotranspiration.geography.hawaii.edu/assets/files/PDF/ET%20Project%20Final%20Report.pdf"
+   ],
+   [
+    "Website",
+    "http://evapotranspiration.geography.hawaii.edu/"
+   ],
+   [
+    "Website",
+    "http://solar.geography.hawaii.edu/"
+   ],
+   [
+    "Website",
+    "http://climate.geography.hawaii.edu/"
+   ],
+   [
+    "Journal",
+    "https://journals.ametsoc.org/view/journals/hydr/20/3/jhm-d-18-0112_1.xml"
+   ]
+  ],
+  "iframes": [],
+  "text": "How to Cite Hawai‘i Climate Data Portal  HCDP Overview and Attributes Ryan J. Longman, Mathew P. Lucas, Jared Mclean, Sean Cleveland, Keri Kodama, Abby G. Frazier, Katie Kamelamela, Aimee Schriber, Michael Dodge, Gwen Jacobs, Thomas W. Giambelluca. 2024. “Hawaiʻi Climate Data Portal (HCDP).” Bulletin of the American Meteorological Society. ( Journal ) HCDP Application Programming Interface (API) HCDP Data Download and Visualization Tool  Mclean, Jared, Sean B. Cleveland, Michael Dodge II, Matthew P. Lucas, Ryan J. Longman, Thomas W. Giambelluca, and Gwen A. Jacobs. 2021. “Building A Portal For Climate Data-Mapping Automation, Visualization, and Dissemination.” Concurrency and Computation: Practice and Experience . ( Journal ) McLean, J. H., S. B. Cleveland, M. P. Lucas, R. J. Longman, T. W. Giambelluca, J. Leigh, and G. A. Jacobs. 2020. “The Hawai‘i Rainfall Analysis and Mapping Application (HI-RAMA): Decision Support and Data Visualization for Statewide Rainfall Data. In Practice and Experience in Advanced Research Computing.” Practice and Experience in Advanced Research 239–45. ( Journal ) HCDP Monthly Rainfall Maps  2020-present day Ryan J. Longman, Mathew P. Lucas, Jared Mclean, Sean Cleveland, Keri Kodama, Abby G. Frazier, Katie Kamelamela, Aimee Schriber, Michael Dodge, Gwen Jacobs, Thomas W. Giambelluca. 2024. “Hawaiʻi Climate Data Portal (HCDP).” Bulletin of the American Meteorological Soceity. ( Journal ) 1990-2019 Maps and Mapping Methods Lucas, Mathew P., Ryan J. Longman, Thomas W. Giambelluca, Abby F. Frazier, J. Mclean, S. B. Cleveland, YF. Haung, and Jonghyun H. Lee. n.d. “Optimizing Automated Kriging to Improve Spatial Interpolation of Monthly Rainfall over Complex Terrain.” In Review: Journal of Hydrometeorology . ( Journal ) Longman , R.J. , Newman, A.J. Giambelluca, T.W. Lucas, M., (2020). Characterizing the uncertainty and assessing the value of gap-filled daily rainfall data in Hawai‘i. Journal of Applied Meteorology and Climatology , 59 (7), 1261-1276. ( Journal ) 1920 -2012 “Legacy” Rainfall Maps and Methods Frazier, Abby G., Thomas W. Giambelluca, Henry F. Diaz, and Heidi L. Needham. 2016. “Comparison of Geostatistical Approaches to Spatially Interpolate Month-Year Rainfall for the Hawaiian Islands.” International Journal of Climatology . ( Journal ) HCDP Rainfall Data 2020-present day Daily and Monthly Data Ryan J. Longman, Mathew P. Lucas, Jared Mclean, Sean Cleveland, Keri Kodama, Abby G. Frazier, Katie Kamelamela, Aimee Schriber, Michael Dodge, Gwen Jacobs, Thomas W. Giambelluca. 2024. “Hawaiʻi Climate Data Portal (HCDP).” Bulletin of the American Meteorological Society. ( Journal ) 1990-2019 Lucas, Mathew P., Ryan J. Longman, Thomas W. Giambelluca, Abby F. Frazier, J. Mclean, S. B. Cleveland, YF. Haung, and Jonghyun H. Lee. n.d. “Optimizing Automated Kriging to Improve Spatial Interpolation of Monthly Rainfall over Complex Terrain.” In Review: Journal of Hydrometeorology . ( Journal ) 1990-2014 Longman, Ryan J., Abby G. Frazier, Andrew J. Newman, Thomas W. Giambelluca, David Schanzenbach, Aurora Kagawa-Viviani, Heidi Needham, Jeffrey R. Arnold, and Martyn P. Clark. 2019. “High-Resolution Gridded Daily Rainfall and Temperature for the Hawaiian Islands (1990-2014).” Journal of Hydrometeorology JHM-D-18-0112.1. ( Journal ) 1920 -2012 “Legacy” Monthly Data  Frazier, Abby G., Thomas W. Giambelluca, Henry F. Diaz, and Heidi L. Needham. 2016. “Comparison of Geostatistical Approaches to Spatially Interpolate Month-Year Rainfall for the Hawaiian Islands.” International Journal of Climatology . ( Journal ) HCDP Daily and Monthly Temperature Maps 2020-present day Ryan J. Longman, Mathew P. Lucas, Jared Mclean, Sean Cleveland, Keri Kodama, Abby G. Frazier, Katie Kamelamela, Aimee Schriber, Michael Dodge, Gwen Jacobs, Thomas W. Giambelluca. 2024. “Hawaiʻi Climate Data Portal (HCDP).” Bulletin of the American Meteorological Society. ( Journal ) 1990-2018 Maps and Mapping Methods Kodama, K., E. Kourkchi, R. J. Longman, M. P. Lucas, S. Bateni, Y. F. Huang, A. Kagawa-Viviani, J. McLean, S. B. Cleveland, and T. W. Giambelluca. n.d. “Mapping Daily Air Temperature Over the Hawaiian Islands From 1990 to 2021 via an Optimized Piecewise Linear Regression Technique.” Earth and Space Science. ( Journal ) HCDP Daily and Monthly Temperature Data  2019-present day Ryan J. Longman, Mathew P. Lucas, Jared Mclean, Sean Cleveland, Keri Kodama, Abby G. Frazier, Katie Kamelamela, Aimee Schriber, Michael Dodge, Gwen Jacobs, Thomas W. Giambelluca. 2024. “Hawaiʻi Climate Data Portal (HCDP).” Bulletin of the American Meteorological Society. ( Journal ) 1990-2018 Kodama, K., E. Kourkchi, R. J. Longman, M. P. Lucas, S. Bateni, Y. F. Huang, A. Kagawa-Viviani, J. McLean, S. B. Cleveland, and T. W. Giambelluca. n.d. “Mapping Daily Air Temperature Over the Hawaiian Islands From 1990 to 2021 via an Optimized Piecewise Linear Regression Technique.” Earth and Space Science. ( Journal ) Kagawa-Viviani, A. K. and T. W. Giambelluca. 2020. “Spatial Patterns and Trends in Surface Air Temperatures and Implied Changes in Atmospheric Moisture Across the Hawaiian Islands, 1905–2017.” Journal of Geophysical Research: Atmospheres 125(2). ( Journal ) Longman, Ryan J., Thomas W. Giambelluca, Michael A. Nullet, Abby G. Frazier, Kevin Kodama, Shelley D. Crausbay, Paul D. Krushelnycky, Susan Cordell, Martyn P. Clark, Andy J. Newman, and Jeffrey R. Arnold. 2018. “Compilation of Climate Data from Heterogeneous Networks across the Hawaiian Islands.” Scientific Data 5:180012. ( Journal ) Relative Humidity, Solar Radiation, Windspeed Data Longman, R. J., M. P. Lucas, J. Mclean, T. W. Giambelluca, S. Cleveland, Kodama, K., M. Dodge II, K. Kamelamela, A. Schriber, A. Frazier, Yu-Fen Huang, and G. Jacobs. 2024. “Hawaiʻi Climate Data Portal (HCDP).” Bulletin of the American Meteorological Society. ( Journal ) Longman, Ryan J., Thomas W. Giambelluca, Michael A. Nullet, Abby G. Frazier, Kevin Kodama, Shelley D. Crausbay, Paul D. Kru",
+  "html_len": 21116
+ },
+ "rainfall-atlas": {
+  "title": "Rainfall Atlas",
+  "link": "https://www.hawaii.edu/climate-data-portal/rainfall-atlas/",
+  "modified": "2024-08-22T02:13:53",
+  "headings": [
+   "Rainfall Atlas of Hawaii",
+   "Downloads",
+   "Map Images",
+   "GIS Layers",
+   "Google Earth Files",
+   "Tabular",
+   "Report",
+   "Month-Year Maps 1920-2012",
+   "Rainfall Trend Maps 1920-2012",
+   "Conditions of Use"
+  ],
+  "links": [
+   [
+    "Conditions of Use",
+    "#disclaimer2"
+   ],
+   [
+    "How To Cite",
+    "https://www.hawaii.edu/climate-data-portal/how-to-cite-3/"
+   ],
+   [
+    "Map Images",
+    "#"
+   ],
+   [
+    "HawaiiIsohyetTIFs_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/MapImages/HawaiiIsohyetTIFs_inches.zip"
+   ],
+   [
+    "HawaiiIsohyetTIFs_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/MapImages/HawaiiIsohyetTIFs_mm.zip"
+   ],
+   [
+    "KauaiIsohyetTIFs_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/MapImages/KauaiIsohyetTIFs_inches.zip"
+   ],
+   [
+    "KauaiIsohyetTIFs_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/MapImages/KauaiIsohyetTIFs_mm.zip"
+   ],
+   [
+    "MauiNuiIsohyetTIFs_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/MapImages/MauiNuiIsohyetTIFs_inches.zip"
+   ],
+   [
+    "MauiNuiIsohyetTIFs_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/MapImages/MauiNuiIsohyetTIFs_mm.zip"
+   ],
+   [
+    "OahuIsohyetTIFs_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/MapImages/OahuIsohyetTIFs_inches.zip"
+   ],
+   [
+    "OahuIsohyetTIFs_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/MapImages/OahuIsohyetTIFs_mm.zip"
+   ],
+   [
+    "StateMapTIFs_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/MapImages/StateMapTIFs_inches.zip"
+   ],
+   [
+    "StateMapTIFs_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/MapImages/StateMapTIFs_mm.zip"
+   ],
+   [
+    "HawaiiMapTIFs_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/MapImages/HawaiiMapTIFs_inches.zip"
+   ],
+   [
+    "HawaiiMapTIFs_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/MapImages/HawaiiMapTIFs_mm.zip"
+   ],
+   [
+    "KauaiMapTIFs_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/MapImages/KauaiMapTIFs_inches.zip"
+   ],
+   [
+    "KauaiMapTIFs_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/MapImages/KauaiMapTIFs_mm.zip"
+   ],
+   [
+    "MauiNuiMapTIFs_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/MapImages/MauiNuiMapTIFs_inches.zip"
+   ],
+   [
+    "MauiNuiMapTIFs_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/MapImages/MauiNuiMapTIFs_mm.zip"
+   ],
+   [
+    "OahuMapTIFs_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/MapImages/OahuMapTIFs_inches.zip"
+   ],
+   [
+    "OahuMapTIFs_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/MapImages/OahuMapTIFs_mm.zip"
+   ],
+   [
+    "GIS Layers",
+    "#"
+   ],
+   [
+    "http://www.state.hi.us/dbedt/gis/download.htm",
+    "http://www.state.hi.us/dbedt/gis/download.htm"
+   ],
+   [
+    "http://www.arcgis.com/home/",
+    "http://www.arcgis.com/home/"
+   ],
+   [
+    "Rainfall Grid Metadata",
+    "https://atlas.uhtapis.org/rainfall/assets/files/PDF/Metadata_RFGrids.pdf"
+   ],
+   [
+    "StateRFGrids_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/StateRFGrids_inches.zip"
+   ],
+   [
+    "StateRFGrids_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/StateRFGrids_mm.zip"
+   ],
+   [
+    "HawaiiRFGrids_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/HawaiiRFGrids_inches.zip"
+   ],
+   [
+    "HawaiiRFGrids_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/HawaiiRFGrids_mm.zip"
+   ],
+   [
+    "KauaiRFGrids_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/KauaiRFGrids_inches.zip"
+   ],
+   [
+    "KauaiRFGrids_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/KauaiRFGrids_mm.zip"
+   ],
+   [
+    "MauiNuiRFGrids_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/MauiNuiRFGrids_inches.zip"
+   ],
+   [
+    "MauiNuiRFGrids_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/MauiNuiRFGrids_mm.zip"
+   ],
+   [
+    "OahuRFGrids_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/OahuRFGrids_inches.zip"
+   ],
+   [
+    "OahuRFGrids_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/OahuRFGrids_mm.zip"
+   ],
+   [
+    "MauiRFGrids_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/MauiRFGrids_inches.zip"
+   ],
+   [
+    "MauiRFGrids_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/MauiRFGrids_mm.zip"
+   ],
+   [
+    "LanaiRFGrids_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/LanaiRFGrids_inches.zip"
+   ],
+   [
+    "LanaiRFGrids_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/LanaiRFGrids_mm.zip"
+   ],
+   [
+    "MolokaiRFGrids_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/MolokaiRFGrids_inches.zip"
+   ],
+   [
+    "MolokaiRFGrids_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/MolokaiRFGrids_mm.zip"
+   ],
+   [
+    "StateASCIIGrids_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/StateASCIIGrids_inches.zip"
+   ],
+   [
+    "StateASCIIGrids_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/StateASCIIGrids_mm.zip"
+   ],
+   [
+    "HawaiiASCIIGrids_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/HawaiiASCIIGrids_inches.zip"
+   ],
+   [
+    "HawaiiASCIIGrids_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/HawaiiASCIIGrids_mm.zip"
+   ],
+   [
+    "KauaiASCIIGrids_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/KauaiASCIIGrids_inches.zip"
+   ],
+   [
+    "KauaiASCIIGrids_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/KauaiASCIIGrids_mm.zip"
+   ],
+   [
+    "MauiNuiASCIIGrids_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/MauiNuiASCIIGrids_inches.zip"
+   ],
+   [
+    "MauiNuiASCIIGrids_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/MauiNuiASCIIGrids_mm.zip"
+   ],
+   [
+    "OahuASCIIGrids_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/OahuASCIIGrids_inches.zip"
+   ],
+   [
+    "OahuASCIIGrids_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/OahuASCIIGrids_mm.zip"
+   ],
+   [
+    "MauiASCIIGrids_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/MauiASCIIGrids_inches.zip"
+   ],
+   [
+    "MauiASCIIGrids_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/MauiASCIIGrids_mm.zip"
+   ],
+   [
+    "LanaiASCIIGrids_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/LanaiASCIIGrids_inches.zip"
+   ],
+   [
+    "LanaiASCIIGrids_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/LanaiASCIIGrids_mm.zip"
+   ],
+   [
+    "MolokaiASCIIGrids_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/MolokaiASCIIGrids_inches.zip"
+   ],
+   [
+    "MolokaiASCIIGrids_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/MolokaiASCIIGrids_mm.zip"
+   ],
+   [
+    "Isohyet Metadata",
+    "https://atlas.uhtapis.org/rainfall/assets/files/PDF/Metadata_RFIsohyets.pdf"
+   ],
+   [
+    "StateIsohyetsSHP_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/StateIsohyetsSHP_inches.zip"
+   ],
+   [
+    "StateIsohyetsSHP_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/StateIsohyetsSHP_mm.zip"
+   ],
+   [
+    "HawaiiIsohyetsSHP_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/HawaiiIsohyetsSHP_inches.zip"
+   ],
+   [
+    "HawaiiIsohyetsSHP_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/HawaiiIsohyetsSHP_mm.zip"
+   ],
+   [
+    "KauaiIsohyetsSHP_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/KauaiIsohyetsSHP_inches.zip"
+   ],
+   [
+    "KauaiIsohyetsSHP_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/KauaiIsohyetsSHP_mm.zip"
+   ],
+   [
+    "MauiNuiIsohyetsSHP_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/MauiNuiIsohyetsSHP_inches.zip"
+   ],
+   [
+    "MauiNuiIsohyetsSHP_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/MauiNuiIsohyetsSHP_mm.zip"
+   ],
+   [
+    "OahuIsohyetsSHP_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/OahuIsohyetsSHP_inches.zip"
+   ],
+   [
+    "OahuIsohyetsSHP_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/OahuIsohyetsSHP_mm.zip"
+   ],
+   [
+    "MauiIsohyetsSHP_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/MauiIsohyetsSHP_inches.zip"
+   ],
+   [
+    "MauiIsohyetsSHP_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/MauiIsohyetsSHP_mm.zip"
+   ],
+   [
+    "LanaiIsohyetsSHP_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/LanaiIsohyetsSHP_inches.zip"
+   ],
+   [
+    "LanaiIsohyetsSHP_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/LanaiIsohyetsSHP_mm.zip"
+   ],
+   [
+    "MolokaiIsohyetsSHP_inches.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/MolokaiIsohyetsSHP_inches.zip"
+   ],
+   [
+    "MolokaiIsohyetsSHP_mm.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/MolokaiIsohyetsSHP_mm.zip"
+   ],
+   [
+    "RFAtlasStationsSHP.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/RFAtlasStationsSHP.zip"
+   ],
+   [
+    "RFAtlasStations_Metadata",
+    "https://atlas.uhtapis.org/rainfall/assets/files/PDF/Metadata_RFAtlasStns.pdf"
+   ],
+   [
+    "OtherStationsSHP.zip",
+    "https://atlas.uhtapis.org/rainfall/assets/files/GISLayers/OtherStationsSHP.zip"
+   ],
+   [
+    "OtherStations_Metadata",
+    "https://atlas.uhtapis.org/rainfall/assets/files/PDF/Metadata_OtherStns.pdf"
+   ],
+   [
+    "Methods",
+    "methods.html"
+   ],
+   [
+    "Uncertainty Grid Metadata",
+    "https://atlas.uhtapis.org/rainfall/assets/files/PDF/Metadata_UncerGrids.pdf"
+   ]
+  ],
+  "iframes": [],
+  "text": "Rainfall Atlas of Hawaii | Downloads --> --> Rainfall Atlas of Hawaii Downloads Click on the underlined links below to download the files. All data files with a “.zip” or “.rar” at the end need to be unzipped after downloading (using WinZIP, WinRAR, 7-Zip, or a similar program).  Please regard Conditions of Use for all Rainfall Atlas products and refer to our How To Cite page for citation information.   All mean map products use the 30 year base period 1978-2007. *Added October, 2018: Rainfall Trend Maps from 1920-2012 & 1983-2012. See the Rainfall Trend Maps section below. *Added December, 2015: Interactive map links for Month-Year Rainfall Maps from 1920-2012. See the Month-Year Maps section below. *Added August, 2015: Month-Year Rainfall Maps from 1920-2012. See the Month-Year Maps section below. *Added April, 2015: Raingage station data (through 2012). See the Tabular section below. **The Moloka‘i maps have been updated! (07/2014) Using new information from stream gauges and additional vegetation data, we have a produced improved maps of mean rainfall for the island of Moloka‘i. All files below have been updated with these new maps.** Map Images Image files of the color zone rainfall maps as well as the isohyets have been created and are available for download as *.TIF files. The user has a choice of inches or millimeters, and each compressed *.zip file contains all 12 months plus the annual map. The color maps are available at a statewide extent as well as for each county, while the isohyets maps are only available for each island county (Maui Nui includes the islands of Maui, Moloka‘i, Lāna‘i and Kaho‘olawe).   Isohyets: These images show the mean monthly rainfall as isohyets, or lines of equal rainfall. Both sets of isohyets (inches and mm) were created at appropriate intervals for their units, and therefore are not direct conversions of each other, though they are derived from the same data. The labels are included where they can fit, which means that not all isohyets are labeled, especially in steep gradient areas. Please see the interactive map or download the GIS or Google Earth layers for more information on isohyets labels.   Files for download: Coverage Inches Millimeters Hawai‘i HawaiiIsohyetTIFs_inches.zip HawaiiIsohyetTIFs_mm.zip Kaua‘i KauaiIsohyetTIFs_inches.zip KauaiIsohyetTIFs_mm.zip Maui Nui MauiNuiIsohyetTIFs_inches.zip MauiNuiIsohyetTIFs_mm.zip O‘ahu OahuIsohyetTIFs_inches.zip OahuIsohyetTIFs_mm.zip   Color Maps: Unlike the interactive map which shows the rainfall as a continuous color ramp, these images display the rainfall in categories. The categories were set based on the natural breaks in the rainfall values for each extent, with the minimum and maximum values in the legend corresponding to the minimum and maximum values shown in the map extent. The categories were set independently for inches and millimeters, so the two sets will differ slightly.     Files for download: Coverage Inches Millimeters State StateMapTIFs_inches.zip StateMapTIFs_mm.zip Hawai‘i HawaiiMapTIFs_inches.zip HawaiiMapTIFs_mm.zip Kaua‘i KauaiMapTIFs_inches.zip KauaiMapTIFs_mm.zip Maui Nui MauiNuiMapTIFs_inches.zip MauiNuiMapTIFs_mm.zip O‘ahu OahuMapTIFs_inches.zip OahuMapTIFs_mm.zip GIS Layers GIS layers of the rainfall isohyets, rainfall grids, raingage stations, and uncertainty have been made available for download. Users can download the isohyets and stations as shapefiles, and the rainfall and uncertainty grids have been made available in ESRI and ASCII grid formats. These are available in either inches or millimeters, and each compressed *.zip file contains all 12 months plus the annual map. Rainfall isohyets and grids are available for the entire state or users can choose to download individual islands (Maui Nui includes the islands of Maui, Moloka‘i, Lāna‘i and Kaho‘olawe). Two station shapefiles are available (the same station information used in the interactive map), and the uncertainty grids are only available at the statewide extent. All files use geographic coordinates, WGS84 datum. For more information about GIS, how to use GIS layers, or to obtain more Hawai‘i layers, please refer to the Hawai‘i State GIS page, http://www.state.hi.us/dbedt/gis/download.htm .  After downloading, users can upload layers to ArcGIS Online to make their own maps as an alternative to using a desktop GIS program,  http://www.arcgis.com/home/ .   Rainfall Grids: Raster files are available at 250m resolution (0.00225 x 0.00225 cell size) for each island and for the state. These are available in inches or millimeters, and can be downloaded in ESRI grid format or ASCII grid format. These are the main output of this project, with the isohyets and other products being produced from these grids. Rainfall Grid Metadata ESRI Grid Format: Coverage Inches Millimeters State StateRFGrids_inches.zip StateRFGrids_mm.zip Hawai‘i HawaiiRFGrids_inches.zip HawaiiRFGrids_mm.zip Kaua‘i KauaiRFGrids_inches.zip KauaiRFGrids_mm.zip Maui Nui MauiNuiRFGrids_inches.zip MauiNuiRFGrids_mm.zip O‘ahu OahuRFGrids_inches.zip OahuRFGrids_mm.zip Maui MauiRFGrids_inches.zip MauiRFGrids_mm.zip Lāna‘i LanaiRFGrids_inches.zip LanaiRFGrids_mm.zip Moloka‘i MolokaiRFGrids_inches.zip MolokaiRFGrids_mm.zip   ASCII Grid Format: Coverage Inches Millimeters State StateASCIIGrids_inches.zip StateASCIIGrids_mm.zip Hawai‘i HawaiiASCIIGrids_inches.zip HawaiiASCIIGrids_mm.zip Kaua‘i KauaiASCIIGrids_inches.zip KauaiASCIIGrids_mm.zip Maui Nui MauiNuiASCIIGrids_inches.zip MauiNuiASCIIGrids_mm.zip O‘ahu OahuASCIIGrids_inches.zip OahuASCIIGrids_mm.zip Maui MauiASCIIGrids_inches.zip MauiASCIIGrids_mm.zip Lāna‘i LanaiASCIIGrids_inches.zip LanaiASCIIGrids_mm.zip Moloka‘i MolokaiASCIIGrids_inches.zip MolokaiASCIIGrids_mm.zip   Rainfall Isohyets: Rainfall isohyet files are available as polyline shapefiles for each island and for the state. These are available in inches or millimeters, and the “Contour” column in the attribute table contains the isohyet labels",
+  "html_len": 60054
+ },
+ "americansamoaportal": {
+  "title": "American Samoa Climate Data Portal",
+  "link": "https://www.hawaii.edu/climate-data-portal/americansamoaportal/",
+  "modified": "2026-06-03T02:15:14",
+  "headings": [
+   "American Samoa Climate Data Portal",
+   "Geospatial Portal",
+   "Environmental Data Portal",
+   "Real-Time Monitoring and Gridded Data Portal",
+   "Top Climate Datasets",
+   "Coral Reef Advisory Group (CRAG) Library",
+   "Other American Samoa Data Tools"
+  ],
+  "links": [
+   [
+    "Home",
+    "#home"
+   ],
+   [
+    "About",
+    "https://www.hawaii.edu/climate-data-portal/as-about/"
+   ],
+   [
+    "Top Climate Datasets",
+    "https://www.hawaii.edu/climate-data-portal/american-samoa-explore-data/"
+   ],
+   [
+    "Future Climate Projections",
+    "https://www.hawaii.edu/climate-data-portal/future-climate-projections/"
+   ],
+   [
+    "Top Climate Datasets",
+    "https://www.hawaii.edu/climate-data-portal/american-samoa-explore-data/"
+   ],
+   [
+    "CRAG Library",
+    "https://www.hawaii.edu/climate-data-portal/crag-coral-reef-advisory-group-library/"
+   ],
+   [
+    "https://forms.gle/Puh1YKGYRa5RD5Gb9",
+    "https://forms.gle/Puh1YKGYRa5RD5Gb9"
+   ]
+  ],
+  "iframes": [],
+  "text": "A partner project of the Hawai‘i Climate Data Portal Home About Top Climate Datasets Future Climate Projections American Samoa Climate Data Portal The American Samoa Climate Data Portal’s goal is to assist climate adaptation and natural resource managers in American Samoa by providing access to new and existing web-based tools that provide open access to GIS and climate-related data. These tools can enable managers and community members to collect, download, and view relevant data, facilitating a wide range of adaptation and management activities. Geospatial Portal Environmental Data Portal Real-Time Monitoring and Gridded Data Portal Explore American Samoa’s geospatial data including shapefiles and rasters of biological, geological, political, and climate related data  Publications, tabular data, and climate related resources for American Samoa Real time weather station and stream gauge data for American Samoa Top Climate Datasets The ASCDP provides a list of top climate datasets for American Samoa Top Climate Datasets Coral Reef Advisory Group (CRAG) Library Access literature on coral reefs in American Samoa through the CRAG Library on the ASCDP CRAG Library Other American Samoa Data Tools The Coastal Resilience Evaluation & Siting Tool is an interactive display of the Regional Coastal Resilience Assessments This NOAA Sea Level Rise viewer provides a preliminary look at sea level rise and coastal flooding impacts The PacIOOS American Samoa Coral Reef Drivers tool reveals how environmental and human factors shape coral reef spatial patterns SONEL provides high-quality continuous measurements of sea- and land levels at the coast from tide gauges The U.S. Drought Monitor (USDM) releases weekly drought maps for the U.S. and its territories The NOAA Coral Reef Watch daily global 5km satellite Bleaching Alert Area outlines where coral bleaching heat stress reaches certain levels The GML Data Finder provides data files available from the public ftp file archive of the ESRL Global Monitoring Laboratory The PacIOOS American Samoa Sea Level Rise Viewer tool provides a scientific prediction of potential future conditions from flooding due to sea level rise The Integrated Resource Management Applications (IRMA) Portal provides easy access to National Park Service applications PacIIOS has a list of climate related tools for American Samoa The WACOP wave atlas lets you explore many aspects of the wave climate in Samoa. The (PDKE) seeks to facilitate drought knowledge exchange among drought stakeholders in Hawai‘i and in Pacific Island Nations.  The National Coral Reef Monitoring Program data visualization tool allows you to see data collection info, visualize status and trends, and download data The USGS Hazard Exposure and Reporting Analytics site (HERA) provides tools and data to help communities as they plan and prepare for climate-related, natural hazards The University of Hawaii Sea Level Center provides a station explorer to view tide gauge data High tide times and tide charts in American Samoa The American Samoa Data Project provides information on American Samoa coral reef monitoring programs, data collection methods, and site-specific location data. The American Samoa Climate Data Portal is under development. If you would like to contribute any feedback or have questions, please email Chris Shuler (cshuler@hawaii.edu) or fill out this google form: https://forms.gle/Puh1YKGYRa5RD5Gb9",
+  "html_len": 34974
+ },
+ "guam-data-viewer": {
+  "title": "",
+  "link": "https://www.hawaii.edu/climate-data-portal/guam-data-viewer/",
+  "modified": "2026-06-03T02:12:21",
+  "headings": [],
+  "links": [],
+  "iframes": [
+   "https://hcdp.github.io/gcdp/"
+  ],
+  "text": "",
+  "html_len": 948
+ },
+ "publications-list": {
+  "title": "Publications List",
+  "link": "https://www.hawaii.edu/climate-data-portal/publications-list/",
+  "modified": "2021-06-08T04:29:51",
+  "headings": [],
+  "links": [
+   [
+    "Search Publications",
+    "https://www.hawaii.edu/climate-data-portal/publications-search/"
+   ],
+   [
+    "hcdp@hawaii.edu",
+    "mailto:hcdp@hawaii.edu"
+   ]
+  ],
+  "iframes": [],
+  "text": "Search Publications                                                    Is your research missing? Send PDFs to hcdp@hawaii.edu 2846077 100 apa creator asc 1 1 toplevel 1 Loading ... Top Level Loading ... Top Level Items",
+  "html_len": 2216
+ },
+ "research-highlights": {
+  "title": "Research Highlights",
+  "link": "https://www.hawaii.edu/climate-data-portal/research-highlights/",
+  "modified": "2022-03-14T21:43:40",
+  "headings": [],
+  "links": [
+   [
+    "hcdp@hawaii.edu",
+    "mailto:hcdp@hawaii.edu"
+   ],
+   [
+    "Google Form",
+    "https://forms.gle/d5qNtEmcceXd7jZW9"
+   ],
+   [
+    "Hawai’i Grass Atlas",
+    "https://www.hawaii.edu/climate-data-portal/hawaii-grass-atlas/"
+   ],
+   [
+    "Mapping Daily Air Temperature Over the Hawaiian Islands From 1990 to 2021 via an Optimized Piecewise Linear Regression Technique",
+    "https://www.hawaii.edu/climate-data-portal/mapping-daily-air-temperature-over-the-hawaiian-islands-from-1990-to-2021-via-an-optimized-piecewise-linear-regression-technique/"
+   ],
+   [
+    "Deriving gridded hourly rainfall on Oʻahu by combining gauge network and radar rainfall",
+    "https://www.hawaii.edu/climate-data-portal/deriving-gridded-hourly-rainfall-on-o%ca%bbahu-by-combining-gauge-network-and-radar-rainfall/"
+   ],
+   [
+    "A Century of Drought  in Hawai‘i",
+    "https://www.hawaii.edu/climate-data-portal/a-century-of-drought-in-hawaii/"
+   ],
+   [
+    "Climate change impacts shifting landscape of the dairy industry in Hawai‘i",
+    "https://www.hawaii.edu/climate-data-portal/climate-change-impacts-shifting-landscape-of-the-dairy-industry-in-hawaii/"
+   ],
+   [
+    "Diagnosing Hawai‘i’s Recent Drought",
+    "https://www.hawaii.edu/climate-data-portal/diagnosing-hawaiis-recent-drought/"
+   ],
+   [
+    "Follow the Drop mobile app and data platform",
+    "https://www.hawaii.edu/climate-data-portal/follow-the-drop-mobile-app-and-data-platform/"
+   ],
+   [
+    "Optimizing Automated Kriging to Improve Spatial Interpolation of Monthly Rainfall over Complex Terrain",
+    "https://www.hawaii.edu/climate-data-portal/optimizing-automated-kriging-to-improve-spatial-interpolation-of-monthly-rainfall-over-complex-terrain/"
+   ],
+   [
+    "Climate Adaptation for Tropical Island Land Stewardship: Adapting a Workshop Planning Process to Hawai‘i",
+    "https://www.hawaii.edu/climate-data-portal/climate-adaptation-for-tropical-island-land-stewardship-adapting-a-workshop-planning-process-to-hawaii/"
+   ],
+   [
+    "Developing a real time tool to identify the likelihood of avian malaria insitu development to help the targeting of mosquito control efforts",
+    "https://www.hawaii.edu/climate-data-portal/developing-a-real-time-tool-to-identify-the-likelihood-of-avian-malaria-insitu-development-to-help-the-targeting-of-mosquito-control-efforts/"
+   ],
+   [
+    "Understanding the environmental factors determining the spatial patterns of malaria prevalence in native forest birds across Hawaii",
+    "https://www.hawaii.edu/climate-data-portal/understanding-the-environmental-factors-determining-the-spatial-patterns-of-malaria-prevalence-in-native-forest-birds-across-hawaii/"
+   ],
+   [
+    "Restoring people and productivity to Puanui: challenges and opportunities in the restoration of an intensive rain-fed Hawaiian field system",
+    "https://www.hawaii.edu/climate-data-portal/restoring-people-and-productivity-to-puanui-challenges-and-opportunities-in-the-restoration-of-an-intensive-rain-fed-hawaiian-field-system/"
+   ],
+   [
+    "Hawaiʻi Groundwater Recharge Tool",
+    "https://www.hawaii.edu/climate-data-portal/hawai%ca%bbi-groundwater-recharge-tool/"
+   ],
+   [
+    "Dynamical downscaling of near-term (2026-2035) climate variability and change for the main Hawaiian Islands",
+    "https://www.hawaii.edu/climate-data-portal/dynamical-downscaling-of-near-term-2026-2035-climate-variability-and-change-for-the-main-hawaiian-islands/"
+   ],
+   [
+    "Methodological Intercomparisons of Station-Based Gridded Meteorological Products",
+    "https://www.hawaii.edu/climate-data-portal/methodological-intercomparisons-of-station-based-gridded-meteorological-products/"
+   ],
+   [
+    "Little HaleNet",
+    "https://www.hawaii.edu/climate-data-portal/little-halenet/"
+   ],
+   [
+    "Pacific Island Mangrove Monitoring Network (PACMAN)",
+    "https://www.hawaii.edu/climate-data-portal/pacific-island-mangrove-monitoring-network-pacman/"
+   ],
+   [
+    "Cloud Water Interception in Hawaii",
+    "https://www.hawaii.edu/climate-data-portal/cloud-water-interception-in-hawaii/"
+   ],
+   [
+    "Auwahi Dry-land Forest Restoration Project",
+    "https://www.hawaii.edu/climate-data-portal/auwahi-dry-land-forest-restoration-project/"
+   ],
+   [
+    "Aloha+ Challenge",
+    "https://www.hawaii.edu/climate-data-portal/hawaii-green-growth/"
+   ],
+   [
+    "Sea-level rise drives wastewater leakage to coastal waters and storm drains",
+    "https://www.hawaii.edu/climate-data-portal/sea-level-rise-drives-wastewater-leakage-to-coastal-waters-and-storm-drains/"
+   ],
+   [
+    "Climate Monitoring In Hawaii",
+    "https://www.hawaii.edu/climate-data-portal/climate-monitoring-in-hawaii/"
+   ],
+   [
+    "Hawaiian summer rainfall: Two distinguishing variability regimes",
+    "https://www.hawaii.edu/climate-data-portal/hawaiian-summer-rainfall-two-distinguishing-variability-regimes/"
+   ],
+   [
+    "UH SLC Sea Level Forecasts",
+    "https://www.hawaii.edu/climate-data-portal/uh-slc-sea-level-forecasts/"
+   ],
+   [
+    "Fire and Rain: The Legacy of Hurricane Lane in Hawaiʻi",
+    "https://www.hawaii.edu/climate-data-portal/fire-and-rain-the-legacy-of-hurricane-lane-in-hawai%ca%bbi/"
+   ],
+   [
+    "Temperature trends in Hawaiʻi: A century of change, 1917–2016",
+    "https://www.hawaii.edu/climate-data-portal/temperature-trends-in-hawai%ca%bbi-a-century-of-change-1917-2016/"
+   ],
+   [
+    "The Soil Climate Analysis Network (SCAN)",
+    "https://www.hawaii.edu/climate-data-portal/the-soil-climate-analysis-network-scan/"
+   ],
+   [
+    "Volcanic Aerosol Impacts on Hawaii Island Rainfall",
+    "https://www.hawaii.edu/climate-data-portal/volcanic-aerosol-impacts-on-hawaii-island-rainfall/"
+   ],
+   [
+    "Mauna Loa Observatory – ESRL Global Monitoring Laboratory",
+    "https://www.hawaii.edu/climate-data-portal/mauna-loa-observatory-esrl-global-monitoring-laboratory/"
+   ],
+   [
+    "Pacific Drought Knowledge Exchange",
+    "https://www.hawaii.edu/climate-data-portal/pacific-drought-knowledge-exchange/"
+   ],
+   [
+    "Drought and wildfire at Hawai‘i Volcanoes National Park",
+    "https://www.hawaii.edu/climate-data-portal/drought-and-wildfire-at-hawaii-volcanoes-national-park/"
+   ],
+   [
+    "HavoNet",
+    "https://www.hawaii.edu/climate-data-portal/havonet/"
+   ],
+   [
+    "Remote Automated Weather Stations (RAWS)",
+    "https://www.hawaii.edu/climate-data-portal/remote-automated-weather-stations-raws/"
+   ],
+   [
+    "CraterNet",
+    "https://www.hawaii.edu/climate-data-portal/craternet/"
+   ],
+   [
+    "Long-Term, Gridded Standardized Precipitation Index for Hawai‘i",
+    "https://www.hawaii.edu/climate-data-portal/long-term-gridded-standardized-precipitation-index-for-hawai/"
+   ],
+   [
+    "Drought effects on drinking water supply on Maui",
+    "https://www.hawaii.edu/climate-data-portal/drought-effects-on-drinking-water-supply-on-maui/"
+   ],
+   [
+    "The Hawai’i Permanent Plot Network",
+    "https://www.hawaii.edu/climate-data-portal/the-hawaii-permanent-plot-network/"
+   ],
+   [
+    "Disturbance Driven Rainfall on O‘ahu",
+    "https://www.hawaii.edu/climate-data-portal/disturbance-driven-rainfall-2/"
+   ],
+   [
+    "Haleakalā Climate Network",
+    "https://www.hawaii.edu/climate-data-portal/haleakala-climate-network/"
+   ],
+   [
+    "Protecting Endangered Snail Populations",
+    "https://www.hawaii.edu/climate-data-portal/protecting-endangered-snail-populations/"
+   ],
+   [
+    "Using Statistics to Select Atmospheric Predictor Variables",
+    "https://www.hawaii.edu/climate-data-portal/using-statistics-to-select-atmospheric-predictor-variables/"
+   ],
+   [
+    "Shifting Streamflow Extremes",
+    "https://www.hawaii.edu/climate-data-portal/shifting-magnitude-and-timing-of-streamflow-extremes-and-the-relationship-with-rainfall-across-the-hawaiian-islands/"
+   ],
+   [
+    "Rainfall and Cloud Water Monitoring on Mt. Kaʻala",
+    "https://www.hawaii.edu/climate-data-portal/ka%ca%bbala-station/"
+   ]
+  ],
+  "iframes": [],
+  "text": "Search Search Is your research missing? Email hcdp@hawaii.edu or fill out our Google Form Hawai’i Grass Atlas Contributed by Kevin Faccenda Visit the atlas at: http://mauu.net/atlas/ The Hawai‘i Grass Atlas website features maps of every grass, native or not, now present across ka pae ‘āina o Hawai‘i. … Mapping Daily Air Temperature Over the Hawaiian Islands From 1990 to 2021 via an Optimized Piecewise Linear Regression Technique Contributed by Dr. Keri Kodama View the full paper at: https://doi.org/10.1029/2023EA002851 A new paper on mapping daily air temperature was recently published by Dr. Keri Kodama, an East-West Center Fellow … Deriving gridded hourly rainfall on Oʻahu by combining gauge network and radar rainfall Contributed by Dr. Yu-Fen Huang. If you have any questions regarding the paper, please contact Dr. Yu-Fen Huang (yfhuang@hawaii.edu) and Dr. Yinphan Tsang (tsangy@hawaii.edu). Accurately estimating precipitation in Hawaiʻi presents a … A Century of Drought in Hawai‘i Contributed by Abby Frazier (abbyf@hawaii.edu) Drought is a regular and natural component of the climate in Hawaiʻi with severe effects across many sectors statewide. This paper provides a comprehensive synthesis … Climate change impacts shifting landscape of the dairy industry in Hawai‘i Photo credit: Dr. C.N. Lee Contributed by Mandeep Adhikari:  mandeep@hawaii.edu Future projections indicated that air temperature would increase 1.3 to 1.8 °C by mid-century and 1.6 to 3.2 °C by the … Diagnosing Hawai‘i’s Recent Drought Contributed by Henry Diaz (hfdiaz@hawaii.edu) Read the full article: https://journals.ametsoc.org/view/journals/clim/35/13/JCLI-D-21-0754.1.xml Hawai‘i’s recent drought is among the most severe on record. Wet-season (November-April) rainfall deficits during 2010–2019 rank second lowest among … Follow the Drop mobile app and data platform Follow the Drop is a mobile app and data platform that supports municipal green stormwater infrastructure planning and incentive programs. It is currently be used by the City and County … Optimizing Automated Kriging to Improve Spatial Interpolation of Monthly Rainfall over Complex Terrain Mapping rainfall over the complex topography of Hawai‘i is not easy. It’s difficult to produce a good quality map that captures the extreme gradients and spatial variability of rainfall in … Climate Adaptation for Tropical Island Land Stewardship: Adapting a Workshop Planning Process to Hawai‘i Read the full article by Longman et al. here Tropical island ecosystems are highly vulnerable to the multiple threats of climate change (Nurse et al. 2014; Bonan 2008). In response, … Developing a real time tool to identify the likelihood of avian malaria insitu development to help the targeting of mosquito control efforts Contributed by Lucas Fortini: (lfortini@usgs.gov). Contact for more info. Avian malaria poses the threat of extinction to multiple unique Hawaiian forest bird species. With mosquito vector control as one of … Understanding the environmental factors determining the spatial patterns of malaria prevalence in native forest birds across Hawaii Contributed by Lucas Fortini The clearly identified link between temperature and avian malaria across the landscape threatens several unique native Hawaiian birds with extinction as the climate warms. With the … Restoring people and productivity to Puanui: challenges and opportunities in the restoration of an intensive rain-fed Hawaiian field system “Prior to European contact, Hawaiian cultivators developed and sustained large rain-fed field systems based on sweet potato (Ipomoea batatas) and other crops. However, these intensive systems largely were abandoned in … Hawaiʻi Groundwater Recharge Tool Use the tool here. “The primary source of freshwater to Hawai‘i’s groundwater systems is recharge. Accurate estimates of recharge are critical for groundwater-resource management and planning. The Hawai‘i Groundwater Recharge Tool allows … Dynamical downscaling of near-term (2026-2035) climate variability and change for the main Hawaiian Islands Contributed by Katrina M. Fandrich (kfandrich@albany.edu) This study presents results from an ensemble of regional climate model simulations (periods 1996–2005 and 2026–2035) that are used to examine the effects of … Methodological Intercomparisons of Station-Based Gridded Meteorological Products To learn more, read: Methodological Intercomparisons of Station-Based Gridded Meteorological Products: Utility, Limitations, and Paths Forward by Newman et al. This study presents a gridded meteorology intercomparison using the State … Little HaleNet To learn more, read Climatology of Haleakalā by Ryan Longman or visit: https://sites.google.com/a/hawaii.edu/ecohydrology_lab/current-research/little-halenet The high-elevation northeastern slopes of Haleakalā Volcano are home to some of the most remote and undisturbed … Pacific Island Mangrove Monitoring Network (PACMAN) Contributed by Rich MacKenzie (richard.mackenzie@usda.gov) Sea-level rise (SLR) is the greatest future threat that intact Pacific island mangroves face. The loss of mangroves on Pacific Islands will have huge consequences … Cloud Water Interception in Hawaii Contributed by Han Tseng (tsenghan@hawaii.edu) Cloud water interception (CWI), the passive capturing of fog water by plants, is a unique ecohydrological process in tropical montane cloud forests that have long … Auwahi Dry-land Forest Restoration Project The Hawaiian dryland montane forest is considered one of the most biologically diverse ecosystems in the islands; however less than 10% of Hawai‘i’s original dry land forest remains (Medeiros and … Aloha+ Challenge Hawaiʻi Local2030 Hub through public-private partnerships works to provide data and track progress on the Aloha+ Challenge, a statewide commitment to achieve Hawaiʻi’s local Sustainable Development Goals (SDGs) that are … Sea-level rise drives wastewater leakage to coastal waters and storm drains Contributed by Trista McKen",
+  "html_len": 60343
+ },
+ "2339-2": {
+  "title": "HCDP History",
+  "link": "https://www.hawaii.edu/climate-data-portal/2339-2/",
+  "modified": "2024-09-26T00:11:26",
+  "headings": [
+   "The Climate of Hawai‘i&nbsp;",
+   "Climate Data In Hawai‘i&nbsp;",
+   "&nbsp;",
+   "Evolution of the HCDP"
+  ],
+  "links": [],
+  "iframes": [],
+  "text": "The Climate of Hawai‘i  The Hawaiian Islands have one of the most unique and diverse climates on Earth. Rainfall, temperature, solar radiation, and relative humidity gradients are so pronounced that continental-scale ranges can be found over relatively short distances (< 25 km) in Hawai‘i. These steep gradients make Hawai‘i an incredible place to conduct scientific research, but data and information are required to accurately characterize the patterns. The climate is so diverse in Hawai‘i that four of the 5 Köppen major climate classification groups can be found on Hawai‘i Island alone. Wet-tropical climate occur along windward coasts, arid and semi-arid climates are found along some leeward coasts, temperate wet and dry climates can be found upslope on the highest islands (Maui and Hawai‘i) and polar climates predominate at the top of the three highest mountains in Hawai‘i (Mauna Kea, Mauna Loa and Haleakalā). The island chain is located in a relatively dry latitude, however, the interactions between topography and the persistent winds bring an abundance of rainfall to the windward slopes (Figure 2). Abundant water vapor in the air pushed up the mountains condenses and forms clouds at the lifting condensation level (LCL). But upslope flow is capped by the TWI on the highest islands (when it is present), leading to dry conditions at the higher elevations. The persistent wind-blown clouds in the zone just below the inversion add significant amounts of water and support a lush tropical mountain cloud forest. Figure 1: View from Kuliouou Ridge on East O‘ahu. Figure 2: Orographic rainfall mechanism and resulting features. Knowledge of climate patterns is critically important for a variety of resource management issues, including groundwater and surface water development and protection, controlling and eradicating invasive species, protecting and restoring native ecosystems, and planning for the effects of global warming. Climate Data In Hawai‘i  Figure 3: Rain collector deployed at Lyon Arboretum. Photo credit: Han Tseng   The most challenging aspect of any analysis that utilizes station observations is the identification, acquisition, and quality control of the data. In Hawai‘i, climate data are available from a number of sources including, independent researchers, county, state, and federal agencies, and can be accessed via several large electronic repositories. The decentralization of these repositories is  problematic because many of these data are stored in different formats and can require technical skills to access. For many years, researchers at the University of Hawai‘i at Manoa (UHM) have been compiling and quality-controlling climate data to address a range of scientific research questions. Resulting in the production of gridded climate products such as rainfall and temperature maps. Descriptions of both gridded and point data are typically disseminated through either academic journals or technical reports, or through peer-to-peer networks. While authors are typically willing to share data products, a clear limitation of the process is that by the time products become available, the end dates of the data sets do not capture recent historical events. In short, climate data production lags months and years behind ongoing climate and weather events. Evolution of the HCDP The idea for a centralized repository that can host quality-controlled climate data as well as gridded climate products for Hawai‘i has been in the making for over a decade, however, a lack of resources as well as several technical limitations have prevented its development. Beginning in 2018, as part of the Established Program to Stimulate Competitive Research (ESPCoR) ‘Ike Wai project, scientists from the Department of Geography and Environment (UHM), Hawai‘i Data Science Institute (UHM), the Water Resources Research Center (WRRC, UH) and the East-West center (EWC), joined forces and began working on an open source data and information sharing platform that has become Hawai‘i Climate Data Portal (HCDP).  As the HCDP project activities got under way, the research team became even more aware of  the siloed nature of climate data and information in Hawai‘i. This prevented researchers from knowing of and assessing the full range of available resources. In addition, many land and resource managers have been unaware of  the existing climate tools and data that are available. In light of these findings, the HCDP team began building additional features into the portal aimed at connecting users to the full range of climate data, information and decision support tools in the state.  Figure 4: Monthly rainfall map for August 2018, one the wettest months in the rainfall record on Hawai‘i Island, due to the influence of Hurricane Lane. (from Lucas et al., 2022) In addition to the development of an easy-to-use interface that allows for both the visualization and downloading of meteorological data, an additional emphasis was placed on developing other HCDP features that could help improve information visibility and access. Some of these features are: a reference library with over 400-peer reviewed journal articles and technical reports, an archive of National Weather Service monthly rainfall summaries, highlights of past and ongoing research across the state access to a range of decision support tools, and information on indigenous climate knowledge perspectives.   The overarching goal of the HCDP is to provide streamlined access to high-quality reliable climate data and information for the State of Hawai‘i. This includes the production of both near-real-time monthly rainfall and daily temperature maps and a user-friendly tool to visualize and download them. Easy access to high quality climate data, information and products through the HCDP allows researchers to focus more time on their analyses and less time on data collection and processing. It also provides the broader community with access to information that would otherwise ",
+  "html_len": 14095
+ }
+}

@@ -1,0 +1,32 @@
+# Run from this directory:  docker compose --env-file ../.env up -d --build
+# The .env lives one level up (never in the image) and holds AZURE_OPENAI_API_KEY,
+# HCDP_API_TOKEN, NAVIGATOR_MODEL, NAVIGATOR_API_BASE, SITE_ADDRESS, AI_INTERFACE_URL.
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    env_file: ../.env
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8010:8010"   # local only; Caddy fronts it
+    volumes:
+      - raster_cache:/app/cache
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+volumes:
+  raster_cache:
+  caddy_data:
+  caddy_config:

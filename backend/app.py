@@ -218,6 +218,30 @@ async def api_dates(request: Request, dataset: str, period: str, extent: str = "
     return data
 
 
+@app.on_event("startup")
+async def warm_backdrops():
+    """Render the landing page's backdrop maps right after start, so the first visitor
+    after a deploy does not wait for six GeoTIFF fetches; failures are silent."""
+    import asyncio
+
+    async def _warm():
+        await asyncio.sleep(2)
+        try:
+            from starlette.requests import Request as _R
+            scope = {"type": "http", "app": app, "headers": [], "method": "GET", "path": "/api/backdrops", "query_string": b""}
+            data = await api_backdrops(_R(scope))
+            for it in data.get("items", []):
+                try:
+                    await api_map_png(it["dataset"], it["period"], it["date"], it["extent"], 1400)
+                except Exception:  # noqa: BLE001
+                    pass
+        except Exception:  # noqa: BLE001
+            pass
+
+    if os.environ.get("WARM_BACKDROPS", "1") != "0":
+        asyncio.create_task(_warm())
+
+
 # ----- the built site ---------------------------------------------------------
 @app.get("/{full_path:path}", include_in_schema=False)
 async def spa(full_path: str):

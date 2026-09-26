@@ -46,6 +46,10 @@ class NavigatorLLM:
         self.api_key = api_key if api_key is not None else (os.environ.get("NAVIGATOR_API_KEY") or os.environ.get("AZURE_OPENAI_API_KEY", ""))
         self.model = model or os.environ.get("NAVIGATOR_MODEL") or DEFAULT_MODEL
         self.reasoning_effort = reasoning_effort or os.environ.get("NAVIGATOR_REASONING") or "low"
+        # Fast mode ("priority" on Azure): honoured for gpt-5.6-sol/terra on the NAIRR resource; a gateway
+        # (LiteLLM) forwards it only when whitelisted, which NAVIGATOR_ALLOW_PARAMS=1 turns on.
+        self.service_tier = (os.environ.get("NAVIGATOR_SERVICE_TIER") or "").strip() or None
+        self.allow_params = os.environ.get("NAVIGATOR_ALLOW_PARAMS", "0") == "1"
         self._client = OpenAI(base_url=self.base_url, api_key=self.api_key, timeout=timeout, max_retries=1) if self.api_key else None
         self.stats = {"calls": 0, "errors": 0, "last_ms": None, "last_error": None}
 
@@ -58,11 +62,17 @@ class NavigatorLLM:
             raise RuntimeError("navigator model not configured (AZURE_OPENAI_API_KEY is empty)")
         msgs = [{"role": "system", "content": system}, *messages]
         base = dict(model=self.model, messages=msgs)
+        if self.service_tier:
+            if self.allow_params:
+                base["extra_body"] = {"service_tier": self.service_tier, "allowed_openai_params": ["service_tier"]}
+            else:
+                base["service_tier"] = self.service_tier
         # Try the richest request first; drop parameters the endpoint rejects.
         attempts = [
             dict(base, response_format={"type": "json_object"}, reasoning_effort=self.reasoning_effort),
             dict(base, response_format={"type": "json_object"}),
             dict(base),
+            dict(model=self.model, messages=msgs),
         ]
         t0 = time.monotonic()
         self.stats["calls"] += 1
@@ -75,6 +85,7 @@ class NavigatorLLM:
                 if u is not None:
                     cached = getattr(getattr(u, "prompt_tokens_details", None), "cached_tokens", None)
                     self.stats["last_usage"] = {"prompt_tokens": u.prompt_tokens, "completion_tokens": u.completion_tokens, "cached_tokens": cached}
+                self.stats["last_tier"] = getattr(resp, "service_tier", None)
                 return parse_json(resp.choices[0].message.content or "")
             except Exception as e:  # noqa: BLE001 - we decide below whether to retry
                 last = e

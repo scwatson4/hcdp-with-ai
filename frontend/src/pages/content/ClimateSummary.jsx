@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CalendarDays, CloudRain, Thermometer, Sun, Mail, MapPin, BarChart3, FileText, RadioTower } from 'lucide-react'
 import { HCDP } from '../../site/nav'
@@ -27,7 +28,8 @@ function MonthPicker() {
   const month = /^(1[0-2]|[1-9])$/.test(params.get('month') || '') ? params.get('month') : ''
   const src = year && month ? `${SUMMARY_APP}?year=${year}&month=${month}` : SUMMARY_APP
   const set = (patch) => { const next = new URLSearchParams(params); Object.entries(patch).forEach(([k, v]) => (v ? next.set(k, v) : next.delete(k))); setParams(next) }
-  const years = []; for (let y = 2026; y >= 2020; y -= 1) years.push(String(y))
+  const years = []; for (let y = 2026; y >= 1990; y -= 1) years.push(String(y))   // the app goes back to 1990
+  useEffect(() => { if (year && month) setTimeout(() => document.getElementById('dashboard')?.scrollIntoView({ block: 'start' }), 120) }, [])   // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <>
       <div className="mb-3 flex flex-wrap items-end gap-3 text-sm" data-testid="month-picker">

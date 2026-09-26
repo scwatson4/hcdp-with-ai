@@ -162,6 +162,14 @@ def load_stations(path: Path | None = None) -> list[dict]:
     return []
 
 
+def load_places_nearest() -> list[str]:
+    p = DATA_DIR / "places_nearest.json"
+    if p.exists():
+        with open(p, encoding="utf-8") as f:
+            return json.load(f).get("nearest", [])
+    return []
+
+
 def stations_text(stations: list[dict]) -> str:
     """Compact: one line per island, 'id name' pairs, active stations only."""
     by = {}
@@ -177,6 +185,7 @@ class Navigator:
         self.llm = llm
         self.catalog = catalog or load_catalog()
         self.stations = stations if stations is not None else load_stations()
+        self.places_nearest = load_places_nearest()
         self.ai_interface_url = (ai_interface_url or "").rstrip("/")
         self._today = today
         self.hosts = set(STATIC_HOSTS)
@@ -236,6 +245,8 @@ MORE SHAREABLE LINKS (every state on this site has a URL; use ONLY these forms â
   /?ask={{url-encoded question}}   a link that asks this assistant a question on arrival (for sharing a question)
 MESONET STATIONS (id name), by island â€” use the id in station links; say the name in the reply:
 {stations_text(self.stations)}
+NEAREST STATION TO WELL-KNOWN PLACES (use these for "in <town>" asks; do not pick by name similarity):
+  {"; ".join(self.places_nearest)}
 
 CATALOG (the only URLs you may use):
 {self.catalog_text()}

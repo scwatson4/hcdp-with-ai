@@ -63,6 +63,8 @@ function ViewerTabs() {
   const [stations, setStations] = useState([])
   useEffect(() => { fetch('/api/stations').then((r) => (r.ok ? r.json() : { stations: [] })).then((d) => setStations(d.stations || [])).catch(() => {}) }, [])
   const set = (patch) => { const next = new URLSearchParams(params); Object.entries(patch).forEach(([k, val]) => (val ? next.set(k, val) : next.delete(k))); setParams(next, { replace: false }) }
+  // A shared station/viewer link lands on the viewer, not the page top.
+  useEffect(() => { if (params.get('station') || params.get('viewer') || params.get('view')) setTimeout(() => document.getElementById('viewers')?.scrollIntoView({ block: 'start' }), 120) }, [])   // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <Tabs value={viewer} onValueChange={(v) => set({ viewer: v === 'live' ? '' : v })}>
       <TabsList className="h-auto flex-wrap justify-start">

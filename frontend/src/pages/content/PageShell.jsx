@@ -50,7 +50,7 @@ export function Section({ id, title, lead, actions, children, className }) {
   const auto = useId()
   const headingId = `${id || auto.replace(/:/g, '')}-title`
   return (
-    <section id={id} aria-labelledby={headingId} className={cn('scroll-mt-24', className)}>
+    <section id={id} aria-labelledby={headingId} className={cn('scroll-mt-36', 'scroll-mt-24', className)}>
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
         <h2 id={headingId} className="font-display text-2xl">{title}</h2>
         {actions}

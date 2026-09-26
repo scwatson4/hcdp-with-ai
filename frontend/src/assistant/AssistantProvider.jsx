@@ -50,7 +50,7 @@ export function AssistantProvider({ children }) {
       historyRef.current = [...historyRef.current, { role: 'user', content: q }, { role: 'assistant', content: data.reply || '' }]
       const navigated = runActions(data.actions)
       setMessages((m) => [...m, { role: 'assistant', content: data.reply || '', intent: data.intent, actions: data.actions || [], alternatives: data.alternatives || [] }])
-      if (navigated || data.minimize) setMode('dock')
+      if (navigated) setMode('dock')   // only a real navigation docks the assistant; a hand-off answer stays open
     } catch (e) {
       setMessages((m) => [...m, { role: 'assistant', content: 'I could not reach the navigator. Check the connection and try again.' }])
     } finally { setBusy(false) }

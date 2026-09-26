@@ -47,19 +47,20 @@ export default function AssistantPanel({ compact = false, autoFocus = false, rot
   const ghostQuery = ghostActive ? EXAMPLES[ghostIdx % EXAMPLES.length] : null
   const endRef = useRef(null)
   const inputRef = useRef(null)
+  const listRef = useRef(null)
   const firstRender = useRef(true)
-  useEffect(() => { if (firstRender.current) { firstRender.current = false; return } endRef.current?.scrollIntoView?.({ block: 'nearest' }) }, [messages, busy])
+  useEffect(() => { if (firstRender.current) { firstRender.current = false; return } const el = listRef.current; if (el) el.scrollTop = el.scrollHeight }, [messages, busy])
   useEffect(() => { if (autoFocus) inputRef.current?.focus() }, [autoFocus])
   const submit = (e) => { e?.preventDefault(); const t = text; setText(''); send(t) }
   const showExamples = messages.length <= 1 && !compact && !rotateExamples
   return (
     <div className={cn('flex flex-col', compact ? 'h-full' : '')} data-testid="assistant-panel">
-      <div className={cn('flex-1 space-y-3 overflow-y-auto', compact ? 'px-3 py-2.5 text-[13px]' : 'max-h-[42vh] px-1', rotateExamples && messages.length <= 1 ? 'py-0' : 'py-2')} aria-live="polite">
+      <div ref={listRef} className={cn('flex-1 space-y-3 overflow-y-auto', compact ? 'px-3 py-2.5 text-[13px]' : 'max-h-[42vh] px-1', rotateExamples && messages.length <= 1 ? 'py-0' : 'py-2')} aria-live="polite">
         {messages.map((m, i) => (i === 0 && (compact || rotateExamples) ? null : (
           <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
             <div className={cn('max-w-[92%] rounded-lg px-3 py-2 text-sm leading-relaxed', m.role === 'user' ? 'bg-accent text-accent-foreground' : 'bg-surface border border-border')}>
               {m.content}
-              {m.role === 'user' && <button type="button" title="Copy a link that asks this" aria-label="Copy a link that asks this" onClick={() => { const href = `${window.location.origin}/?ask=${encodeURIComponent(m.content)}`; navigator.clipboard?.writeText(href).catch(() => window.prompt('Copy this link', href)) }} className="ml-2 inline-flex align-middle text-accent-foreground/70 hover:text-accent-foreground"><Link2 className="h-3 w-3" aria-hidden="true" /></button>}
+              {m.role === 'user' && <button type="button" title="Copy a link that asks this" aria-label="Copy a link that asks this" onClick={(ev) => { const href = `${window.location.origin}/?ask=${encodeURIComponent(m.content)}`; const b = ev.currentTarget; navigator.clipboard?.writeText(href).then(() => { b.dataset.copied = '1'; setTimeout(() => { delete b.dataset.copied }, 1500) }).catch(() => window.prompt('Copy this link', href)) }} className="group ml-1 inline-grid h-6 w-6 place-items-center rounded align-middle text-accent-foreground/70 hover:bg-white/10 hover:text-accent-foreground data-[copied]:text-accent-foreground"><Link2 className="h-3.5 w-3.5 group-data-[copied]:hidden" aria-hidden="true" /><span className="hidden text-[10px] group-data-[copied]:inline">Copied</span></button>}
               {m.actions?.filter((a) => a.type === 'open').map((a, j) => (
                 <div key={j} className="mt-2"><a className="inline-flex items-center gap-1 rounded-md border border-border bg-canvas px-2.5 py-1 text-xs font-medium hover:border-foreground" href={a.url} target="_blank" rel="noopener noreferrer">{a.blocked ? 'Your browser blocked the new tab — open it here' : 'Opened in a new tab — open again'} <ExternalLink className="h-3 w-3" aria-hidden="true" /></a></div>
               ))}

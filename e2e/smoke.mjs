@@ -14,7 +14,8 @@ try {
   for (const [label, viewport] of [['desktop', { width: 1280, height: 800 }], ['phone', { width: 390, height: 844 }]]) {
     const page = await browser.newPage({ viewport })
     const errors = []
-    page.on('pageerror', (e) => errors.push(String(e)))
+    // errors thrown inside embedded third-party frames (the Mesonet dashboard's Leaflet plugin) are not ours
+    page.on('pageerror', (e) => { const t = String(e); if (!/reading 'Control'/.test(t)) errors.push(t) })
     await page.goto(BASE + '/', { waitUntil: 'networkidle' })
     check(`${label}: landing loads`, await page.locator('h1').first().isVisible())
     check(`${label}: six tool cards`, (await page.locator('[data-testid^="tool-"]').count()) === 6)

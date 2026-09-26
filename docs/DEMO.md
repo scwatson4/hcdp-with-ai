@@ -17,8 +17,8 @@ its original HCDP version.
    specific map from a link. That contrast is the pitch.
 3. **The assistant keeps helping** — click the pill, ask *now Maui* → `/viewer/rainfall/day/2026-09-07/maui`.
    Press Esc: the panel shrinks into the pill. (The panel shows only questions and answers.)
-4. **Live stations** — ask *Is it raining in Hilo right now?* → the Mesonet page opens on the Hilo station
-   (`/mesonet?viewer=live&station=0115&view=dashboard`). Change the station or view in the picker: the URL
+4. **Live stations** — ask *Is it raining in Hilo right now?* → the Mesonet page opens on the live dashboard of the
+   nearest station, Nahuku (`/mesonet?viewer=live&station=0201&view=dashboard`; there is no station named Hilo). Change the station or view in the picker: the URL
    follows. *Original HCDP version* opens the same station in the portal's viewer.
 5. **A storm** — ask *Where is the Hurricane Lowell report?* → `/extreme-events/lowell` (dates, links, peak-day
    maps). The original-version link points at the portal's Lowell page.

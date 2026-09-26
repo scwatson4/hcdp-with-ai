@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { RadioTower, Code2, PlayCircle, Globe2 } from 'lucide-react'
 import { HCDP } from '../../site/nav'
 import { Card } from '@/components/ui/card'
@@ -45,6 +46,49 @@ const VIEWERS = [
     blurb: 'Rainfall accumulation and maximum wind and gust speeds at Hawaiʻi Mesonet stations for the period starting 22 September 2026, 10:00 PM HST, updated every 15 minutes.',
   },
 ]
+
+// The live viewers' state lives in the URL: ?viewer=live|app|nolo&station=0115&view=dashboard|graphing|station-map|station-table|wind-map
+const VIEWS = [['dashboard', 'Dashboard'], ['graphing', 'Graphs'], ['station-map', 'Station map'], ['station-table', 'Station table'], ['wind-map', 'Wind map']]
+function viewerSrc(v, station, view) {
+  if (v.key === 'live') return `${v.src}#/${view || 'dashboard'}${station && (view === 'dashboard' || view === 'graphing' || !view) ? `?id=${encodeURIComponent(station)}` : ''}`
+  if (v.key === 'app') return station ? `https://hawaiimesonet.app/station/${encodeURIComponent(station)}` : v.src
+  return v.src
+}
+
+function ViewerTabs() {
+  const [params, setParams] = useSearchParams()
+  const viewer = VIEWERS.some((v) => v.key === params.get('viewer')) ? params.get('viewer') : 'live'
+  const station = params.get('station') || ''
+  const view = VIEWS.some(([k]) => k === params.get('view')) ? params.get('view') : ''
+  const [stations, setStations] = useState([])
+  useEffect(() => { fetch('/api/stations').then((r) => (r.ok ? r.json() : { stations: [] })).then((d) => setStations(d.stations || [])).catch(() => {}) }, [])
+  const set = (patch) => { const next = new URLSearchParams(params); Object.entries(patch).forEach(([k, val]) => (val ? next.set(k, val) : next.delete(k))); setParams(next, { replace: false }) }
+  return (
+    <Tabs value={viewer} onValueChange={(v) => set({ viewer: v === 'live' ? '' : v })}>
+      <TabsList className="h-auto flex-wrap justify-start">
+        {VIEWERS.map((v) => <TabsTrigger key={v.key} value={v.key}>{v.tab}</TabsTrigger>)}
+      </TabsList>
+      {(viewer === 'live' || viewer === 'app') && (
+        <div className="mt-3 flex flex-wrap items-end gap-3 text-sm" data-testid="station-picker">
+          <label className="flex flex-col gap-1"><span className="font-mono text-[10.5px] uppercase tracking-wider text-subtle">Station</span>
+            <select value={station} onChange={(e) => set({ station: e.target.value })} className="h-9 rounded-md border border-border bg-canvas px-2 text-sm">
+              <option value="">All stations</option>
+              {['hawaii', 'maui', 'molokai', 'lanai', 'oahu', 'kauai'].map((isl) => { const rows = stations.filter((s) => s.island === isl && s.status !== 'planned'); return rows.length ? <optgroup key={isl} label={{ hawaii: 'Hawaiʻi Island', maui: 'Maui', molokai: 'Molokaʻi', lanai: 'Lānaʻi', oahu: 'Oʻahu', kauai: 'Kauaʻi' }[isl]}>{rows.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.id})</option>)}</optgroup> : null })}
+            </select></label>
+          {viewer === 'live' && <label className="flex flex-col gap-1"><span className="font-mono text-[10.5px] uppercase tracking-wider text-subtle">View</span>
+            <select value={view || 'dashboard'} onChange={(e) => set({ view: e.target.value === 'dashboard' ? '' : e.target.value })} className="h-9 rounded-md border border-border bg-canvas px-2 text-sm">{VIEWS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>}
+          <span className="pb-2 text-xs text-subtle">This choice is in the address bar — copy the link to share it.</span>
+        </div>
+      )}
+      {VIEWERS.map((v) => (
+        <TabsContent key={v.key} value={v.key} className="mt-3">
+          <p className="mb-3 max-w-3xl text-sm text-subtle">{v.blurb} <ExternalLink href={v.key === 'live' && (station || view) ? `${HCDP}/hawaii-mesonet-data/#/${view || 'dashboard'}${station ? `?id=${station}` : ''}` : v.page}>Open it full screen</ExternalLink></p>
+          {viewer === v.key && <EmbedFrame key={viewerSrc(v, station, view)} src={viewerSrc(v, station, view)} title={v.title} fallbackHref={v.page} fallbackLabel={`open ${v.title}`} />}
+        </TabsContent>
+      ))}
+    </Tabs>
+  )
+}
 
 const MEASUREMENTS = [
   'Rainfall', 'Air temperature', 'Relative humidity', 'Wind speed and direction', 'Air pressure', 'Solar radiation',
@@ -94,17 +138,7 @@ export default function Mesonet() {
       </div>
 
       <Section id="viewers" title="Live viewers" lead={<p>Three ways to watch the network live. Only the open tab loads.</p>}>
-        <Tabs defaultValue="live">
-          <TabsList className="h-auto flex-wrap justify-start">
-            {VIEWERS.map((v) => <TabsTrigger key={v.key} value={v.key}>{v.tab}</TabsTrigger>)}
-          </TabsList>
-          {VIEWERS.map((v) => (
-            <TabsContent key={v.key} value={v.key} className="mt-3">
-              <p className="mb-3 max-w-3xl text-sm text-subtle">{v.blurb} <ExternalLink href={v.page}>Open it full screen</ExternalLink></p>
-              <EmbedFrame src={v.src} title={v.title} fallbackHref={v.page} fallbackLabel={`open ${v.title}`} />
-            </TabsContent>
-          ))}
-        </Tabs>
+        <ViewerTabs />
         <p className="mt-3 text-xs text-subtle">American Samoa has its own Mesonet: <ExternalLink href={`${HCDP}/hawaii-mesonet-data/#/american-samoa`}>American Samoa Mesonet Live Data Viewer</ExternalLink> (see <Link className="underline" to="/pacific">Pacific Portal</Link>).</p>
       </Section>
 

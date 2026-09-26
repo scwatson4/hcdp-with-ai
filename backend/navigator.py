@@ -44,6 +44,11 @@ ROUTES = [
     "/", "/about", "/about/team", "/about/history", "/about/acknowledgements", "/about/how-to-cite",
     "/data", "/data/api", "/data/tutorials", "/mesonet", "/climate-summary", "/pacific", "/extreme-events", "/tools",
 ]
+# Deep-link routes beyond ROUTES: per-storm and per-tool pages.
+ROUTE_PATTERNS = [re.compile(r"^/extreme-events/[a-z0-9-]+$"), re.compile(r"^/tools/[a-z0-9-]+$")]
+# Query keys each page understands (everything else is dropped as invalid).
+PAGE_QUERY_KEYS = {"/": {"ask"}, "/mesonet": {"viewer", "station", "view"}, "/climate-summary": {"year", "month"}}
+STATIONS_PATH = DATA_DIR / "mesonet_stations.json"
 INTENTS = {"navigate", "analysis", "info", "clarify"}
 VIEWER_QUERY_KEYS = {"ramp", "scale", "units", "compare", "stations", "lat", "lng", "z"}
 STATIC_HOSTS = {
@@ -134,14 +139,41 @@ def describe_view(v: dict) -> str:
 def valid_internal_path(path: str) -> bool:
     if not isinstance(path, str) or not path.startswith("/"):
         return False
-    base = path.split("#", 1)[0].split("?", 1)[0]
-    return base in ROUTES or parse_viewer_path(path.split("#", 1)[0]) is not None
+    no_hash = path.split("#", 1)[0]
+    base, _, query = no_hash.partition("?")
+    if parse_viewer_path(no_hash) is not None:
+        return True
+    if base not in ROUTES and not any(p.match(base) for p in ROUTE_PATTERNS):
+        return False
+    if query:
+        allowed = PAGE_QUERY_KEYS.get(base, set())
+        return all(part.split("=", 1)[0] in allowed for part in query.split("&") if part)
+    return True
+
+
+def load_stations(path: Path | None = None) -> list[dict]:
+    p = path or STATIONS_PATH
+    if p.exists():
+        with open(p, encoding="utf-8") as f:
+            return json.load(f).get("stations", [])
+    return []
+
+
+def stations_text(stations: list[dict]) -> str:
+    """Compact: one line per island, 'id name' pairs, active stations only."""
+    by = {}
+    for st in stations:
+        if st.get("status", "active") != "active":
+            continue
+        by.setdefault(st.get("island", "?"), []).append(f"{st['id']} {st['name']}")
+    return "\n".join(f"  {isl}: " + "; ".join(v) for isl, v in sorted(by.items()))
 
 
 class Navigator:
-    def __init__(self, llm, catalog: list[dict] | None = None, ai_interface_url: str = "", today: dt.date | None = None):
+    def __init__(self, llm, catalog: list[dict] | None = None, ai_interface_url: str = "", today: dt.date | None = None, stations: list[dict] | None = None):
         self.llm = llm
         self.catalog = catalog or load_catalog()
+        self.stations = stations if stations is not None else load_stations()
         self.ai_interface_url = (ai_interface_url or "").rstrip("/")
         self._today = today
         self.hosts = set(STATIC_HOSTS)
@@ -193,6 +225,14 @@ VIEWER DEEP LINKS: /viewer/{{dataset}}/{{period}}/{{date}}/{{extent}}
   extent: statewide, hawaii (Hawaiʻi Island / Big Island), maui, molokai, lanai, oahu, kauai
   Examples: /viewer/rainfall/day/2026-09-07/kauai   /viewer/spi-3/month/2026-08/statewide   /viewer/temperature-max/month/2026-08/oahu
   A storm's rainfall is best shown as daily rainfall on its peak day for the island hit hardest; a drought question as spi-3 for the last complete month (SPI links may name an island: the statewide grid is shown zoomed to it).
+MORE SHAREABLE LINKS (every state on this site has a URL):
+  /extreme-events/{{lowell|lala|nolo|kona-low-1|kona-low-2}}   one storm's section
+  /tools/{{slug}}   one tool's tile (slugs in the catalog's tool entries)
+  /mesonet?viewer=live|app|nolo&station={{id}}&view=dashboard|graphing|station-map|station-table|wind-map   the live Mesonet viewer on one station (use viewer=live with a station id; view=graphing for charts; app = the phone app)
+  /climate-summary?year=YYYY&month=M   the monthly summary for one month
+  /?ask={{url-encoded question}}   a link that asks this assistant a question on arrival (for sharing a question)
+MESONET STATIONS (id name), by island — use the id in station links; say the name in the reply:
+{stations_text(self.stations)}
 
 CATALOG (the only URLs you may use):
 {self.catalog_text()}

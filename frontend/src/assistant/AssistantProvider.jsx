@@ -67,6 +67,15 @@ export function AssistantProvider({ children }) {
 
   // Arriving on the landing page brings the conversation back into the inline box.
   useEffect(() => { if (location.pathname === '/') setMode('inline') }, [location.pathname])
+  // A shared question link (/?ask=…) asks it once on arrival.
+  const askedRef = useRef(false)
+  useEffect(() => {
+    const ask = new URLSearchParams(location.search).get('ask')
+    if (!ask || askedRef.current) return
+    askedRef.current = true
+    setTimeout(() => send(ask), 50)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search])
 
   useEffect(() => {
     const onKey = (e) => {

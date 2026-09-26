@@ -73,6 +73,12 @@ async def api_navigate(body: NavigateBody, request: Request):
     return await run_in_threadpool(nav.respond, body.message, body.history[-24:], body.context)
 
 
+@app.get("/api/stations")
+async def api_stations(request: Request):
+    """The Hawaiʻi Mesonet stations (id, name, island, lat, lng, status) for station pickers and links."""
+    return {"stations": request.app.state.navigator.stations}
+
+
 @app.get("/api/catalog")
 async def api_catalog(request: Request):
     return {"entries": request.app.state.navigator.catalog}

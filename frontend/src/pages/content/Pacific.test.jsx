@@ -9,7 +9,6 @@ describe('Pacific', () => {
   it('covers the American Samoa and Guam portals and the Pacific Portal hub', () => {
     const { container } = render(<MemoryRouter initialEntries={['/pacific']}><Pacific /></MemoryRouter>)
     expect(screen.getByRole('heading', { level: 1, name: 'Pacific Portal' })).toBeInTheDocument()
-    expect(screen.getByTestId('portal-source')).toHaveAttribute('href', `${HCDP}/pacific-portal/`)
     for (const id of ['american-samoa', 'guam', 'pacific-portal']) expect(container.querySelector(`section#${id}`)).not.toBeNull()
 
     const as = screen.getByRole('region', { name: 'American Samoa Climate Data Portal' })

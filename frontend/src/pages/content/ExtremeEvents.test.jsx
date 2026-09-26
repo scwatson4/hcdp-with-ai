@@ -19,7 +19,6 @@ describe('ExtremeEvents', () => {
   it('has one section per event, newest first, with the anchors the landing page uses', () => {
     const { container } = renderAt()
     expect(screen.getByRole('heading', { level: 1, name: 'Extreme Events' })).toBeInTheDocument()
-    expect(screen.getByTestId('portal-source')).toHaveAttribute('href', `${HCDP}/extreme-events/`)
     const ids = [...container.querySelectorAll('section[id]')].map((s) => s.id)
     expect(ids).toEqual(['nolo', 'lowell', 'lala', 'kona-lows'])
     const jump = screen.getByRole('navigation', { name: 'Events' })

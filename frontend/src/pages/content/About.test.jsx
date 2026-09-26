@@ -11,8 +11,6 @@ describe('AboutTeam', () => {
   it('lists every team member and contributor with their role and affiliation', () => {
     renderAt(<AboutTeam />, '/about/team')
     expect(screen.getByRole('heading', { level: 1, name: 'Team' })).toBeInTheDocument()
-    expect(screen.getByTestId('portal-source')).toHaveAttribute('href', `${HCDP}/team/`)
-    expect(screen.getByTestId('portal-source')).toHaveAttribute('target', '_blank')
     expect(screen.getAllByTestId('person')).toHaveLength(24)
 
     const ryan = screen.getByRole('heading', { name: 'Ryan Longman' }).closest('[data-testid="person"]')
@@ -37,7 +35,6 @@ describe('AboutHistory', () => {
   it('has the three history sections, the 2018 start and the Hurricane Lane map', () => {
     renderAt(<AboutHistory />, '/about/history')
     expect(screen.getByRole('heading', { level: 1, name: 'HCDP History' })).toBeInTheDocument()
-    expect(screen.getByTestId('portal-source')).toHaveAttribute('href', `${HCDP}/2339-2/`)
     for (const h of ['The climate of Hawaiʻi', 'Climate data in Hawaiʻi', 'Evolution of the HCDP']) {
       expect(screen.getByRole('heading', { level: 2, name: h })).toBeInTheDocument()
     }
@@ -68,7 +65,6 @@ describe('HowToCite', () => {
   it('shows every product group and all 30 citations with their journal links', () => {
     renderAt(<HowToCite />, '/about/how-to-cite')
     expect(screen.getByRole('heading', { level: 1, name: 'How to Cite' })).toBeInTheDocument()
-    expect(screen.getByTestId('portal-source')).toHaveAttribute('href', `${HCDP}/how-to-cite-3/`)
     for (const h of ['Hawaiʻi Climate Data Portal', 'HCDP Monthly Rainfall Maps', 'HCDP Rainfall Data', 'HCDP Daily and Monthly Temperature Maps', 'HCDP Daily and Monthly Temperature Data', 'Future Climate Projections', 'Standardized Precipitation Index', 'Trade Wind Inversion Data', 'Relevant Methods and Data Not Available on HCDP', 'Daily Rainfall and Temperature (Earlier Effort)']) {
       expect(screen.getByRole('heading', { level: 2, name: h })).toBeInTheDocument()
     }

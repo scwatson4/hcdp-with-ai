@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+import { useParams } from 'react-router-dom'
 import { Wrench, CloudRain, Globe2, Map as MapIcon, Sun, Leaf, BookOpen } from 'lucide-react'
 import { HCDP } from '../../site/nav'
 import { PageShell, Section } from './PageShell'
@@ -14,7 +16,7 @@ import { sectionRelated } from './contentUtils'
 // screenshot scaled from 1817 to 1600 px wide. Width and height are the
 // files' own, so the browser reserves the space before they load.
 
-const img = (file, width, height) => ({ src: `/tools/${file}`, width, height })
+const img = (file, width, height) => ({ src: `/tools/${file}`, width, height, slug: file.replace(/\.[a-z]+$/, '') })
 
 const TOOLS = [
   { name: 'Rainfall Atlas of Hawaiʻi', caption: 'Visualize rainfall across the state.', href: 'https://rainfall.geography.hawaii.edu/', image: img('rainfall-atlas.jpg', 663, 500), shade: 'navy' },
@@ -32,6 +34,12 @@ const TOOLS = [
 // The portal's "Climate Resources" list (its home-page sidebar).
 
 export default function ClimateTools() {
+  const { slug } = useParams()
+  useEffect(() => {
+    if (!slug) return undefined
+    const t = window.setTimeout(() => { const el = document.getElementById(`tool-${slug}`); el?.scrollIntoView({ block: 'center' }); el?.classList.add('ring-4', 'ring-accent'); setTimeout(() => el?.classList.remove('ring-4', 'ring-accent'), 2200) }, 80)
+    return () => window.clearTimeout(t)
+  }, [slug])
   return (
     <PageShell
       title="Climate Tools"

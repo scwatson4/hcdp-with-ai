@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { CalendarDays, CloudRain, Thermometer, Sun, Mail, MapPin, BarChart3, FileText, RadioTower } from 'lucide-react'
 import { HCDP } from '../../site/nav'
 import { Card } from '@/components/ui/card'
@@ -18,6 +18,29 @@ const SUMMARY_PAGE = `${HCDP}/climate-summary/`
 const SUMMARY_APP = 'https://cherryleh.github.io/climate-summary/#/'
 // The portal page passes its #hash through to the app, so these deep links work.
 const page = (route) => `${SUMMARY_PAGE}#/${route}`
+
+// The month lives in the URL: /climate-summary?year=2026&month=8 (the app reads #/?year=&month=)
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+function MonthPicker() {
+  const [params, setParams] = useSearchParams()
+  const year = /^\d{4}$/.test(params.get('year') || '') ? params.get('year') : ''
+  const month = /^(1[0-2]|[1-9])$/.test(params.get('month') || '') ? params.get('month') : ''
+  const src = year && month ? `${SUMMARY_APP}?year=${year}&month=${month}` : SUMMARY_APP
+  const set = (patch) => { const next = new URLSearchParams(params); Object.entries(patch).forEach(([k, v]) => (v ? next.set(k, v) : next.delete(k))); setParams(next) }
+  const years = []; for (let y = 2026; y >= 2020; y -= 1) years.push(String(y))
+  return (
+    <>
+      <div className="mb-3 flex flex-wrap items-end gap-3 text-sm" data-testid="month-picker">
+        <label className="flex flex-col gap-1"><span className="font-mono text-[10.5px] uppercase tracking-wider text-subtle">Month</span>
+          <select value={month} onChange={(e) => set({ month: e.target.value, year: year || '2026' })} className="h-9 rounded-md border border-border bg-canvas px-2 text-sm"><option value="">Latest</option>{MONTHS.map((m, i) => <option key={m} value={String(i + 1)}>{m}</option>)}</select></label>
+        <label className="flex flex-col gap-1"><span className="font-mono text-[10.5px] uppercase tracking-wider text-subtle">Year</span>
+          <select value={year} onChange={(e) => set({ year: e.target.value, month: month || '8' })} className="h-9 rounded-md border border-border bg-canvas px-2 text-sm"><option value="">Latest</option>{years.map((y) => <option key={y} value={y}>{y}</option>)}</select></label>
+        <span className="pb-2 text-xs text-subtle">The month is in the address bar — copy the link to share it.</span>
+      </div>
+      <EmbedFrame key={src} src={src} title="Hawaiʻi Monthly Climate Summary" fallbackHref={year && month ? `${SUMMARY_PAGE}#/?year=${year}&month=${month}` : SUMMARY_PAGE} fallbackLabel="open the Monthly Climate Summary" deferred={!(year && month)} />
+    </>
+  )
+}
 
 const DATASETS = [
   { icon: CloudRain, name: 'Rainfall', text: 'Monthly precipitation totals and anomalies compared to the long-term average: how wet or dry a period was relative to history.' },
@@ -187,7 +210,7 @@ export default function ClimateSummary() {
       </Section>
 
       <Section id="dashboard" title="The dashboard" lead={<p>The summary itself, embedded from the portal.</p>}>
-        <EmbedFrame src={SUMMARY_APP} title="Hawaiʻi Monthly Climate Summary" fallbackHref={SUMMARY_PAGE} fallbackLabel="open the Monthly Climate Summary" deferred />
+        <MonthPicker />
       </Section>
 
       <Section id="supported" title="Supported by">

@@ -26,12 +26,8 @@ export function PageShell({ title, lead, source, sourceLabel = 'This page on the
   useHashScroll()
   return (
     <article className={cn('mx-auto w-full max-w-4xl px-4 py-8 sm:py-10', className)}>
-      {source && (
-        <p className="text-xs text-subtle">
-          <ExternalLink href={source} plain className="hover:text-foreground" data-testid="portal-source">{sourceLabel}</ExternalLink>
-        </p>
-      )}
-      <header className="mt-3">
+      {/* The "Original HCDP version" link now lives in the bar above every page (components/OriginalLink). */}
+      <header>
         <div className="flex items-start gap-3">
           {Icon && (
             <span className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-accent-soft text-accent">

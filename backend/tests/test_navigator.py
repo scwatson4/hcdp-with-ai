@@ -36,6 +36,10 @@ def test_viewer_path_grammar():
     assert parse_viewer_path("/viewer/rainfall/day/2026-09-07/kauai?evil=1") is None
     assert valid_internal_path("/extreme-events#lowell")
     assert valid_internal_path("/about/team")
+    assert valid_internal_path("/extreme-events/lowell") and valid_internal_path("/tools/h-rip")
+    assert valid_internal_path("/mesonet?viewer=live&station=0115&view=dashboard")
+    assert valid_internal_path("/climate-summary?year=2026&month=8") and valid_internal_path("/?ask=rainfall%20map")
+    assert not valid_internal_path("/mesonet?evil=1") and not valid_internal_path("/tools/../x") and not valid_internal_path("/extreme-events/Lowell!")
     assert not valid_internal_path("/admin")
     assert not valid_internal_path("https://www.hawaii.edu/")
 
@@ -118,3 +122,9 @@ def test_today_is_hawaii_time_when_not_overridden():
     from zoneinfo import ZoneInfo
     nav = Navigator(FakeLLM({}), SEED_CATALOG)
     assert nav.today() == dt.datetime.now(ZoneInfo("Pacific/Honolulu")).date()
+
+
+def test_prompt_lists_stations_for_links():
+    nav = Navigator(FakeLLM({}), SEED_CATALOG, today=dt.date(2026, 9, 25), stations=[{"id": "0115", "name": "Hilo", "island": "hawaii", "status": "active"}, {"id": "0999", "name": "Planned", "island": "maui", "status": "planned"}])
+    s = nav.system_prompt({"path": "/"})
+    assert "hawaii: 0115 Hilo" in s and "0999" not in s and "/mesonet?viewer=live" in s

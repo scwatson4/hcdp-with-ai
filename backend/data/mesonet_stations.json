@@ -1,0 +1,838 @@
+{
+ "as_of": "2026-09-26",
+ "source": "HCDP AI interface station registry (chatbot/mesonet_stations.py)",
+ "stations": [
+  {
+   "id": "0201",
+   "name": "Nahuku",
+   "island": "hawaii",
+   "lat": 19.4142,
+   "lng": -155.235,
+   "status": "active"
+  },
+  {
+   "id": "0202",
+   "name": "Keaau",
+   "island": "hawaii",
+   "lat": 19.622,
+   "lng": -155.038,
+   "status": "active"
+  },
+  {
+   "id": "0203",
+   "name": "Olaa",
+   "island": "hawaii",
+   "lat": 19.65,
+   "lng": -155.185,
+   "status": "planned"
+  },
+  {
+   "id": "0204",
+   "name": "Pahoa",
+   "island": "hawaii",
+   "lat": 19.493,
+   "lng": -154.946,
+   "status": "active"
+  },
+  {
+   "id": "0211",
+   "name": "Kanakaleonui",
+   "island": "hawaii",
+   "lat": 19.834,
+   "lng": -155.221,
+   "status": "active"
+  },
+  {
+   "id": "0212",
+   "name": "Kulaimano",
+   "island": "hawaii",
+   "lat": 19.851,
+   "lng": -155.164,
+   "status": "active"
+  },
+  {
+   "id": "0213",
+   "name": "Piihonua",
+   "island": "hawaii",
+   "lat": 19.742,
+   "lng": -155.135,
+   "status": "active"
+  },
+  {
+   "id": "0214",
+   "name": "Waipunalei",
+   "island": "hawaii",
+   "lat": 19.862,
+   "lng": -155.113,
+   "status": "active"
+  },
+  {
+   "id": "0215",
+   "name": "Hakalau",
+   "island": "hawaii",
+   "lat": 19.874,
+   "lng": -155.104,
+   "status": "planned"
+  },
+  {
+   "id": "0216",
+   "name": "Punahoa",
+   "island": "hawaii",
+   "lat": 19.8,
+   "lng": -155.15,
+   "status": "planned"
+  },
+  {
+   "id": "0221",
+   "name": "Kaluamakani",
+   "island": "hawaii",
+   "lat": 19.515,
+   "lng": -155.86,
+   "status": "active"
+  },
+  {
+   "id": "0222",
+   "name": "Aipalaoa",
+   "island": "hawaii",
+   "lat": 19.497,
+   "lng": -155.843,
+   "status": "active"
+  },
+  {
+   "id": "0223",
+   "name": "Naohuleelua",
+   "island": "hawaii",
+   "lat": 19.478,
+   "lng": -155.87,
+   "status": "planned"
+  },
+  {
+   "id": "0224",
+   "name": "Puuheewai",
+   "island": "hawaii",
+   "lat": 19.46,
+   "lng": -155.85,
+   "status": "planned"
+  },
+  {
+   "id": "0225",
+   "name": "Alaekila",
+   "island": "hawaii",
+   "lat": 19.442,
+   "lng": -155.83,
+   "status": "planned"
+  },
+  {
+   "id": "0231",
+   "name": "Kaiholena",
+   "island": "hawaii",
+   "lat": 19.88,
+   "lng": -155.85,
+   "status": "active"
+  },
+  {
+   "id": "0232",
+   "name": "Kahilipalinui",
+   "island": "hawaii",
+   "lat": 19.107,
+   "lng": -155.75,
+   "status": "planned"
+  },
+  {
+   "id": "0233",
+   "name": "Ka Lae",
+   "island": "hawaii",
+   "lat": 18.913,
+   "lng": -155.681,
+   "status": "planned"
+  },
+  {
+   "id": "0234",
+   "name": "Kahuku",
+   "island": "hawaii",
+   "lat": 19.072,
+   "lng": -155.692,
+   "status": "planned"
+  },
+  {
+   "id": "0235",
+   "name": "Manuka",
+   "island": "hawaii",
+   "lat": 19.059,
+   "lng": -155.852,
+   "status": "active"
+  },
+  {
+   "id": "0241",
+   "name": "Keahuolu",
+   "island": "hawaii",
+   "lat": 19.655,
+   "lng": -155.981,
+   "status": "active"
+  },
+  {
+   "id": "0242",
+   "name": "Kaiaulu Puuwaawaa",
+   "island": "hawaii",
+   "lat": 19.774,
+   "lng": -155.873,
+   "status": "active"
+  },
+  {
+   "id": "0243",
+   "name": "Kona Hema",
+   "island": "hawaii",
+   "lat": 19.521,
+   "lng": -155.913,
+   "status": "active"
+  },
+  {
+   "id": "0244",
+   "name": "Kealakekua",
+   "island": "hawaii",
+   "lat": 19.513,
+   "lng": -155.924,
+   "status": "active"
+  },
+  {
+   "id": "0245",
+   "name": "Kipuka Nui",
+   "island": "hawaii",
+   "lat": 19.487,
+   "lng": -155.868,
+   "status": "inactive"
+  },
+  {
+   "id": "0246",
+   "name": "Kona Ag",
+   "island": "hawaii",
+   "lat": 19.534,
+   "lng": -155.876,
+   "status": "active"
+  },
+  {
+   "id": "0247",
+   "name": "Kipahoehoe",
+   "island": "hawaii",
+   "lat": 19.43,
+   "lng": -155.89,
+   "status": "planned"
+  },
+  {
+   "id": "0248",
+   "name": "Kauhuku Mauka",
+   "island": "hawaii",
+   "lat": 19.45,
+   "lng": -155.91,
+   "status": "planned"
+  },
+  {
+   "id": "0251",
+   "name": "Kehena",
+   "island": "hawaii",
+   "lat": 20.014,
+   "lng": -155.803,
+   "status": "active"
+  },
+  {
+   "id": "0252",
+   "name": "Lalamilo",
+   "island": "hawaii",
+   "lat": 19.983,
+   "lng": -155.802,
+   "status": "active"
+  },
+  {
+   "id": "0253",
+   "name": "Puuloa",
+   "island": "hawaii",
+   "lat": 19.943,
+   "lng": -155.805,
+   "status": "active"
+  },
+  {
+   "id": "0254",
+   "name": "Kawaihae",
+   "island": "hawaii",
+   "lat": 19.924,
+   "lng": -155.836,
+   "status": "active"
+  },
+  {
+   "id": "0255",
+   "name": "Waipoo",
+   "island": "hawaii",
+   "lat": 19.963,
+   "lng": -155.783,
+   "status": "active"
+  },
+  {
+   "id": "0256",
+   "name": "Mealani",
+   "island": "hawaii",
+   "lat": 19.919,
+   "lng": -155.784,
+   "status": "active"
+  },
+  {
+   "id": "0257",
+   "name": "Io",
+   "island": "hawaii",
+   "lat": 19.834,
+   "lng": -155.578,
+   "status": "active"
+  },
+  {
+   "id": "0258",
+   "name": "Iole",
+   "island": "hawaii",
+   "lat": 19.851,
+   "lng": -155.569,
+   "status": "active"
+  },
+  {
+   "id": "0259",
+   "name": "Puuoli",
+   "island": "hawaii",
+   "lat": 19.87,
+   "lng": -155.55,
+   "status": "planned"
+  },
+  {
+   "id": "0260",
+   "name": "Puanui",
+   "island": "hawaii",
+   "lat": 19.89,
+   "lng": -155.53,
+   "status": "planned"
+  },
+  {
+   "id": "0281",
+   "name": "IPIF",
+   "island": "hawaii",
+   "lat": 19.706,
+   "lng": -155.079,
+   "status": "active"
+  },
+  {
+   "id": "0282",
+   "name": "Spencer",
+   "island": "hawaii",
+   "lat": 19.926,
+   "lng": -155.825,
+   "status": "active"
+  },
+  {
+   "id": "0283",
+   "name": "Laupahoehoe",
+   "island": "hawaii",
+   "lat": 19.983,
+   "lng": -155.234,
+   "status": "active"
+  },
+  {
+   "id": "0286",
+   "name": "Palamanui",
+   "island": "hawaii",
+   "lat": 19.728,
+   "lng": -155.992,
+   "status": "active"
+  },
+  {
+   "id": "0287",
+   "name": "Mamalahoa",
+   "island": "hawaii",
+   "lat": 19.69,
+   "lng": -155.96,
+   "status": "active"
+  },
+  {
+   "id": "0288",
+   "name": "Puuwaawaa",
+   "island": "hawaii",
+   "lat": 19.783,
+   "lng": -155.867,
+   "status": "active"
+  },
+  {
+   "id": "0501",
+   "name": "Lyon",
+   "island": "oahu",
+   "lat": 21.333,
+   "lng": -157.802,
+   "status": "active"
+  },
+  {
+   "id": "0502",
+   "name": "Nuuanu Res 1",
+   "island": "oahu",
+   "lat": 21.34,
+   "lng": -157.836,
+   "status": "active"
+  },
+  {
+   "id": "0503",
+   "name": "Upper Waolani",
+   "island": "oahu",
+   "lat": 21.346,
+   "lng": -157.819,
+   "status": "active"
+  },
+  {
+   "id": "0504",
+   "name": "Waolani",
+   "island": "oahu",
+   "lat": 21.352,
+   "lng": -157.818,
+   "status": "active"
+  },
+  {
+   "id": "0505",
+   "name": "Napuumaia",
+   "island": "oahu",
+   "lat": 21.327,
+   "lng": -157.828,
+   "status": "active"
+  },
+  {
+   "id": "0506",
+   "name": "Kalawahine",
+   "island": "oahu",
+   "lat": 21.329,
+   "lng": -157.824,
+   "status": "active"
+  },
+  {
+   "id": "0521",
+   "name": "Kaala",
+   "island": "oahu",
+   "lat": 21.506,
+   "lng": -158.144,
+   "status": "active"
+  },
+  {
+   "id": "0522",
+   "name": "Palikea",
+   "island": "oahu",
+   "lat": 21.425,
+   "lng": -158.098,
+   "status": "planned"
+  },
+  {
+   "id": "0531",
+   "name": "Kaluanui Ridge",
+   "island": "oahu",
+   "lat": 21.394,
+   "lng": -157.842,
+   "status": "active"
+  },
+  {
+   "id": "0532",
+   "name": "Palolo Mauka",
+   "island": "oahu",
+   "lat": 21.31,
+   "lng": -157.787,
+   "status": "active"
+  },
+  {
+   "id": "0541",
+   "name": "Kaaawa Makai",
+   "island": "oahu",
+   "lat": 21.55,
+   "lng": -157.848,
+   "status": "active"
+  },
+  {
+   "id": "0542",
+   "name": "Poamoho LZ",
+   "island": "oahu",
+   "lat": 21.535,
+   "lng": -158.083,
+   "status": "planned"
+  },
+  {
+   "id": "0543",
+   "name": "Poamoho Summit",
+   "island": "oahu",
+   "lat": 21.525,
+   "lng": -158.077,
+   "status": "planned"
+  },
+  {
+   "id": "0544",
+   "name": "Waiawa",
+   "island": "oahu",
+   "lat": 21.46,
+   "lng": -157.954,
+   "status": "planned"
+  },
+  {
+   "id": "0551",
+   "name": "Kalahee Ridge",
+   "island": "oahu",
+   "lat": 21.364,
+   "lng": -157.775,
+   "status": "active"
+  },
+  {
+   "id": "0533",
+   "name": "Maunawili Pālāwai",
+   "island": "oahu",
+   "lat": 21.36827,
+   "lng": -157.76272,
+   "status": "active"
+  },
+  {
+   "id": "0115",
+   "name": "Piiholo",
+   "island": "maui",
+   "lat": 20.923,
+   "lng": -156.279,
+   "status": "active"
+  },
+  {
+   "id": "0116",
+   "name": "Keokea",
+   "island": "maui",
+   "lat": 20.714,
+   "lng": -156.353,
+   "status": "active"
+  },
+  {
+   "id": "0118",
+   "name": "Pulehu",
+   "island": "maui",
+   "lat": 20.836,
+   "lng": -156.349,
+   "status": "active"
+  },
+  {
+   "id": "0119",
+   "name": "Kula Ag",
+   "island": "maui",
+   "lat": 20.757,
+   "lng": -156.326,
+   "status": "active"
+  },
+  {
+   "id": "0121",
+   "name": "Lipoa",
+   "island": "maui",
+   "lat": 20.884,
+   "lng": -156.449,
+   "status": "active"
+  },
+  {
+   "id": "0122",
+   "name": "Kaehu",
+   "island": "maui",
+   "lat": 20.929,
+   "lng": -156.453,
+   "status": "active"
+  },
+  {
+   "id": "0131",
+   "name": "Lahaina WTP",
+   "island": "maui",
+   "lat": 20.873,
+   "lng": -156.678,
+   "status": "active"
+  },
+  {
+   "id": "0132",
+   "name": "Olowalu",
+   "island": "maui",
+   "lat": 20.81,
+   "lng": -156.612,
+   "status": "active"
+  },
+  {
+   "id": "0134",
+   "name": "Hanaula",
+   "island": "maui",
+   "lat": 20.888,
+   "lng": -156.594,
+   "status": "active"
+  },
+  {
+   "id": "0141",
+   "name": "Auwahi",
+   "island": "maui",
+   "lat": 20.638,
+   "lng": -156.358,
+   "status": "active"
+  },
+  {
+   "id": "0143",
+   "name": "Nakula",
+   "island": "maui",
+   "lat": 20.625,
+   "lng": -156.291,
+   "status": "active"
+  },
+  {
+   "id": "0144",
+   "name": "Kahikinui",
+   "island": "maui",
+   "lat": 20.634,
+   "lng": -156.278,
+   "status": "active"
+  },
+  {
+   "id": "0145",
+   "name": "Upper Kahikinui",
+   "island": "maui",
+   "lat": 20.65,
+   "lng": -156.278,
+   "status": "active"
+  },
+  {
+   "id": "0151",
+   "name": "Park HQ",
+   "island": "maui",
+   "lat": 20.763,
+   "lng": -156.173,
+   "status": "active"
+  },
+  {
+   "id": "0152",
+   "name": "Nene Nest",
+   "island": "maui",
+   "lat": 20.757,
+   "lng": -156.197,
+   "status": "active"
+  },
+  {
+   "id": "0153",
+   "name": "Summit",
+   "island": "maui",
+   "lat": 20.714,
+   "lng": -156.253,
+   "status": "active"
+  },
+  {
+   "id": "0154",
+   "name": "Waikamoi",
+   "island": "maui",
+   "lat": 20.807,
+   "lng": -156.235,
+   "status": "active"
+  },
+  {
+   "id": "0155",
+   "name": "EMI Base Yard",
+   "island": "maui",
+   "lat": 20.91,
+   "lng": -156.225,
+   "status": "active"
+  },
+  {
+   "id": "0156",
+   "name": "West Kuiaha",
+   "island": "maui",
+   "lat": 20.918,
+   "lng": -156.276,
+   "status": "active"
+  },
+  {
+   "id": "0160",
+   "name": "Kuiki",
+   "island": "maui",
+   "lat": 20.685,
+   "lng": -156.14,
+   "status": "active"
+  },
+  {
+   "id": "0161",
+   "name": "Pohaku Palaha",
+   "island": "maui",
+   "lat": 20.716,
+   "lng": -156.14,
+   "status": "active"
+  },
+  {
+   "id": "0162",
+   "name": "Treeline",
+   "island": "maui",
+   "lat": 20.78,
+   "lng": -156.22,
+   "status": "planned"
+  },
+  {
+   "id": "0164",
+   "name": "Big Bog",
+   "island": "maui",
+   "lat": 20.92,
+   "lng": -156.2,
+   "status": "planned"
+  },
+  {
+   "id": "0165",
+   "name": "Hamoa",
+   "island": "maui",
+   "lat": 20.723,
+   "lng": -156.009,
+   "status": "active"
+  },
+  {
+   "id": "0166",
+   "name": "Kipahulu VC",
+   "island": "maui",
+   "lat": 20.658,
+   "lng": -156.043,
+   "status": "active"
+  },
+  {
+   "id": "0601",
+   "name": "Waipa",
+   "island": "kauai",
+   "lat": 22.205,
+   "lng": -159.514,
+   "status": "active"
+  },
+  {
+   "id": "0602",
+   "name": "Common Ground",
+   "island": "kauai",
+   "lat": 22.212,
+   "lng": -159.569,
+   "status": "active"
+  },
+  {
+   "id": "0603",
+   "name": "Lower Limahuli",
+   "island": "kauai",
+   "lat": 22.218,
+   "lng": -159.578,
+   "status": "active"
+  },
+  {
+   "id": "0604",
+   "name": "Upper Limahuli",
+   "island": "kauai",
+   "lat": 22.205,
+   "lng": -159.578,
+   "status": "planned"
+  },
+  {
+   "id": "0611",
+   "name": "Kealia",
+   "island": "kauai",
+   "lat": 22.108,
+   "lng": -159.3,
+   "status": "active"
+  },
+  {
+   "id": "0621",
+   "name": "Lawai NTBG",
+   "island": "kauai",
+   "lat": 21.91,
+   "lng": -159.51,
+   "status": "active"
+  },
+  {
+   "id": "0631",
+   "name": "Polihale",
+   "island": "kauai",
+   "lat": 22.07,
+   "lng": -159.745,
+   "status": "planned"
+  },
+  {
+   "id": "0632",
+   "name": "Kitano Reservoir",
+   "island": "kauai",
+   "lat": 22.04,
+   "lng": -159.66,
+   "status": "planned"
+  },
+  {
+   "id": "0641",
+   "name": "Hanamaulu",
+   "island": "kauai",
+   "lat": 22.036,
+   "lng": -159.359,
+   "status": "active"
+  },
+  {
+   "id": "0642",
+   "name": "Powerline Trail",
+   "island": "kauai",
+   "lat": 22.12,
+   "lng": -159.42,
+   "status": "planned"
+  },
+  {
+   "id": "0411",
+   "name": "Keopukaloa",
+   "island": "molokai",
+   "lat": 21.123,
+   "lng": -156.852,
+   "status": "active"
+  },
+  {
+   "id": "0412",
+   "name": "Honoulimaloo",
+   "island": "molokai",
+   "lat": 21.118,
+   "lng": -156.811,
+   "status": "active"
+  },
+  {
+   "id": "0413",
+   "name": "Ualapue",
+   "island": "molokai",
+   "lat": 21.077,
+   "lng": -156.791,
+   "status": "planned"
+  },
+  {
+   "id": "0414",
+   "name": "Pepeopae",
+   "island": "molokai",
+   "lat": 21.105,
+   "lng": -156.906,
+   "status": "planned"
+  },
+  {
+   "id": "0421",
+   "name": "Kualapuu",
+   "island": "molokai",
+   "lat": 21.154,
+   "lng": -157.033,
+   "status": "active"
+  },
+  {
+   "id": "0422",
+   "name": "Naiwa",
+   "island": "molokai",
+   "lat": 21.135,
+   "lng": -156.978,
+   "status": "active"
+  },
+  {
+   "id": "0431",
+   "name": "Anapuka",
+   "island": "molokai",
+   "lat": 21.183,
+   "lng": -157.12,
+   "status": "active"
+  },
+  {
+   "id": "0133",
+   "name": "Honolua",
+   "island": "maui",
+   "lat": 21.01,
+   "lng": -156.638,
+   "status": "active"
+  },
+  {
+   "id": "0520",
+   "name": "Kaala Repeater",
+   "island": "oahu",
+   "lat": 21.509,
+   "lng": -158.147,
+   "status": "inactive"
+  }
+ ]
+}

@@ -36,6 +36,22 @@ no sign-in, saves no conversation history (memory only, per tab), and has no vis
 Run the frontend tests with `cd frontend && npx vitest run`, the backend tests with
 `cd backend && python -m pytest -q`. Keep both green.
 
+## The URL principle
+Every state on this site has its own shareable URL — a map, a station, a month, a storm, a tool, even a
+question to the assistant — because HCDP's own pages cannot do that. Every page shows an **"Original HCDP
+version"** link in the bar under the header (`frontend/src/site/original.js` maps our URLs to theirs; many of
+ours map to one of theirs) and a **"Share this view"** copier. Adding anything new means: put its state in
+the URL, register the query keys / route pattern in `backend/navigator.py` (`PAGE_QUERY_KEYS`,
+`ROUTE_PATTERNS`), add it to the catalog so the navigator can produce it, and map it in `original.js`.
+
+```
+/extreme-events/{lowell|lala|nolo|kona-low-1|kona-low-2}         one storm
+/tools/{slug}                                                     one tool tile (slug = image name)
+/mesonet?viewer=live|app|nolo&station={id}&view=dashboard|graphing|station-map|station-table|wind-map
+/climate-summary?year=YYYY&month=M                                one month in the summary app
+/?ask={url-encoded question}                                      asks the assistant on arrival
+```
+
 ## Routes (internal)
 ```
 /                         landing: tools + "What are you looking for?"

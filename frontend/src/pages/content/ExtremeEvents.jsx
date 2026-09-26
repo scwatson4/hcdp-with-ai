@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { useMemo, useEffect } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import { CloudLightning, CalendarDays, MapPin, ArrowRight } from 'lucide-react'
 import { formatViewerPath, describeViewer } from '../../viewer/urlGrammar'
 import { HCDP } from '../../site/nav'
@@ -214,7 +214,16 @@ function ViewerCard({ event, noloDays }) {
   )
 }
 
+const SLUG_TO_ID = { 'kona-low-1': 'kona-lows', 'kona-low-2': 'kona-lows' }
+
 export default function ExtremeEvents() {
+  const { slug } = useParams()
+  useEffect(() => {
+    if (!slug) return undefined
+    const id = SLUG_TO_ID[slug] || slug
+    const t = window.setTimeout(() => document.getElementById(id)?.scrollIntoView({ block: 'start' }), 80)
+    return () => window.clearTimeout(t)
+  }, [slug])
   const noloDays = useMemo(() => dayRange(NOLO_START, yesterday(), 7), [])
   return (
     <PageShell

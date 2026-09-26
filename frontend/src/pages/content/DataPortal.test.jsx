@@ -39,7 +39,6 @@ describe('AccessData', () => {
   it('has the portal button, the datasets table and the embedded portal', () => {
     renderAt(<AccessData />, '/data')
     expect(screen.getByRole('heading', { level: 1, name: 'Access Data' })).toBeInTheDocument()
-    expect(screen.getByTestId('portal-source')).toHaveAttribute('href', `${HCDP}/data-portal/`)
     const open = screen.getByRole('link', { name: /Open the HCDP data portal/ })
     expect(open).toHaveAttribute('href', `${HCDP}/data-portal/`)
     expect(open).toHaveAttribute('target', '_blank')
@@ -84,7 +83,6 @@ describe('ApiAccess', () => {
   it('mirrors the API page: token form, docs, base URL, endpoints and examples', () => {
     renderAt(<ApiAccess />, '/data/api')
     expect(screen.getByRole('heading', { level: 1, name: 'HCDP / Hawaiʻi Mesonet API' })).toBeInTheDocument()
-    expect(screen.getByTestId('portal-source')).toHaveAttribute('href', `${HCDP}/hcdp-hawaii-mesonet-api/`)
     expect(screen.getByRole('link', { name: /Request an API token/ })).toHaveAttribute('href', expect.stringContaining('docs.google.com/forms/d/e/1FAIpQLSezcHP7aGTKsJldx0HSOBrw4hTgT9R3M-aR72BDZDbsrOJGkQ'))
     expect(screen.getByRole('link', { name: /HCDP & Hawaiʻi Mesonet API Documentation/ })).toHaveAttribute('href', 'https://hcdp.github.io/hcdp_api_docs/')
     for (const h of ['Get a token', 'Endpoints', 'Parameters', 'Documented examples', 'Quick start']) {
@@ -106,7 +104,6 @@ describe('Tutorials', () => {
   it('lists the three portal tutorials with their links', () => {
     renderAt(<Tutorials />, '/data/tutorials')
     expect(screen.getByRole('heading', { level: 1, name: 'Tutorials' })).toBeInTheDocument()
-    expect(screen.getByTestId('portal-source')).toHaveAttribute('href', `${HCDP}/tutorials/`)
     for (const t of ['Visualize Data Tutorial – Make A Map', 'Visualize Data Tutorial – Explore Station Data', 'Export Data Tutorial']) {
       expect(screen.getByRole('heading', { level: 3, name: t })).toBeInTheDocument()
     }

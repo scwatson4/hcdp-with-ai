@@ -75,7 +75,7 @@ export function ToolTileGrid({ tools, label, headingLevel = 2, className }) {
   return (
     <ul role="list" aria-label={label} className={cn('grid gap-x-7 gap-y-8 sm:grid-cols-2 sm:gap-y-10 lg:grid-cols-3', className)}>
       {tools.map((t) => (
-        <li key={t.name} className={cn('min-w-0', t.center && 'lg:col-start-2')}>
+        <li key={t.name} id={t.image?.slug ? `tool-${t.image.slug}` : undefined} className={cn('min-w-0 rounded-[10px] transition-shadow', t.center && 'lg:col-start-2')}>
           <ToolTile tool={t} headingLevel={headingLevel} />
         </li>
       ))}

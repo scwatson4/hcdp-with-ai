@@ -10,7 +10,6 @@ describe('ClimateSummary', () => {
   it('explains the monthly summary, its statistics and how ranks work', () => {
     renderPage()
     expect(screen.getByRole('heading', { level: 1, name: 'Monthly Climate Summary' })).toBeInTheDocument()
-    expect(screen.getByTestId('portal-source')).toHaveAttribute('href', `${HCDP}/climate-summary/`)
     expect(screen.getByRole('heading', { level: 2, name: 'How the numbers and ranks work' })).toBeInTheDocument()
     expect(screen.getByText(/2nd Wettest out of 30 years/)).toBeInTheDocument()
     expect(screen.getByText(/Rank 1 is the most extreme/)).toBeInTheDocument()

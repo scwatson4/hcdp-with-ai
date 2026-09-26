@@ -10,6 +10,7 @@ import app as appmod  # noqa: E402
 
 class StubNavigator:
     catalog = [{"id": "x", "title": "X"}]
+    stations = [{"id": "0115", "name": "Hilo"}]
 
     def system_prompt(self, context=None):
         return "stub prompt"
@@ -92,3 +93,8 @@ def test_map_png_validates_like_raster():
     c = client()
     assert c.get("/api/map.png", params={"dataset": "wind", "period": "day", "date": "2026-09-01"}).status_code == 400
     assert c.get("/api/map.png", params={"dataset": "rainfall", "period": "month", "date": "2026-08", "ramp": "magma"}).status_code == 400
+
+
+def test_stations_endpoint():
+    c = client()
+    assert c.get("/api/stations").json()["stations"][0]["id"] == "0115"

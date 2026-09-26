@@ -10,7 +10,6 @@ describe('Mesonet', () => {
   it('describes the network, its station count and what each station measures', () => {
     renderPage()
     expect(screen.getByRole('heading', { level: 1, name: 'Hawaiʻi Mesonet' })).toBeInTheDocument()
-    expect(screen.getByTestId('portal-source')).toHaveAttribute('href', `${HCDP}/hawaii-mesonet/`)
     expect(screen.getByText(/approximately 100 telemetered stations/)).toBeInTheDocument()
     expect(screen.getByText('stations active (September 2026)')).toBeInTheDocument()
     for (const h of ['What is the Hawaiʻi Mesonet and why is it needed?', 'Do we need so many stations?', 'What does each station measure?', 'Who needs the data?', 'Who pays for it?']) {
@@ -27,7 +26,7 @@ describe('Mesonet', () => {
     let frames = document.querySelectorAll('iframe')
     expect(frames).toHaveLength(1)
     expect(frames[0]).toHaveAttribute('title', 'Hawaiʻi Mesonet Live Data Access')
-    expect(frames[0]).toHaveAttribute('src', 'https://cherryleh.github.io/mesonet/?source=iframe')
+    expect(frames[0]).toHaveAttribute('src', 'https://cherryleh.github.io/mesonet/?source=iframe#/dashboard')
 
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Tropical Storm Nolo' }))
     frames = document.querySelectorAll('iframe')

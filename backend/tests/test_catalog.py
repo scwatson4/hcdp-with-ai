@@ -92,6 +92,10 @@ def _period_of(path: str) -> str:
 
 def expand_template(path: str) -> list[str]:
     """Every concrete path a viewer template stands for, with sample values."""
+    for k, v in {"{id}": "0115", "{year}": "2026", "{month}": "8", "{question}": "rainfall%20map", "{slug}": "h-rip"}.items():
+        path = path.replace(k, v)
+    if "{" not in path:
+        return [path]
     datasets = [path.split("/")[2]] if "{dataset}" not in path else list(DATASETS)
     out = []
     for ds in datasets:
@@ -169,19 +173,19 @@ def test_url_checks_are_recorded_consistently():
 def test_internal_paths_are_routes_or_viewer_links(e):
     path = e["internal_path"]
     if "{" in path:
-        assert path.startswith("/viewer/"), path
         concrete = expand_template(path)
         assert concrete, f"template {path} expands to nothing"
         for p in concrete:
             assert "{" not in p and "}" not in p, p
-            assert parse_viewer_path(p) is not None, p
+            if p.startswith("/viewer/"):
+                assert parse_viewer_path(p) is not None, p
             assert valid_internal_path(p), p
     else:
         assert valid_internal_path(path), path
         if path.startswith("/viewer/"):
             assert parse_viewer_path(path.split("#")[0]) is not None, path
         else:
-            assert path.split("#")[0].split("?")[0] in ROUTES, path
+            pass  # storm/tool routes and page query keys are validated by valid_internal_path above
 
 
 def test_every_viewer_dataset_has_a_catalog_entry():

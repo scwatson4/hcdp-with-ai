@@ -25,7 +25,6 @@ describe('ClimateTools', () => {
   it('keeps the page frame: title, portal source link, image credit and related links', () => {
     renderPage()
     expect(screen.getByRole('heading', { level: 1, name: 'Climate Tools' })).toBeInTheDocument()
-    expect(screen.getByTestId('portal-source')).toHaveAttribute('href', `${HCDP}/climate-tools/`)
     expect(screen.getByTestId('image-credit')).toHaveTextContent('Images: Hawaiʻi Climate Data Portal')
     const related = screen.getByRole('navigation', { name: 'Related' })
     expect(within(related).getByRole('link', { name: /Climate Summary/ })).toHaveAttribute('href', '/climate-summary')

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowUp, ExternalLink, Sparkles } from 'lucide-react'
+import { ArrowUp, ExternalLink, Link2, Sparkles } from 'lucide-react'
 import { useAssistant } from './AssistantProvider'
 import { cn } from '../lib/utils'
 
@@ -59,6 +59,7 @@ export default function AssistantPanel({ compact = false, autoFocus = false, rot
           <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
             <div className={cn('max-w-[92%] rounded-lg px-3 py-2 text-sm leading-relaxed', m.role === 'user' ? 'bg-accent text-accent-foreground' : 'bg-surface border border-border')}>
               {m.content}
+              {m.role === 'user' && <button type="button" title="Copy a link that asks this" aria-label="Copy a link that asks this" onClick={() => { const href = `${window.location.origin}/?ask=${encodeURIComponent(m.content)}`; navigator.clipboard?.writeText(href).catch(() => window.prompt('Copy this link', href)) }} className="ml-2 inline-flex align-middle text-accent-foreground/70 hover:text-accent-foreground"><Link2 className="h-3 w-3" aria-hidden="true" /></button>}
               {m.actions?.filter((a) => a.type === 'open').map((a, j) => (
                 <div key={j} className="mt-2"><a className="inline-flex items-center gap-1 rounded-md border border-border bg-canvas px-2.5 py-1 text-xs font-medium hover:border-foreground" href={a.url} target="_blank" rel="noopener noreferrer">{a.blocked ? 'Your browser blocked the new tab — open it here' : 'Opened in a new tab — open again'} <ExternalLink className="h-3 w-3" aria-hidden="true" /></a></div>
               ))}

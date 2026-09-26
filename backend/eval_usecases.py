@@ -45,9 +45,9 @@ def resolve(catalog: list[dict], ref: str | None) -> set[str]:
         if r in targets_of(e) or r.split("#")[0] in targets_of(e):
             ids.add(e["id"])
         ip = e.get("internal_path") or ""
-        if "{" in ip and r.startswith("/viewer/"):
-            head = ip.split("{")[0]
-            if r.startswith(head):
+        if "{" in ip:
+            head = ip.split("{")[0]          # templates: /viewer/rainfall/day/, /mesonet?viewer=live&station=, /climate-summary?year=
+            if head and r.startswith(head):
                 ids.add(e["id"])
     return ids
 

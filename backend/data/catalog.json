@@ -1863,7 +1863,7 @@
    "kind": "tool",
    "title": "Hawaiʻi Mesonet Live Data Access",
    "url": "https://www.hawaii.edu/climate-data-portal/hawaii-mesonet-data/#/",
-   "internal_path": "/mesonet",
+   "internal_path": "/mesonet?viewer=live",
    "summary": "Live readings from every Hawaiʻi Mesonet station: map and table search, a dashboard per station (current rainfall, temperature, wind, humidity, solar radiation, soil moisture), graphs of up to three variables over 90 days, station climatology, data maps, a wind map, and downloadable station reports.",
    "when_to_use": "The visitor wants current or recent conditions at a station: is it raining now, how windy, today's temperature.",
    "example_queries": [
@@ -1918,7 +1918,7 @@
    "kind": "tool",
    "title": "Mesonet station list (table search)",
    "url": "https://www.hawaii.edu/climate-data-portal/hawaii-mesonet-data/#/station-table",
-   "internal_path": "/mesonet",
+   "internal_path": "/mesonet?viewer=live&view=station-table",
    "summary": "Searchable table of Hawaiʻi Mesonet stations with ID, name, status, island, latitude, longitude and elevation; pick one to open its dashboard.",
    "when_to_use": "The visitor wants the list of Mesonet stations, one station's location, or stations on an island.",
    "example_queries": [
@@ -1968,7 +1968,7 @@
    "kind": "tool",
    "title": "Mesonet station map",
    "url": "https://www.hawaii.edu/climate-data-portal/hawaii-mesonet-data/#/station-map",
-   "internal_path": "/mesonet",
+   "internal_path": "/mesonet?viewer=live&view=station-map",
    "summary": "Map of all Hawaiʻi Mesonet stations; click a station to open its live dashboard.",
    "when_to_use": "The visitor wants to find a Mesonet station on a map or the nearest station to a place.",
    "example_queries": [
@@ -2016,7 +2016,7 @@
    "kind": "tool",
    "title": "Mesonet data map (latest observations)",
    "url": "https://www.hawaii.edu/climate-data-portal/hawaii-mesonet-data/#/data-map",
-   "internal_path": "/mesonet",
+   "internal_path": "/mesonet?viewer=live&view=station-map",
    "summary": "Map of the latest observation at every station for a chosen variable (air and soil temperature, 24-hour rainfall, solar radiation, humidity, soil moisture, wind) in metric or standard units.",
    "when_to_use": "The visitor wants a statewide snapshot of current conditions, e.g. rainfall in the last 24 hours at all stations.",
    "example_queries": [
@@ -2067,7 +2067,7 @@
    "kind": "tool",
    "title": "Mesonet wind map",
    "url": "https://www.hawaii.edu/climate-data-portal/hawaii-mesonet-data/#/wind-map",
-   "internal_path": "/mesonet",
+   "internal_path": "/mesonet?viewer=live&view=wind-map",
    "summary": "Map of current wind at Hawaiʻi Mesonet stations.",
    "when_to_use": "The visitor wants current wind speed and direction across the islands.",
    "example_queries": [
@@ -2177,7 +2177,7 @@
    "kind": "tool",
    "title": "Hawaii Mesonet mobile app (hawaiimesonet.app)",
    "url": "https://hawaiimesonet.app/",
-   "internal_path": null,
+   "internal_path": "/mesonet?viewer=app",
    "summary": "A phone-friendly, installable web app with real-time Hawaiʻi Mesonet readings: stations near you, a map with wind arrows and charts per station (a separate American Samoa edition exists).",
    "when_to_use": "The visitor wants live station readings on a phone or a mobile app.",
    "example_queries": [

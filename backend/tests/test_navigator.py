@@ -40,6 +40,7 @@ def test_viewer_path_grammar():
     assert valid_internal_path("/mesonet?viewer=live&station=0115&view=dashboard")
     assert valid_internal_path("/climate-summary?year=2026&month=8") and valid_internal_path("/?ask=rainfall%20map")
     assert not valid_internal_path("/mesonet?evil=1") and not valid_internal_path("/tools/../x") and not valid_internal_path("/extreme-events/Lowell!")
+    assert not valid_internal_path("/tools/evapotranspiration-atlas") and not valid_internal_path("/extreme-events/iniki")   # only real slugs
     assert not valid_internal_path("/admin")
     assert not valid_internal_path("https://www.hawaii.edu/")
 

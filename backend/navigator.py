@@ -44,8 +44,11 @@ ROUTES = [
     "/", "/about", "/about/team", "/about/history", "/about/acknowledgements", "/about/how-to-cite",
     "/data", "/data/api", "/data/tutorials", "/mesonet", "/climate-summary", "/pacific", "/extreme-events", "/tools",
 ]
-# Deep-link routes beyond ROUTES: per-storm and per-tool pages.
-ROUTE_PATTERNS = [re.compile(r"^/extreme-events/[a-z0-9-]+$"), re.compile(r"^/tools/[a-z0-9-]+$")]
+# Deep-link routes beyond ROUTES: per-storm and per-tool pages — only the slugs that exist.
+STORM_SLUGS = ("lowell", "lala", "nolo", "kona-low-1", "kona-low-2", "kona-lows")
+TOOL_SLUGS = ("rainfall-atlas", "ccvd-portfolios", "h-rip", "groundwater-recharge", "monthly-climate-summary", "sea-level-rise-viewer",
+              "american-samoa-data-viewer", "soest-coastal-viewer", "climate-of-hawaii", "avian-malaria")
+ROUTE_PATTERNS = [re.compile(r"^/extreme-events/(" + "|".join(STORM_SLUGS) + r")$"), re.compile(r"^/tools/(" + "|".join(TOOL_SLUGS) + r")$")]
 # Query keys each page understands (everything else is dropped as invalid).
 PAGE_QUERY_KEYS = {"/": {"ask"}, "/mesonet": {"viewer", "station", "view"}, "/climate-summary": {"year", "month"}}
 STATIONS_PATH = DATA_DIR / "mesonet_stations.json"
@@ -213,8 +216,8 @@ The visitor is on page {where}.{viewing}
 
 WHAT YOU CAN DO
 1. navigate — open one of this site's pages (paths below) or a viewer deep link.
-2. open — open a real HCDP page or tool in a new tab (only URLs from the catalog).
-3. handoff — when the request is data ANALYSIS (numbers, totals, averages, rankings, comparisons, trends, charts, "how much", "which station recorded the most", "why"), send them to the HCDP AI interface, which can compute. Do not attempt the analysis; say in one sentence that the analysis assistant will do it.
+2. open — open a real HCDP page or tool, or a catalogued external site (for example the National Weather Service for forecasts and warnings), in a new tab (only URLs from the catalog).
+3. handoff — when the request is data ANALYSIS (numbers, totals, averages, rankings, comparisons, trends, charts, "how much", "which station recorded the most", "why"), send them to the HCDP AI interface, which can compute. Do not attempt the analysis; say in one sentence that the analysis assistant will do it. But "was it raining / how hot was it at PLACE on DAY or MONTH" with no number asked is a MAP question: navigate to that day's or month's map for the island.
 4. info — answer a factual question about HCDP from the catalog, briefly, without navigating.
 5. clarify — ask ONE short question, only when you truly cannot choose (prefer acting with a sensible default and offering alternatives).
 
@@ -225,9 +228,9 @@ VIEWER DEEP LINKS: /viewer/{{dataset}}/{{period}}/{{date}}/{{extent}}
   extent: statewide, hawaii (Hawaiʻi Island / Big Island), maui, molokai, lanai, oahu, kauai
   Examples: /viewer/rainfall/day/2026-09-07/kauai   /viewer/spi-3/month/2026-08/statewide   /viewer/temperature-max/month/2026-08/oahu
   A storm's rainfall is best shown as daily rainfall on its peak day for the island hit hardest; a drought question as spi-3 for the last complete month (SPI links may name an island: the statewide grid is shown zoomed to it).
-MORE SHAREABLE LINKS (every state on this site has a URL):
-  /extreme-events/{{lowell|lala|nolo|kona-low-1|kona-low-2}}   one storm's section
-  /tools/{{slug}}   one tool's tile (slugs in the catalog's tool entries)
+MORE SHAREABLE LINKS (every state on this site has a URL; use ONLY these forms — an invented path is dropped):
+  /extreme-events/{{{"|".join(STORM_SLUGS)}}}   one storm's section
+  /tools/{{{"|".join(TOOL_SLUGS)}}}   one tool's tile — only these ten slugs; any other catalog entry is reached with an open action on its url
   /mesonet?viewer=live|app|nolo&station={{id}}&view=dashboard|graphing|station-map|station-table|wind-map   the live Mesonet viewer on one station (use viewer=live with a station id; view=graphing for charts; app = the phone app)
   /climate-summary?year=YYYY&month=M   the monthly summary for one month
   /?ask={{url-encoded question}}   a link that asks this assistant a question on arrival (for sharing a question)

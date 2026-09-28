@@ -11,6 +11,7 @@ Endpoints
 from __future__ import annotations
 
 import datetime as dt
+import base64
 import hashlib
 import os
 import re
@@ -128,12 +129,17 @@ def raster_params(dataset: str, period: str, date: str, extent: str) -> dict:
     return {**ds["api"], "period": period, "date": date, "extent": "statewide" if dataset in STATEWIDE_ONLY else EXTENTS[extent]}
 
 
-async def fetch_raster(dataset: str, period: str, date: str, extent: str) -> Path:
-    """The (re-encoded) GeoTIFF for a map, fetched from HCDP once and cached on disk."""
+def raster_cache_path(dataset: str, period: str, date: str, extent: str) -> tuple[dict, str, Path]:
+    """(HCDP params, cache key, on-disk path) for a map — the path exists only once the map has been fetched."""
     params = raster_params(dataset, period, date, extent)
     key = hashlib.sha1(("&".join(f"{k}={v}" for k, v in sorted(params.items()))).encode()).hexdigest()
+    return params, key, CACHE_DIR / f"{key}.tif"
+
+
+async def fetch_raster(dataset: str, period: str, date: str, extent: str) -> Path:
+    """The (re-encoded) GeoTIFF for a map, fetched from HCDP once and cached on disk."""
+    params, key, path = raster_cache_path(dataset, period, date, extent)
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    path = CACHE_DIR / f"{key}.tif"
     if not path.exists():
         async with httpx.AsyncClient(timeout=60) as client:
             r = await client.get(f"{HCDP_API_BASE}/raster", params=params, headers=_hcdp_headers())
@@ -161,8 +167,11 @@ async def api_raster(dataset: str, period: str, date: str, extent: str = "statew
 
 
 @app.get("/api/map.png")
-async def api_map_png(dataset: str, period: str, date: str, extent: str = "statewide", w: int = 1200, ramp: str = "", bg: str = ""):
-    """A rendered PNG of a map (landing-page backdrops, previews); transparent where there is no data."""
+async def api_map_png(dataset: str, period: str, date: str, extent: str = "statewide", w: int = 1200, ramp: str = "", bg: str = "", fmt: str = "png"):
+    """A rendered image of a map (landing-page backdrops, previews); transparent where there is no data
+    unless `bg` fills the ocean; `fmt=webp` (or /api/map.webp) is about ten times smaller."""
+    if fmt not in ("png", "webp"):
+        raise HTTPException(400, "fmt must be png or webp")
     ramp = ramp or DEFAULT_RAMP.get(dataset, "viridis_r")
     if ramp not in ("viridis", "viridis_r"):
         raise HTTPException(400, "ramp must be viridis or viridis_r")
@@ -172,14 +181,33 @@ async def api_map_png(dataset: str, period: str, date: str, extent: str = "state
         raise HTTPException(400, "bg must be a 6-digit hex colour")
     path = await fetch_raster(dataset, period, date, extent)
     png_dir = CACHE_DIR / "png"; png_dir.mkdir(parents=True, exist_ok=True)
-    out = png_dir / f"{path.stem}_{w}_{ramp}{"_" + bg if bg else ""}.png"
+    out = png_dir / f"{path.stem}_{w}_{ramp}{"_" + bg if bg else ""}.{fmt}"
     if not out.exists():
         try:
-            data = await run_in_threadpool(render_png, path, ramp, w, 2, 98, bg or None)
+            data = await run_in_threadpool(render_png, path, ramp, w, 2, 98, bg or None, fmt)
         except ValueError:
             raise HTTPException(404, "no data in that map") from None
         tmp = out.with_name(f"{out.stem}.{uuid.uuid4().hex}.part"); tmp.write_bytes(data); tmp.replace(out)
-    return FileResponse(out, media_type="image/png", headers={"Cache-Control": f"public, max-age={3600 if _is_recent(period, date) else 86400 * 30}"})
+    return FileResponse(out, media_type=f"image/{fmt}", headers={"Cache-Control": f"public, max-age={3600 if _is_recent(period, date) else 86400 * 30}"})
+
+
+@app.get("/api/map.webp")
+async def api_map_webp(dataset: str, period: str, date: str, extent: str = "statewide", w: int = 1200, ramp: str = "", bg: str = ""):
+    """The same map as WebP (the landing backdrops use this)."""
+    return await api_map_png(dataset, period, date, extent, w, ramp, bg, "webp")
+
+
+def _preview_data_uri(dataset: str, period: str, date: str, extent: str) -> str | None:
+    """A 24 px transparent PNG of a map as a data URI (~500 bytes) for blur-up first paint — only when the
+    GeoTIFF is already on disk, so /api/backdrops never waits on HCDP."""
+    _, _, path = raster_cache_path(dataset, period, date, extent)
+    if not path.exists():
+        return None
+    try:
+        data = render_png(path, DEFAULT_RAMP.get(dataset, "viridis_r"), 24, 2, 98, None, "png")
+    except Exception:  # noqa: BLE001
+        return None
+    return "data:image/png;base64," + base64.b64encode(data).decode("ascii")
 
 
 async def date_range(request: Request, dataset: str, period: str, extent: str = "statewide"):
@@ -212,8 +240,12 @@ async def api_backdrops(request: Request):
             d = dt.date.fromisoformat(last + "-01"); m = d.month - back
             date = (d.replace(year=d.year + (m - 1) // 12, month=(m - 1) % 12 + 1)).strftime("%Y-%m")
         label = f"{DATASETS[dataset]['label']} · " + (dt.date.fromisoformat(date).strftime("%-d %B %Y") if period == "day" else dt.date.fromisoformat(date + "-01").strftime("%B %Y"))
-        items.append({"dataset": dataset, "period": period, "date": date, "extent": "statewide", "label": label,
-                      "url": f"/api/map.png?dataset={dataset}&period={period}&date={date}&extent=statewide&w=1400"})
+        item = {"dataset": dataset, "period": period, "date": date, "extent": "statewide", "label": label,
+                "url": f"/api/map.webp?dataset={dataset}&period={period}&date={date}&extent=statewide&w=1400"}
+        preview = await run_in_threadpool(_preview_data_uri, dataset, period, date, "statewide")
+        if preview:
+            item["preview"] = preview
+        items.append(item)
     out = {"items": items}
     cache["__backdrops__"] = (time.time(), out)
     return out
@@ -237,6 +269,10 @@ async def api_dates(request: Request, dataset: str, period: str, extent: str = "
     return data
 
 
+# The landing hero paints its ocean in these colours (light, dark); MapBackdrop.jsx asks for the same fills.
+OCEAN_FILLS = ("bfe0f7", "10263a")
+
+
 @app.on_event("startup")
 async def warm_backdrops():
     """Render the landing page's backdrop maps right after start, so the first visitor
@@ -250,10 +286,12 @@ async def warm_backdrops():
             scope = {"type": "http", "app": app, "headers": [], "method": "GET", "path": "/api/backdrops", "query_string": b""}
             data = await api_backdrops(_R(scope))
             for it in data.get("items", []):
-                try:
-                    await api_map_png(it["dataset"], it["period"], it["date"], it["extent"], 1400)
-                except Exception:  # noqa: BLE001
-                    pass
+                for bg in OCEAN_FILLS:   # the landing's light and dark oceans (R4 B), as WebP (R7 B)
+                    try:
+                        await api_map_png(it["dataset"], it["period"], it["date"], it["extent"], 1400, "", bg, "webp")
+                    except Exception:  # noqa: BLE001
+                        pass
+            app.state.dates_cache.pop("__backdrops__", None)   # next /api/backdrops recomputes with the previews
         except Exception:  # noqa: BLE001
             pass
 

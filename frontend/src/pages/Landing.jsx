@@ -3,7 +3,7 @@ import { Map, RadioTower, CalendarDays, Globe2, CloudLightning, Wrench, ArrowRig
 import { TOOL_CARDS, SIDEBAR } from '../site/nav'
 import AssistantPanel from '../assistant/AssistantPanel'
 import { Card } from '../components/ui/card'
-import MapBackdrop from '../components/MapBackdrop'
+import MapBackdrop, { OCEAN, useIsDark } from '../components/MapBackdrop'
 
 const ICONS = { Map, RadioTower, CalendarDays, Globe2, CloudLightning, Wrench }
 
@@ -44,17 +44,19 @@ export function Sidebar() {
 }
 
 export default function Landing() {
+  const dark = useIsDark()
+  const ocean = `#${dark ? OCEAN.dark : OCEAN.light}`
   return (
     <div className="mx-auto w-full max-w-[1440px]">
       <div className="grid lg:grid-cols-[minmax(0,85fr)_minmax(210px,15fr)] lg:items-start">
-        <section className="relative isolate flex min-h-[62vh] items-center overflow-hidden lg:min-h-[70vh]" data-testid="landing-hero">
+        <section className="relative isolate flex min-h-[62vh] items-center overflow-hidden lg:min-h-[70vh]" data-testid="landing-hero" style={{ background: ocean }}>
           <MapBackdrop />
-          {/* The map fades to almost nothing behind the heading and the box, and stays visible around them. */}
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[5]" style={{ background: 'radial-gradient(ellipse 46% 42% at 50% 50%, hsl(var(--canvas) / 0.92) 0%, hsl(var(--canvas) / 0.7) 45%, hsl(var(--canvas) / 0) 100%)' }} />
+          {/* R4 B: a soft white glow behind the heading and the bar; the ocean and its islands stay visible around them. */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[5]" style={{ background: 'radial-gradient(ellipse 44% 36% at 50% 50%, hsl(var(--canvas) / 0.94) 0%, hsl(var(--canvas) / 0.72) 50%, hsl(var(--canvas) / 0) 100%)' }} />
           <div className="relative z-10 mx-auto w-full max-w-3xl px-4 py-12 sm:py-16">
-            <h1 className="text-center font-display text-3xl font-semibold tracking-tight sm:text-4xl">What are you looking for?</h1>
-            <div className="mt-6 rounded-xl border border-border bg-card/90 p-2 shadow-lg backdrop-blur" data-testid="landing-assistant">
-              <AssistantPanel rotateExamples />
+            <h1 className="text-center font-display text-3xl font-semibold tracking-tight sm:text-4xl">What are you <span className="hcdp-grad-word">looking</span> for?</h1>
+            <div className="mt-6" data-testid="landing-assistant">
+              <AssistantPanel bar />
             </div>
           </div>
         </section>

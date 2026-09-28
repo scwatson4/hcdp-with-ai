@@ -27,24 +27,45 @@ function Alternative({ a }) {
 }
 
 // The chat itself. `compact` is the dock panel; otherwise the landing box.
-export default function AssistantPanel({ compact = false, autoFocus = false, rotateExamples = false }) {
+// The chat itself. `compact` is the dock panel; `bar` is the landing search bar (R3 B):
+// one 56 px pill in which each example types itself out, holds two seconds and fades.
+export default function AssistantPanel({ compact = false, autoFocus = false, bar = false }) {
   const { messages, busy, send } = useAssistant()
   const [text, setText] = useState('')
-  // The whispering composer, as in the AI interface: while the box is empty and idle the
-  // input itself cycles real example asks as ghost text (fade out, swap, fade in) every
-  // 2.5 s; Tab drops the current one into the box. Any typed character silences it.
-  const ghostActive = rotateExamples && !text && !busy && messages.length <= 1
-  const [ghostIdx, setGhostIdx] = useState(0)
+  const rotateExamples = bar
+  // The typewriter ghost: while the bar is empty and idle, the current example types itself
+  // out at 28 ms a letter, holds 2 s (longer while the pointer rests on the bar), fades out
+  // over 350 ms and the next one begins. Tab drops the whole example into the field; any typed
+  // character silences it; the keycap shows only while the field has focus (that is when Tab
+  // does what it says); reduced motion shows one still example.
+  const ghostActive = bar && !text && !busy && messages.length <= 1
+  const reduceMotion = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  const [typed, setTyped] = useState(reduceMotion ? EXAMPLES[0] : '')
   const [ghostShown, setGhostShown] = useState(true)
+  const [focused, setFocused] = useState(false)
+  const idxRef = useRef(0)
+  const hoverRef = useRef(false)
   useEffect(() => {
-    if (!ghostActive) return undefined
-    const spin = setInterval(() => {
-      setGhostShown(false)
-      setTimeout(() => { setGhostIdx((i) => i + 1); setGhostShown(true) }, 400)
-    }, 2500)
-    return () => clearInterval(spin)
-  }, [ghostActive])
-  const ghostQuery = ghostActive ? EXAMPLES[ghostIdx % EXAMPLES.length] : null
+    if (!ghostActive || reduceMotion) return undefined
+    let cancelled = false; let timer = null; let wake = null
+    const sleep = (ms) => new Promise((resolve) => { wake = resolve; timer = setTimeout(resolve, ms) })
+    ;(async () => {
+      while (!cancelled) {
+        const ex = EXAMPLES[idxRef.current % EXAMPLES.length]
+        setGhostShown(true)
+        for (let k = 1; k <= ex.length && !cancelled; k += 1) { setTyped(ex.slice(0, k)); await sleep(28) }
+        if (cancelled) break
+        await sleep(2000)
+        while (hoverRef.current && !cancelled) await sleep(300)
+        if (cancelled) break
+        setGhostShown(false); await sleep(350)
+        if (cancelled) break
+        idxRef.current += 1; setTyped('')
+      }
+    })()
+    return () => { cancelled = true; if (timer) clearTimeout(timer); if (wake) wake() }
+  }, [ghostActive, reduceMotion])
+  const ghostQuery = ghostActive ? EXAMPLES[idxRef.current % EXAMPLES.length] : null
   const endRef = useRef(null)
   const inputRef = useRef(null)
   const listRef = useRef(null)
@@ -52,10 +73,35 @@ export default function AssistantPanel({ compact = false, autoFocus = false, rot
   useEffect(() => { if (firstRender.current) { firstRender.current = false; return } const el = listRef.current; if (el) el.scrollTop = el.scrollHeight }, [messages, busy])
   useEffect(() => { if (autoFocus) inputRef.current?.focus() }, [autoFocus])
   const submit = (e) => { e?.preventDefault(); const t = text; setText(''); send(t) }
-  const showExamples = messages.length <= 1 && !compact && !rotateExamples
+  const showExamples = messages.length <= 1 && !compact && !bar
   return (
     <div className={cn('flex flex-col', compact ? 'h-full' : '')} data-testid="assistant-panel">
-      <div ref={listRef} className={cn('flex-1 space-y-3 overflow-y-auto', compact ? 'px-3 py-2.5 text-[13px]' : 'max-h-[42vh] px-1', rotateExamples && messages.length <= 1 ? 'py-0' : 'py-2')} aria-live="polite">
+      {bar && (
+        <form onSubmit={submit} onMouseEnter={() => { hoverRef.current = true }} onMouseLeave={() => { hoverRef.current = false }} data-testid="ask-bar">
+          <div className="hcdp-ask relative flex h-14 items-center rounded-full border-[1.5px] border-border bg-canvas pl-6 pr-2 shadow-lg">
+            <input ref={inputRef} type="text" value={text} onChange={(e) => setText(e.target.value.slice(0, 500))} autoComplete="off" enterKeyHint="search"
+              onKeyDown={(e) => { if (e.key === 'Enter') submit(e); else if (e.key === 'Tab' && !e.shiftKey && ghostQuery) { e.preventDefault(); setText(ghostQuery) } }}
+              onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+              aria-describedby={ghostQuery ? 'ask-ghost-hint' : undefined}
+              placeholder={ghostQuery ? '' : 'What are you looking for?'}
+              aria-label="Ask AI" data-testid="assistant-input"
+              className="h-full min-w-0 flex-1 bg-transparent text-[16px] text-foreground placeholder:text-subtle focus-visible:outline-none sm:text-[18px]" />
+            {ghostQuery && (
+              <>
+                <span id="ask-ghost-hint" className="sr-only">Press Tab to insert the suggested example question.</span>
+                <div aria-hidden="true" data-testid="composer-ghost" className="pointer-events-none absolute left-6 right-14 top-1/2 -translate-y-1/2 truncate text-[16px] text-subtle transition-opacity duration-300 motion-reduce:transition-none sm:right-32 sm:text-[18px]" style={{ opacity: ghostShown ? 1 : 0 }}>
+                  {typed}<span className={cn('ml-px inline-block h-[1.1em] w-px translate-y-[3px] bg-subtle align-baseline', reduceMotion || typed.length >= ghostQuery.length ? 'opacity-0' : 'hcdp-caret')} />
+                </div>
+              </>
+            )}
+            {ghostQuery && focused && <kbd className="mr-2 hidden shrink-0 rounded-md border border-border bg-surface px-1.5 py-px font-mono text-[11px] text-foreground sm:inline-block" data-testid="ask-tab-hint">Tab ↹</kbd>}
+            <button type="submit" disabled={!text.trim() || busy} aria-label="Send" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground disabled:opacity-40"><ArrowUp className="h-4 w-4" /></button>
+          </div>
+        </form>
+      )}
+      {(!bar || messages.length > 1 || busy) && (
+      <div className={cn(bar && 'mt-3 rounded-xl border border-border bg-card/90 p-2 shadow-lg backdrop-blur')} data-testid={bar ? 'landing-answers' : undefined}>
+      <div ref={listRef} className={cn('flex-1 space-y-3 overflow-y-auto', compact ? 'px-3 py-2.5 text-[13px]' : 'max-h-[42vh] px-1 py-2')} aria-live="polite">
         {messages.map((m, i) => (i === 0 && (compact || rotateExamples) ? null : (
           <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
             <div className={cn('max-w-[92%] rounded-lg px-3 py-2 text-sm leading-relaxed', m.role === 'user' ? 'bg-accent text-accent-foreground' : 'bg-surface border border-border')}>
@@ -73,11 +119,14 @@ export default function AssistantPanel({ compact = false, autoFocus = false, rot
         {busy && <div className="text-xs text-subtle" data-testid="assistant-busy">Looking…</div>}
         <div ref={endRef} />
       </div>
+      </div>
+      )}
       {showExamples && (
         <div className="flex flex-wrap gap-1.5 px-1 pb-2" data-testid="assistant-examples">
           {EXAMPLES.map((ex) => <button key={ex} type="button" onClick={() => send(ex)} className="rounded-full border border-border bg-surface px-2.5 py-1 text-xs text-subtle hover:border-foreground hover:text-foreground">{ex}</button>)}
         </div>
       )}
+      {!bar && (
       <form onSubmit={submit} className={cn('flex items-end gap-2 p-2', (compact || !rotateExamples || messages.length > 1) && 'border-t border-border')}>
         <div className="hcdp-ask relative flex flex-1 rounded-md border border-border bg-canvas">
         <textarea ref={inputRef} value={text} onChange={(e) => setText(e.target.value.slice(0, 500))} rows={compact ? 1 : 2}
@@ -98,6 +147,7 @@ export default function AssistantPanel({ compact = false, autoFocus = false, rot
         </div>
         <button type="submit" disabled={!text.trim() || busy} aria-label="Send" className="grid h-9 w-9 place-items-center rounded-full bg-accent text-accent-foreground disabled:opacity-40"><ArrowUp className="h-4 w-4" /></button>
       </form>
+      )}
     </div>
   )
 }

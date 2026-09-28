@@ -60,8 +60,9 @@ def lut(ramp: str = "viridis", n: int = 256) -> np.ndarray:
     return np.stack([np.interp(t, pos, cols[:, c]) for c in range(3)], axis=1).round().astype(np.uint8)
 
 
-def render_png(tif: Path, ramp: str = "viridis", width: int = 1200, lo_pct: float = 2, hi_pct: float = 98, bg: str | None = None) -> bytes:
-    """`bg`: a hex colour (e.g. "bfe0f7") to fill no-data with — an "ocean" behind the islands; None keeps it transparent."""
+def render_png(tif: Path, ramp: str = "viridis", width: int = 1200, lo_pct: float = 2, hi_pct: float = 98, bg: str | None = None, fmt: str = "png") -> bytes:
+    """`bg`: a hex colour (e.g. "bfe0f7") to fill no-data with — an "ocean" behind the islands; None keeps it transparent.
+    `fmt`: "png" or "webp" (about ten times smaller for these maps; R7 B)."""
     import rasterio  # heavy import kept local
     with rasterio.open(tif) as src:
         a = src.read(1).astype("float32")
@@ -86,7 +87,11 @@ def render_png(tif: Path, ramp: str = "viridis", width: int = 1200, lo_pct: floa
     else:
         rgba = np.dstack([rgb, (mask * 255).astype(np.uint8)])
     img = Image.fromarray(rgba, "RGBA")
-    width = max(200, min(int(width), 2400))
+    width = max(16, min(int(width), 2400))   # the API keeps w >= 200; 24 px is the blur-up preview (R7 B)
     img = img.resize((width, max(1, round(h0 * width / w0))), Image.LANCZOS)
-    buf = io.BytesIO(); img.save(buf, "PNG", optimize=True)
+    buf = io.BytesIO()
+    if fmt == "webp":
+        img.save(buf, "WEBP", quality=82, method=6)
+    else:
+        img.save(buf, "PNG", optimize=True)
     return buf.getvalue()

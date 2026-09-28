@@ -879,3 +879,27 @@
   .hcdp-goo-wrap { filter: none; }
   .hcdp-pill-pop { animation: none; }
 }
+
+/* ── R3 B: the typewriter ghost's caret; R4 B: the hero's stacked map fade and progress line ── */
+.hcdp-caret { animation: hcdp-caret 1s steps(1, end) infinite; }
+@keyframes hcdp-caret { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+/* The next map fades in over the current one; the old one is removed once the fade ends, so nothing pales. */
+.hcdp-bd-in { animation: hcdp-bd-in var(--bd-fade, 1800ms) ease-in-out both; }
+@keyframes hcdp-bd-in { from { opacity: 0; } to { opacity: var(--bd-op, 0.92); } }
+.hcdp-bd-progress { width: 0; animation: hcdp-bd-progress var(--bd-interval, 8000ms) linear forwards; }
+@keyframes hcdp-bd-progress { from { width: 0; } to { width: 100%; } }
+@media (prefers-reduced-motion: reduce) {
+  .hcdp-caret, .hcdp-bd-in, .hcdp-bd-progress { animation: none; }
+  .hcdp-bd-progress { width: 0; }
+}
+
+/* ── R5 B: one word of the landing heading in the logo's spectrum — the deeper shades used on the
+   sidebar buttons, so every letter keeps at least 4:1 on white; lighter stops in dark mode; static. ── */
+.hcdp-grad-word {
+  background-image: linear-gradient(90deg, #357c78 0%, #4f7a30 28%, #a85a1c 52%, #b8452f 76%, #303078 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+.dark .hcdp-grad-word { background-image: var(--hcdp-rainbow); }

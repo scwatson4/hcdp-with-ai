@@ -6,7 +6,7 @@ import { Pause, Play } from 'lucide-react'
 // /api/map.webp with the ocean filled in the hero's own blue, so there is no seam; each
 // arrives as a blurred 24 px preview first and sharpens when the full map lands.
 // The next map fades in over the current one and the old one is then removed, so
-// nothing pales mid-fade; 8 s a map with a thin progress line; the caption is a
+// nothing pales mid-fade; 8 s a map; the caption is a
 // link that opens that very map in the viewer; a pause button; preloads every image
 // first, pauses in a hidden tab and stops for reduced-motion users.
 export const OCEAN = { light: 'bfe0f7', dark: '10263a' }   // keep in step with OCEAN_FILLS in backend/app.py
@@ -38,7 +38,6 @@ export default function MapBackdrop({ opacity = 0.92 }) {
   const [index, setIndex] = useState(0)
   const [prev, setPrev] = useState(null)      // the map fading out underneath the new one
   const [paused, setPaused] = useState(false)
-  const [cycle, setCycle] = useState(0)       // restarts the progress line
   const indexRef = useRef(0)
   const reduce = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
   const src = (it) => (it.fallback ? `/backdrop-fallback-${dark ? 'dark' : 'light'}.webp` : `${it.url}&bg=${ocean}`)
@@ -78,7 +77,7 @@ export default function MapBackdrop({ opacity = 0.92 }) {
       for (let n = 0; n < items.length && !loaded[src(items[next])]; n += 1) next = (next + 1) % items.length
       if (next === i) return
       indexRef.current = next
-      setPrev(i); setIndex(next); setCycle((c) => c + 1)
+      setPrev(i); setIndex(next)
     }, INTERVAL_MS)
     return () => clearInterval(id)
   }, [items, loaded, reduce, paused, ocean])   // eslint-disable-line react-hooks/exhaustive-deps
@@ -116,18 +115,13 @@ export default function MapBackdrop({ opacity = 0.92 }) {
               {current.label} →
             </Link>
             {!reduce && items.length > 1 && (
-              <button type="button" onClick={() => { setPaused((p) => !p); setCycle((c) => c + 1) }} aria-pressed={paused}
+              <button type="button" onClick={() => setPaused((p) => !p)} aria-pressed={paused}
                 aria-label={paused ? 'Play the map slideshow' : 'Pause the map slideshow'} title={paused ? 'Play' : 'Pause'} data-testid="backdrop-pause"
                 className="grid h-[26px] w-[26px] place-items-center rounded-full border border-border bg-canvas/85 text-foreground hover:bg-canvas">
                 {paused ? <Play className="h-3 w-3" aria-hidden="true" /> : <Pause className="h-3 w-3" aria-hidden="true" />}
               </button>
             )}
           </div>
-          {!reduce && items.length > 1 && (
-            <div className="h-0.5 w-full bg-foreground/10" aria-hidden="true">
-              <div key={cycle} className="hcdp-bd-progress h-full bg-foreground/60" style={{ '--bd-interval': `${INTERVAL_MS}ms`, animationPlayState: paused ? 'paused' : 'running' }} />
-            </div>
-          )}
         </div>
       )}
     </>

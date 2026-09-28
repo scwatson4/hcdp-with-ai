@@ -8,15 +8,9 @@ const AI_INTERFACE = import.meta.env.VITE_AI_INTERFACE_URL || 'https://hcdp-ai-i
 
 export const EXAMPLES = [
   'I need to download rainfall data from Hurricane Lowell',
-  'Show me the drought map for August 2026',
-  'Is it raining in Hilo right now?',
-  'How do I cite the daily rainfall maps?',
-  'Where is the Tropical Storm Nolo tracker?',
-  'Which stations are on Kauaʻi?',
-  'Rainfall map for Maui on 14 March 2026',
+  'Which stations are on Kauai?',
+  'Show me the Tropical Storm Nolo tracker',
   'How do I get station data through the API?',
-  'What was last month like across the islands?',
-  'Take me to the American Samoa portal',
 ]
 
 function Alternative({ a }) {

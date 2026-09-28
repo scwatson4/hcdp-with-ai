@@ -55,7 +55,9 @@ try {
     check(`${label}: share panel shows and copies the link`, shown === page.url() && (clip === page.url() || clip === '') && (await page.locator('[data-testid="share-copy"]').count()) === 1, `${shown.slice(-40)} | clipboard ${clip ? 'ok' : 'n/a'}`)
     await page.goto(BASE + '/extreme-events/lowell', { waitUntil: 'networkidle' })
     check(`${label}: storm route`, (await page.locator('#lowell').count()) === 1 && (await page.locator('[data-testid="original-link"]').getAttribute('href')).includes('hurricane-lowell'))
-    await page.goto(BASE + '/mesonet?viewer=live&station=0115&view=dashboard', { waitUntil: 'networkidle' })
+    // The embedded Mesonet dashboard keeps the network busy, so do not wait for idle here; wait for our station picker instead.
+    await page.goto(BASE + '/mesonet?viewer=live&station=0115&view=dashboard', { waitUntil: 'domcontentloaded' })
+    await page.waitForSelector('[data-testid="station-picker"] select', { timeout: 30000 }).catch(() => {})
     check(`${label}: mesonet station link`, (await page.locator('[data-testid="original-link"]').getAttribute('href')).includes('#/dashboard?id=0115') && (await page.locator('[data-testid="station-picker"] select').first().inputValue()) === '0115')
     await page.goto(BASE + '/nope', { waitUntil: 'networkidle' })
     check(`${label}: 404 page`, (await page.locator('body').innerText()).includes('not here'))

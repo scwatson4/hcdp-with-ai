@@ -1,14 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Pause, Play } from 'lucide-react'
 
 // The landing hero's backdrop (R4 B + R7 B): HCDP's newest statewide maps rendered by
 // /api/map.webp with the ocean filled in the hero's own blue, so there is no seam; each
 // arrives as a blurred 24 px preview first and sharpens when the full map lands.
 // The next map fades in over the current one and the old one is then removed, so
-// nothing pales mid-fade; 8 s a map; the caption is a
-// link that opens that very map in the viewer; a pause button; preloads every image
-// first, pauses in a hidden tab and stops for reduced-motion users.
+// nothing pales mid-fade; 8 s a map. Nothing to click and nothing to cycle by hand
+// (your rule, 2026-09-30): no caption, no pause, no dots, no progress line. Preloads
+// every image first, pauses in a hidden tab and stops for reduced-motion users.
 export const OCEAN = { light: 'bfe0f7', dark: '10263a' }   // keep in step with OCEAN_FILLS in backend/app.py
 const INTERVAL_MS = 8000
 const FADE_MS = 1800
@@ -37,7 +35,6 @@ export default function MapBackdrop({ opacity = 0.92 }) {
   const [loaded, setLoaded] = useState({})
   const [index, setIndex] = useState(0)
   const [prev, setPrev] = useState(null)      // the map fading out underneath the new one
-  const [paused, setPaused] = useState(false)
   const indexRef = useRef(0)
   const reduce = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
   const src = (it) => (it.fallback ? `/backdrop-fallback-${dark ? 'dark' : 'light'}.webp` : `${it.url}&bg=${ocean}`)
@@ -69,7 +66,7 @@ export default function MapBackdrop({ opacity = 0.92 }) {
 
   useEffect(() => {
     const ready = items.filter((it) => loaded[src(it)])
-    if (ready.length < 2 || reduce || paused) return undefined
+    if (ready.length < 2 || reduce) return undefined
     const id = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return
       const i = indexRef.current
@@ -80,7 +77,7 @@ export default function MapBackdrop({ opacity = 0.92 }) {
       setPrev(i); setIndex(next)
     }, INTERVAL_MS)
     return () => clearInterval(id)
-  }, [items, loaded, reduce, paused, ocean])   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [items, loaded, reduce, ocean])   // eslint-disable-line react-hooks/exhaustive-deps
 
   // Drop the old map once the new one has fully faded in.
   useEffect(() => {
@@ -91,7 +88,6 @@ export default function MapBackdrop({ opacity = 0.92 }) {
 
   const current = items[index]
   const ready = current && loaded[src(current)]
-  const viewerPath = (it) => `/viewer/${it.dataset}/${it.period}/${it.date}/${it.extent}`
   return (
     <>
       <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden" data-testid="map-backdrop" style={{ background: `#${ocean}` }}>
@@ -108,22 +104,6 @@ export default function MapBackdrop({ opacity = 0.92 }) {
             className="hcdp-bd-in absolute inset-0 h-full w-full select-none object-contain p-4 sm:p-8" style={{ opacity, '--bd-op': opacity, '--bd-fade': `${FADE_MS}ms` }} />
         )}
       </div>
-      {ready && (
-        <div className="absolute inset-x-0 bottom-0 z-[6]" data-testid="backdrop-caption">
-          <div className="flex items-end justify-between gap-3 px-4 pb-2.5">
-            <Link to={viewerPath(current)} className="rounded bg-canvas/75 px-1.5 py-0.5 text-[12.5px] text-foreground underline underline-offset-[3px] hover:bg-canvas" data-testid="backdrop-label" title="Open this map in the viewer">
-              {current.label} →
-            </Link>
-            {!reduce && items.length > 1 && (
-              <button type="button" onClick={() => setPaused((p) => !p)} aria-pressed={paused}
-                aria-label={paused ? 'Play the map slideshow' : 'Pause the map slideshow'} title={paused ? 'Play' : 'Pause'} data-testid="backdrop-pause"
-                className="grid h-[26px] w-[26px] place-items-center rounded-full border border-border bg-canvas/85 text-foreground hover:bg-canvas">
-                {paused ? <Play className="h-3 w-3" aria-hidden="true" /> : <Pause className="h-3 w-3" aria-hidden="true" />}
-              </button>
-            )}
-          </div>
-        </div>
-      )}
     </>
   )
 }

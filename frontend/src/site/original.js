@@ -3,6 +3,13 @@
 // shareable, customizable URLs, so many of our URLs map to one of theirs — every
 // viewer link maps to the data portal, every station view to the Mesonet viewer.
 export const HCDP = 'https://www.hawaii.edu/climate-data-portal'
+// The portal's Access Data app (framed by the portal page). Its inbound dataset tags, by our viewer slug.
+export const PORTAL_APP = 'https://rainfall.ikewai.org'
+export const PORTAL_DATATYPE = {
+  rainfall: 'rainfall', 'rainfall-legacy': 'legacy_rainfall', 'temperature-max': 'max_temp', 'temperature-min': 'min_temp', 'temperature-mean': 'mean_temp',
+  humidity: 'rh', ndvi: 'ndvi', ignition: 'ignition_probability', 'ignition-lead-1': 'ignition_probability', 'ignition-lead-2': 'ignition_probability', 'ignition-lead-3': 'ignition_probability',
+  ...Object.fromEntries([1, 3, 6, 9, 12, 24, 36, 48, 60].map((n) => [`spi-${n}`, 'spi'])),
+}
 
 const STORM_PAGES = {
   lowell: `${HCDP}/hurricane-lowell/`,
@@ -34,7 +41,15 @@ const STATIC = {
 export function originalFor(pathname, search = '', hash = '') {
   const q = new URLSearchParams(search)
   const path = pathname.replace(/\/+$/, '') || '/'
-  if (path.startsWith('/viewer')) return { url: `${HCDP}/data-portal/`, label: 'HCDP data portal', note: 'the portal cannot open a specific map from a link' }
+  if (path.startsWith('/viewer')) {
+    // The original app reads ?datatype and ?period once on load (and skips its landing tiles when a
+    // query string is present); nothing else — date, place, camera and layers — can be passed to it.
+    const seg = path.split('/').filter(Boolean)
+    const tag = PORTAL_DATATYPE[seg[1]]
+    const period = seg[2] === 'day' || seg[2] === 'month' ? seg[2] : null
+    if (tag) return { url: `${PORTAL_APP}/?datatype=${tag}${period ? `&period=${period}` : ''}`, label: 'this dataset in the HCDP data portal', note: 'the portal opens the dataset; the date, place and view cannot be passed' }
+    return { url: `${HCDP}/data-portal/`, label: 'HCDP data portal', note: 'the portal cannot open a specific map from a link' }
+  }
   if (path === '/mesonet') {
     const viewer = q.get('viewer') || 'live'
     const station = q.get('station')

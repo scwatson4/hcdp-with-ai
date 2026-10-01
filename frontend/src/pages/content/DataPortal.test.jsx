@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { AccessData, ApiAccess, Tutorials } from './DataPortal'
 import { lastCompleteMonth, yesterday, dayRange, hawaiiToday } from './contentUtils'
@@ -51,9 +51,13 @@ describe('AccessData', () => {
     expect(within(table).getAllByRole('rowheader')[2]).toHaveTextContent(/^Maximum Temperature \(°C\)/)
     expect(within(table).getByRole('link', { name: 'Map Rainfall, August 2026, Statewide in the viewer' })).toHaveAttribute('href', '/viewer/rainfall/month/2026-08/statewide')
 
-    const frame = screen.getByTitle('HCDP data portal (Visualize and Export Data)')
+    // The native viewer is the headline action; the original app is framed for Export only, and only on request.
+    expect(screen.getByRole('link', { name: 'Open the climate viewer' })).toHaveAttribute('href', '/viewer/rainfall/month/2026-08/statewide')
+    expect(screen.queryByTitle('HCDP data portal — Export Data')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Load it here' }))
+    const frame = screen.getByTitle('HCDP data portal — Export Data')
     expect(frame.tagName).toBe('IFRAME')
-    expect(frame).toHaveAttribute('src', 'https://rainfall.ikewai.org')
+    expect(frame).toHaveAttribute('src', 'https://rainfall.ikewai.org/?datatype=rainfall&period=month')
     expect(frame).toHaveAttribute('loading', 'lazy')
   })
 

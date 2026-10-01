@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { ExternalLink, Link2, Check, Copy, X } from 'lucide-react'
 import { originalFor } from '../site/original'
+import { canonicalize, foreignQuery } from '../viewer/urlGrammar'
 
 // The slim bar at the top of every page: "Share this view" on the left (every
 // state here has its own URL: click → the link is shown, selected and copied,
@@ -13,7 +14,15 @@ export default function OriginalLink() {
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const inputRef = useRef(null)
-  const href = typeof window !== 'undefined' ? window.location.href : ''
+  // Viewer links are copied in their one canonical spelling (aliases resolved, keys ordered, defaults
+  // dropped) so two people sharing one view share one URL; other pages copy the address as it is.
+  const href = (() => {
+    if (typeof window === 'undefined') return ''
+    const c = canonicalize(pathname, search)
+    if (!c) return window.location.href
+    const extra = foreignQuery(search)
+    return window.location.origin + c + (extra ? (c.includes('?') ? '&' : '?') + extra : '') + (hash || '')
+  })()
 
   useEffect(() => { setOpen(false); setCopied(false) }, [pathname, search, hash])
 

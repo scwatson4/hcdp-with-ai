@@ -4,6 +4,7 @@ import { Map as MapIcon, Code2, GraduationCap, Download, Layers, ArrowRight, Key
 import { DATASETS, formatViewerPath, describeViewer } from '../../viewer/urlGrammar'
 import { portalDataset } from '../../viewer/portalDatasets.reference'
 import { HCDP } from '../../site/nav'
+import { PORTAL_APP } from '../../site/original'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -14,8 +15,6 @@ import { CodeBlock, CopyBlock } from './CopyButton'
 import { dataRelated, lastCompleteMonth, yesterday } from './contentUtils'
 
 const PORTAL_PAGE = `${HCDP}/data-portal/`
-// The portal's Access Data page is a full-window frame of this app.
-const PORTAL_APP = 'https://rainfall.ikewai.org'
 
 // ===========================================================================
 // Access Data — https://www.hawaii.edu/climate-data-portal/data-portal/
@@ -99,8 +98,8 @@ export function AccessData() {
       lead={<p>The HCDP data portal maps and downloads Hawaiʻi's gridded climate products (rainfall back to 1920, temperature, drought, humidity, vegetation and fire risk) together with the station data behind them.</p>}
       actions={(
         <>
-          <ExternalButton href={PORTAL_PAGE} size="lg">Open the HCDP data portal</ExternalButton>
-          <Button asChild variant="outline" size="lg"><a href="#quick-maps">Quick maps in this site's viewer</a></Button>
+          <ExternalButton href={PORTAL_PAGE} size="lg" variant="outline">Open the HCDP data portal</ExternalButton>
+          <Button asChild size="lg"><Link to={formatViewerPath({ dataset: 'rainfall', period: 'month', date: lastCompleteMonth(now), extent: 'statewide' })}>Open the climate viewer</Link></Button>
         </>
       )}
       related={dataRelated('/data')}
@@ -190,8 +189,8 @@ export function AccessData() {
         </ul>
       </Section>
 
-      <Section id="portal" title="The data portal" lead={<p>The portal's Visualize and Export tools, embedded from the portal itself.</p>}>
-        <EmbedFrame src={PORTAL_APP} title="HCDP data portal (Visualize and Export Data)" fallbackHref={PORTAL_PAGE} fallbackLabel="open the data portal" />
+      <Section id="export" title="Export data" lead={<p>Downloads — gridded maps, error and anomaly maps, metadata, station CSVs, as a package by email — stay with the portal's own Export tool until this site has its own. Everything else on this page is the viewer: every map here has an address you can share.</p>}>
+        <EmbedFrame src={`${PORTAL_APP}/?datatype=rainfall&period=month`} title="HCDP data portal — Export Data" fallbackHref={PORTAL_PAGE} fallbackLabel="open the data portal" deferred />
       </Section>
 
       <Section id="more" title="More ways in">

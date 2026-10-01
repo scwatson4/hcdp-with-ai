@@ -8,3 +8,6 @@ __pycache__/
 backend/cache/
 .pytest_cache/
 frontend/.npm-install-done
+
+# Claude worktrees and scratch
+.claude/

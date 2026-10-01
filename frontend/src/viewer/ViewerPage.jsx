@@ -1,13 +1,17 @@
 // The shareable climate viewer behind
-//   /viewer/{dataset}/{period}/{date}/{extent}[?ramp&scale&units&stations&lat&lng&z&compare]
+//   /viewer/{dataset}/{period}/{date}/{extent}[?options]   (CONTRACT.md)
 // The URL is the state: every control navigates to a new address (push for
-// dataset, period, date and place; replace for display options and map
-// moves), and loading any address restores everything. /viewer alone is
-// the launcher; an address the grammar rejects gets a friendly page.
+// dataset, period, date, place, station and pin — Back undoes a choice;
+// replace for display options and map moves — Back never retraces a pan),
+// and loading any address restores everything. An address spelled with an
+// alias or the first grammar's keys is rewritten to its canonical spelling
+// on load (replace). /viewer alone is the launcher; an address the grammar
+// rejects gets a friendly page.
 
 import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { DATASETS, describeViewer, formatViewerPath, parseViewerPath } from './urlGrammar'
+import { DATASETS, canonicalize, describeViewer, foreignQuery, formatViewerPath, parseViewerPath } from './urlGrammar'
+import { scheduleUrlWrite } from './urlWrites'
 import { NAMED_RAMPS, makeColorFn, rampPosition, valueAtLatLng } from './map/ramps'
 import {
   clampDate, compareDateFor, dateForPeriod, defaultRampFor, domainFor, formatValue, hasExtremeScale,
@@ -24,10 +28,30 @@ const ClimateMap = lazy(() => import('./map/ClimateMap'))
 
 const EYEBROW = 'font-mono text-[11px] font-medium uppercase tracking-wide text-subtle'
 
+/** The one spelling of an address the grammar accepts, with any query keys
+ *  that are not the grammar's (another feature's) kept after it, or null
+ *  when the address is already spelled that way or is not a viewer map. */
+export function canonicalRewrite(pathname, search = '') {
+  const canonical = canonicalize(pathname, search)
+  if (canonical == null) return null
+  const foreign = foreignQuery(search)
+  const target = canonical + (foreign ? (canonical.includes('?') ? '&' : '?') + foreign : '')
+  return target === `${pathname}${search || ''}` ? null : target
+}
+
 export default function ViewerPage() {
-  const { pathname, search } = useLocation()
+  const { pathname, search, hash } = useLocation()
+  const navigate = useNavigate()
   const v = useMemo(() => parseViewerPath(pathname, search), [pathname, search])
-  if (/^\/viewer\/?$/i.test(pathname)) return <Launcher />
+  const launcher = /^\/viewer\/?$/i.test(pathname)
+  // Load-time canonical rewrite: aliases, month names, the first grammar's
+  // ?stations=1, keys out of order. A replace, so Back is not affected, and
+  // the parsed view is identical, so nothing below re-mounts.
+  const rewrite = !launcher && v && !v.error ? canonicalRewrite(pathname, search) : null
+  useEffect(() => {
+    if (rewrite) navigate(rewrite + (hash || ''), { replace: true })
+  }, [rewrite, hash, navigate])
+  if (launcher) return <Launcher />
   if (!v || v.error) return <GrammarError error={v?.error || 'incomplete'} pathname={pathname} search={search} />
   // The grammar reads 2026-02-30 as a date; the calendar does not.
   if (!isRealDate(v.date, v.period)) return <GrammarError error={`no such date ${v.date}`} pathname={pathname} search={search} />
@@ -43,10 +67,14 @@ function Viewer({ v }) {
   latest.current = v
   const seq = useRef(0)
 
-  /** Navigate to the current view with `patch` applied. */
+  /** Navigate to the current view with `patch` applied: a push (a choice
+   *  Back can undo) unless `replace`. */
   const go = useCallback((patch, replace = false) => {
     navigate(pathWith(latest.current, patch), { replace })
   }, [navigate])
+  /** A replace write for one option, through the page-wide limiter (one
+   *  history write per 300 ms; a burst on one key keeps only its last). */
+  const set = useCallback((key, patch) => scheduleUrlWrite(key, () => go(patch, true)), [go])
 
   const dateRange = useDateRange(v.dataset, v.period, v.extent)
   const range = dateRange.range
@@ -101,11 +129,12 @@ function Viewer({ v }) {
   }
   const onDate = (date) => { seq.current++; go({ date }) }
   const onExtent = (extent) => { seq.current++; go({ extent, opts: { view: undefined } }) }
-  const onRamp = (name) => go({ opts: { ramp: name === defaultRampFor(latest.current.dataset) ? undefined : name } }, true)
-  const onUnits = (u) => go({ opts: { units: u === 'in' || u === 'f' ? u : undefined } }, true)
-  const onScale = (s) => go({ opts: { scale: s === 'extreme' ? 'extreme' : undefined } }, true)
-  const onCompare = (date) => go({ opts: { compare: date || undefined } }, true)
-  const onViewChange = useCallback((view) => go({ opts: { view } }, true), [go])
+  const onRamp = (name) => set('ramp', { opts: { ramp: name === defaultRampFor(latest.current.dataset) ? undefined : name } })
+  const onUnits = (u) => set('units', { opts: { units: u === 'in' || u === 'f' ? u : undefined } })
+  const onScale = (s) => set('scale', { opts: { scale: s === 'extreme' ? 'extreme' : undefined } })
+  const onCompare = (date) => set('compare', { opts: { compare: date || undefined } })
+  // The camera: 400 ms after the gesture ends (ClimateMap), then the limiter.
+  const onViewChange = useCallback((view) => set('camera', { opts: { view } }), [set])
 
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const shareUrl = origin + formatViewerPath(v)
@@ -136,11 +165,6 @@ function Viewer({ v }) {
             extra={<CompareControl v={v} range={range} compareDate={compareDate} onChange={onCompare} />}
           />
           <ShareActions url={shareUrl} />
-          {v.opts.stations && (
-            <p className="text-xs text-subtle" data-testid="stations-note">
-              This link asks for station markers; they are not in this preview yet, so the map shows the gridded values only.
-            </p>
-          )}
           <p className="text-xs text-subtle">
             The address bar always describes this map. <Link to="/viewer" className="underline underline-offset-4 hover:text-foreground">How viewer addresses work</Link>
           </p>

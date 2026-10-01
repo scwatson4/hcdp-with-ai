@@ -1,9 +1,11 @@
+import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react'
 import { MemoryRouter, Routes, Route, useLocation, useNavigationType } from 'react-router-dom'
 import ViewerPage from './ViewerPage'
 import { clearRasterCache } from './map/rasterCache'
 import { clearDateRanges } from './map/dateRanges'
+import { resetUrlWrites } from './urlWrites'
 
 // ── Leaflet, georaster and the GeoRasterLayer, mocked ───────────────────────
 // jsdom cannot run Leaflet; the mocks keep one fake map whose view and event
@@ -109,9 +111,11 @@ function installFetch() {
 const rasterCalls = () => global.fetch.mock.calls.filter(([u]) => String(u).startsWith('/api/raster'))
 
 // ── rendering at a URL ──────────────────────────────────────────────────────
+let visited = [] // every location the router has been at, in order
 function Probe() {
   const loc = useLocation()
   const type = useNavigationType()
+  React.useEffect(() => { visited.push(loc.pathname + loc.search + loc.hash) }, [loc.key]) // eslint-disable-line react-hooks/exhaustive-deps
   return <output data-testid="location" data-type={type}>{loc.pathname + loc.search}</output>
 }
 function renderAt(path) {
@@ -130,6 +134,8 @@ const navType = () => screen.getByTestId('location').dataset.type
 beforeEach(() => {
   rasterMode = 'data'
   hung = []
+  visited = []
+  resetUrlWrites()
   fake.handlers.clear()
   fake.layers.length = 0
   fake.instances.length = 0
@@ -171,6 +177,38 @@ describe('/viewer with no parameters', () => {
     renderAt('/viewer/')
     expect(screen.getByTestId('viewer-launcher')).toBeInTheDocument()
     await settle()
+  })
+})
+
+// ── canonical spelling on load ──────────────────────────────────────────────
+describe('an address spelled another way is rewritten to its canonical form', () => {
+  it('resolves aliases, month names and ?stations=1, orders the keys, and replaces (once)', async () => {
+    renderAt('/viewer/rain/daily/october/21/2025/big-island?stations=1&z=9&lat=19.6&lng=-155.5')
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2025-10-21/hawaii?layers=stations&lat=19.6000&lng=-155.5000&z=9'))
+    expect(navType()).toBe('REPLACE')
+    await settle()
+    // The alias address, then the canonical one — and nothing after it.
+    expect(visited).toEqual([
+      '/viewer/rain/daily/october/21/2025/big-island?stations=1&z=9&lat=19.6&lng=-155.5',
+      '/viewer/rainfall/day/2025-10-21/hawaii?layers=stations&lat=19.6000&lng=-155.5000&z=9',
+    ])
+    // The same map was asked for once, under the canonical request URL.
+    expect(rasterCalls().map(([u]) => u)).toEqual(['/api/raster?dataset=rainfall&period=day&date=2025-10-21&extent=hawaii'])
+    expect(screen.getByTestId('viewer-heading')).toHaveTextContent('Rainfall, October 21, 2025, Hawaiʻi Island')
+  })
+
+  it('keeps query keys that belong to another feature, and the hash', async () => {
+    renderAt('/viewer/temp-max/monthly/2026/aug/oa?ask=hello%20there&units=F#map')
+    await waitFor(() => expect(loc()).toBe('/viewer/temperature-max/month/2026-08/oahu?units=f&ask=hello+there'))
+    await settle()
+    expect(visited).toHaveLength(2)
+    expect(visited[1]).toBe('/viewer/temperature-max/month/2026-08/oahu?units=f&ask=hello+there#map')
+  })
+
+  it('leaves a canonical address alone', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in&lat=22.1000&lng=-159.6000&z=11')
+    await settle()
+    expect(visited).toEqual(['/viewer/rainfall/day/2026-09-07/kauai?units=in&lat=22.1000&lng=-159.6000&z=11'])
   })
 })
 

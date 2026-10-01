@@ -34,10 +34,35 @@ DATASETS = {
     "spi-9": {"label": "Drought index SPI 9-month", "periods": ["month"], "api": {"datatype": "spi", "timescale": "timescale009"}},
     "spi-12": {"label": "Drought index SPI 12-month", "periods": ["month"], "api": {"datatype": "spi", "timescale": "timescale012"}},
     "spi-24": {"label": "Drought index SPI 24-month", "periods": ["month"], "api": {"datatype": "spi", "timescale": "timescale024"}},
+    "spi-36": {"label": "Drought index SPI 36-month", "periods": ["month"], "api": {"datatype": "spi", "timescale": "timescale036"}},
+    "spi-48": {"label": "Drought index SPI 48-month", "periods": ["month"], "api": {"datatype": "spi", "timescale": "timescale048"}},
+    "spi-60": {"label": "Drought index SPI 60-month", "periods": ["month"], "api": {"datatype": "spi", "timescale": "timescale060"}},
+    "rainfall-legacy": {"label": "Rainfall (legacy, 1920–2012)", "periods": ["month"], "api": {"datatype": "rainfall", "production": "legacy"}},
+    "ignition-lead-1": {"label": "Ignition probability, 1 day ahead", "periods": ["day"], "api": {"datatype": "ignition_probability", "lead": "lead01"}},
+    "ignition-lead-2": {"label": "Ignition probability, 2 days ahead", "periods": ["day"], "api": {"datatype": "ignition_probability", "lead": "lead02"}},
+    "ignition-lead-3": {"label": "Ignition probability, 3 days ahead", "periods": ["day"], "api": {"datatype": "ignition_probability", "lead": "lead03"}},
 }
+# Station values exist for these (markers and time series); the rest are grids only.
+STATION_DATASETS = {"rainfall", "temperature-mean", "temperature-max", "temperature-min", "humidity"}
+# Spellings people type (and links already published) → the canonical slug. Mirrors urlGrammar.js.
+DATASET_ALIASES = {
+    "rain": "rainfall", "precipitation": "rainfall", "precip": "rainfall", "legacy-rainfall": "rainfall-legacy", "rainfall-1920": "rainfall-legacy",
+    "temperature": "temperature-mean", "temp": "temperature-mean", "temp-mean": "temperature-mean", "tmean": "temperature-mean",
+    "temp-max": "temperature-max", "tmax": "temperature-max", "temperature-maximum": "temperature-max",
+    "temp-min": "temperature-min", "tmin": "temperature-min", "temperature-minimum": "temperature-min",
+    "rh": "humidity", "relative-humidity": "humidity", "vegetation": "ndvi", "fire": "ignition", "ignition-probability": "ignition", "fire-risk": "ignition",
+    "ignition-1": "ignition-lead-1", "ignition-2": "ignition-lead-2", "ignition-3": "ignition-lead-3", "ignition+1": "ignition-lead-1", "ignition+2": "ignition-lead-2", "ignition+3": "ignition-lead-3",
+    "spi": "spi-3", "drought": "spi-3",
+    **{f"spi{n}": f"spi-{n}" for n in (1, 3, 6, 9, 12, 24, 36, 48, 60)},
+    **{f"spi-{n:02d}": f"spi-{n}" for n in (1, 3, 6, 9)},
+    **{f"spi-{n:03d}": f"spi-{n}" for n in (1, 3, 6, 9, 12, 24, 36, 48, 60)},
+}
+PERIOD_ALIASES = {"monthly": "month", "months": "month", "m": "month", "daily": "day", "days": "day", "d": "day"}
+EXTENT_ALIASES = {"state": "statewide", "all": "statewide", "hawaii-island": "hawaii", "bigisland": "hawaii", "big-island": "hawaii", "bi": "hawaii", "hawaiʻi": "hawaii",
+                  "hawaiʻi-island": "hawaii", "oa": "oahu", "oʻahu": "oahu", "ka": "kauai", "kauaʻi": "kauai", "mn": "maui", "maui-county": "maui", "molokaʻi": "molokai", "lānaʻi": "lanai", "lanaʻi": "lanai"}
 EXTENTS = {"statewide": "statewide", "hawaii": "bi", "maui": "mn", "molokai": "mn", "lanai": "mn", "oahu": "oa", "kauai": "ka"}
 # HCDP publishes SPI grids statewide only; an island link shows the statewide grid zoomed to the island.
-STATEWIDE_ONLY = {k for k in DATASETS if k.startswith("spi-")}
+STATEWIDE_ONLY = {k for k in DATASETS if k.startswith("spi-")} | {"rainfall-legacy"}
 HST = "Pacific/Honolulu"
 
 ROUTES = [
@@ -53,14 +78,23 @@ ROUTE_PATTERNS = [re.compile(r"^/extreme-events/(" + "|".join(STORM_SLUGS) + r")
 PAGE_QUERY_KEYS = {"/": {"ask"}, "/mesonet": {"viewer", "station", "view"}, "/climate-summary": {"year", "month"}}
 STATIONS_PATH = DATA_DIR / "mesonet_stations.json"
 INTENTS = {"navigate", "analysis", "info", "clarify"}
-VIEWER_QUERY_KEYS = {"ramp", "scale", "units", "compare", "stations", "lat", "lng", "z"}
+# The query layer, in the one order urlGrammar.formatViewerPath writes it ("stations" is the first grammar's spelling of layers=stations).
+VIEWER_QUERY_KEYS = ["ramp", "scale", "units", "basemap", "opacity", "layers", "station", "pin", "ts", "tsp", "compare", "lat", "lng", "z"]
+VIEWER_LEGACY_KEYS = {"stations"}
+BASEMAP_KEYS = ["satellite", "street", "imagery", "topo", "relief", "light"]
+DEFAULT_BASEMAP, DEFAULT_OPACITY = "satellite", 75
+LAYER_KEYS = ["stations", "outline"]
+UNIT_KEYS = {"mm", "in", "c", "f"}
+HAWAII_BOX = (18.5, 22.5, -160.5, -154.5)   # south, north, west, east
+_SKN_RE = re.compile(r"^\d{1,5}(\.\d{1,3})?$")
+_RANGE_RE = re.compile(r"^(\d{4}-\d{2}(?:-\d{2})?)\.\.(\d{4}-\d{2}(?:-\d{2})?)$")
 STATIC_HOSTS = {
     "www.hawaii.edu", "hawaii.edu", "manoa.hawaii.edu", "hawaiimesonet.app", "rainfall.geography.hawaii.edu",
     "evapotranspiration.geography.hawaii.edu", "solar.geography.hawaii.edu", "climate.geography.hawaii.edu",
     "api.hcdp.ikewai.org", "ikeauth.its.hawaii.edu", "cherryleh.github.io", "hcdp.github.io", "github.com",
     "www.soest.hawaii.edu", "ikewai.org", "www.ikewai.org", "atlas.uhgeography.org",
 }
-_VIEWER_RE = re.compile(r"^/viewer/(?P<dataset>[a-z0-9-]+)/(?P<period>month|day)/(?P<date>\d{4}-\d{2}(?:-\d{2})?)/(?P<extent>[a-z]+)$")
+_VIEWER_RE = re.compile(r"^/viewer/(?P<dataset>[a-z0-9+-]+)/(?P<period>[a-z]+)/(?P<date>\d{4}-\d{2}(?:-\d{2})?)/(?P<extent>[a-zʻā-]+)$")
 
 # Enough knowledge to be useful before the full catalog lands.
 SEED_CATALOG = [
@@ -108,27 +142,163 @@ def load_catalog(path: Path | None = None) -> list[dict]:
     return SEED_CATALOG
 
 
+def _real_date(text: str) -> bool:
+    try:
+        dt.date.fromisoformat(text if len(text) == 10 else text + "-01")
+        return len(text) in (7, 10)
+    except ValueError:
+        return False
+
+
+def _in_box(lat: float, lng: float) -> bool:
+    s, n, w, e = HAWAII_BOX
+    return s <= lat <= n and w <= lng <= e
+
+
+def parse_viewer_options(query: str, period: str) -> dict | None:
+    """The query layer as the viewer reads it (urlGrammar.parseViewerOptions): unknown keys or bad values → None.
+    Values come back typed; formatting them again (format_viewer_options) gives the canonical spelling."""
+    from urllib.parse import parse_qsl, unquote
+    opts: dict = {}
+    pairs = parse_qsl(query, keep_blank_values=True)
+    for k, _ in pairs:
+        if k not in VIEWER_QUERY_KEYS and k not in VIEWER_LEGACY_KEYS:
+            return None
+    q = {k: unquote(v) for k, v in pairs}
+    if q.get("ramp"):
+        opts["ramp"] = q["ramp"]
+    if q.get("scale"):
+        if q["scale"] != "extreme":
+            return None
+        opts["scale"] = "extreme"
+    if q.get("units"):
+        if q["units"].lower() not in UNIT_KEYS:
+            return None
+        opts["units"] = q["units"].lower()
+    if q.get("basemap"):
+        if q["basemap"].lower() not in BASEMAP_KEYS:
+            return None
+        opts["basemap"] = q["basemap"].lower()
+    if q.get("opacity") is not None:
+        if not q["opacity"].isdigit() or int(q["opacity"]) > 100:
+            return None
+        opts["opacity"] = int(q["opacity"])
+    layers = {l for l in q.get("layers", "").lower().split(",") if l}
+    if layers - set(LAYER_KEYS):
+        return None
+    if q.get("stations") == "1":
+        layers.add("stations")
+    if layers:
+        opts["layers"] = [l for l in LAYER_KEYS if l in layers]
+    if q.get("station"):
+        if not _SKN_RE.match(q["station"]):
+            return None
+        opts["station"] = q["station"]
+    elif q.get("pin"):
+        try:
+            lat, lng = (float(x) for x in q["pin"].split(","))
+        except ValueError:
+            return None
+        if not _in_box(lat, lng):
+            return None
+        opts["pin"] = (round(lat, 4), round(lng, 4))
+    if q.get("ts"):
+        m = _RANGE_RE.match(q["ts"])
+        if not m or len(m.group(1)) != len(m.group(2)) or not (_real_date(m.group(1)) and _real_date(m.group(2))):
+            return None
+        a, b = sorted((m.group(1), m.group(2)))
+        if "station" in opts or "pin" in opts:
+            opts["ts"] = (a, b)
+    if q.get("tsp"):
+        if q["tsp"].lower() not in ("day", "month"):
+            return None
+        if ("station" in opts or "pin" in opts) and q["tsp"].lower() != period:
+            opts["tsp"] = q["tsp"].lower()
+    if q.get("compare"):
+        if not _real_date(q["compare"]):
+            return None
+        opts["compare"] = q["compare"]
+    if q.get("lat") or q.get("lng"):
+        try:
+            lat, lng = float(q.get("lat", "")), float(q.get("lng", ""))
+        except ValueError:
+            return None
+        if not _in_box(lat, lng):
+            return None
+        z = None
+        if q.get("z"):
+            try:
+                z = max(5, min(20, round(float(q["z"]))))
+            except ValueError:
+                return None
+        opts["view"] = (lat, lng, z)
+    return opts
+
+
+def format_viewer_options(opts: dict, period: str) -> str:
+    """Python twin of urlGrammar.formatViewerPath's query part: one order, defaults omitted, readable commas."""
+    parts = []
+    if opts.get("ramp"):
+        parts.append(f"ramp={opts['ramp']}")
+    if opts.get("scale"):
+        parts.append("scale=extreme")
+    if opts.get("units") and opts["units"] not in ("mm", "c"):
+        parts.append(f"units={opts['units']}")
+    if opts.get("basemap") and opts["basemap"] != DEFAULT_BASEMAP:
+        parts.append(f"basemap={opts['basemap']}")
+    if opts.get("opacity") is not None and int(opts["opacity"]) != DEFAULT_OPACITY:
+        parts.append(f"opacity={int(opts['opacity'])}")
+    if opts.get("layers"):
+        parts.append("layers=" + ",".join(l for l in LAYER_KEYS if l in opts["layers"]))
+    if opts.get("station"):
+        parts.append(f"station={opts['station']}")
+    elif opts.get("pin"):
+        parts.append(f"pin={opts['pin'][0]:.4f},{opts['pin'][1]:.4f}")
+    if opts.get("station") or opts.get("pin"):
+        if opts.get("ts"):
+            parts.append(f"ts={opts['ts'][0]}..{opts['ts'][1]}")
+        if opts.get("tsp") and opts["tsp"] != period:
+            parts.append(f"tsp={opts['tsp']}")
+    if opts.get("compare"):
+        parts.append(f"compare={opts['compare']}")
+    if opts.get("view"):
+        lat, lng, z = opts["view"]
+        parts.append(f"lat={lat:.4f}")
+        parts.append(f"lng={lng:.4f}")
+        if z is not None:
+            parts.append(f"z={z}")
+    return "&".join(parts)
+
+
 def parse_viewer_path(path: str) -> dict | None:
-    """Canonical viewer paths only (the browser handles the loose forms)."""
+    """A viewer address the grammar accepts (aliases resolved, options typed), else None.
+    The result carries dataset/period/date/extent as canonical slugs plus `opts` and `canonical`."""
     base, _, query = path.partition("?")
     m = _VIEWER_RE.match(base)
     if not m:
         return None
     d = m.groupdict()
-    ds = DATASETS.get(d["dataset"])
-    if not ds or d["period"] not in ds["periods"] or d["extent"] not in EXTENTS:
+    dataset = d["dataset"] if d["dataset"] in DATASETS else DATASET_ALIASES.get(d["dataset"])
+    period = d["period"] if d["period"] in ("month", "day") else PERIOD_ALIASES.get(d["period"])
+    extent = d["extent"] if d["extent"] in EXTENTS else EXTENT_ALIASES.get(d["extent"])
+    ds = DATASETS.get(dataset or "")
+    if not ds or not period or period not in ds["periods"] or not extent:
         return None
-    if (d["period"] == "day") != (len(d["date"]) == 10):
+    if (period == "day") != (len(d["date"]) == 10) or not _real_date(d["date"]):
         return None
-    try:
-        dt.date.fromisoformat(d["date"] if len(d["date"]) == 10 else d["date"] + "-01")
-    except ValueError:
+    opts = parse_viewer_options(query, period)
+    if opts is None:
         return None
-    if query:
-        for part in query.split("&"):
-            if part.split("=", 1)[0] not in VIEWER_QUERY_KEYS:
-                return None
-    return d
+    out = {"dataset": dataset, "period": period, "date": d["date"], "extent": extent, "opts": opts}
+    q = format_viewer_options(opts, period)
+    out["canonical"] = f"/viewer/{dataset}/{period}/{d['date']}/{extent}" + (f"?{q}" if q else "")
+    return out
+
+
+def canonical_viewer_path(path: str) -> str | None:
+    """The one spelling of a viewer address, or None when it is not one the viewer can show."""
+    v = parse_viewer_path(path)
+    return v["canonical"] if v else None
 
 
 def describe_view(v: dict) -> str:

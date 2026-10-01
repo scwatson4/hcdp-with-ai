@@ -6,7 +6,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from navigator import Navigator, describe_view, parse_viewer_path, valid_internal_path, SEED_CATALOG  # noqa: E402
+from navigator import Navigator, canonical_viewer_path, describe_view, parse_viewer_path, valid_internal_path, SEED_CATALOG  # noqa: E402
 
 
 class FakeLLM:
@@ -32,8 +32,19 @@ def test_viewer_path_grammar():
     assert parse_viewer_path("/viewer/rainfall/day/2026-09/kauai") is None          # day needs a full date
     assert parse_viewer_path("/viewer/humidity/month/2026-08/statewide") is None    # humidity is daily only
     assert parse_viewer_path("/viewer/rainfall/day/2026-02-30/oahu") is None        # not a real date
-    assert parse_viewer_path("/viewer/rainfall/day/2026-09-07/bigisland") is None
+    assert parse_viewer_path("/viewer/rainfall/day/2026-09-07/mars") is None
+    assert parse_viewer_path("/viewer/rainfall/day/2026-09-07/bigisland")["extent"] == "hawaii"   # an alias, resolved
     assert parse_viewer_path("/viewer/rainfall/day/2026-09-07/kauai?evil=1") is None
+    assert parse_viewer_path("/viewer/rainfall/day/2026-09-07/kauai?basemap=mars") is None
+    assert parse_viewer_path("/viewer/rainfall/day/2026-09-07/kauai?opacity=140") is None
+    assert parse_viewer_path("/viewer/rainfall/day/2026-09-07/kauai?pin=5,5") is None
+    v = parse_viewer_path("/viewer/spi3/monthly/2026-08/bi?z=9&lng=-155.5&lat=19.6&stations=1&opacity=75&basemap=satellite")
+    assert v["canonical"] == "/viewer/spi-3/month/2026-08/hawaii?layers=stations&lat=19.6000&lng=-155.5000&z=9"
+    v = parse_viewer_path("/viewer/rainfall/day/2026-09-07/kauai?station=1020.1&ts=2026-09-30..2025-10-01&tsp=month&layers=outline,stations&basemap=street&opacity=60")
+    assert v["canonical"] == "/viewer/rainfall/day/2026-09-07/kauai?basemap=street&opacity=60&layers=stations,outline&station=1020.1&ts=2025-10-01..2026-09-30&tsp=month"
+    assert canonical_viewer_path("/viewer/temp-max/day/2026-09-01/oa?ts=2025-10..2026-09") == "/viewer/temperature-max/day/2026-09-01/oahu"   # ts without a selection is dropped
+    assert canonical_viewer_path("/viewer/ignition-lead-2/day/2026-09-29/statewide") == "/viewer/ignition-lead-2/day/2026-09-29/statewide"
+    assert canonical_viewer_path("/viewer/rainfall-legacy/day/1950-03-01/statewide") is None
     assert valid_internal_path("/extreme-events#lowell")
     assert valid_internal_path("/about/team")
     assert valid_internal_path("/extreme-events/lowell") and valid_internal_path("/tools/h-rip")

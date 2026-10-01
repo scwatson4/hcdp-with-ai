@@ -56,7 +56,7 @@ the URL, register the query keys / route pattern in `backend/navigator.py` (`PAG
 ```
 /                         landing: tools + "What are you looking for?"
 /about  /about/team  /about/history  /about/acknowledgements  /about/how-to-cite
-/data                     Access Data (the portal's interactive map, embedded, + the deep-link viewer)
+/data                     Access Data (the native viewer; the original portal stays embedded for Export only)
 /data/api  /data/tutorials
 /mesonet                  Hawaiʻi Mesonet
 /climate-summary          Monthly Climate Summary
@@ -72,27 +72,73 @@ Anything the prototype does not replicate links out to the real page on www.hawa
 ```
 /viewer/{dataset}/{period}/{date}/{extent}[?options]
 
-dataset  rainfall | temperature-mean | temperature-max | temperature-min | humidity | ndvi | ignition | spi-1 | spi-3 | spi-6 | spi-9 | spi-12 | spi-24
+dataset  rainfall | rainfall-legacy | temperature-mean | temperature-max | temperature-min | humidity | ndvi |
+         ignition | ignition-lead-1 | ignition-lead-2 | ignition-lead-3 | spi-1 | spi-3 | spi-6 | spi-9 | spi-12 |
+         spi-24 | spi-36 | spi-48 | spi-60
 period   month | day
 date     YYYY-MM  or  YYYY-MM-DD   (the parser ALSO accepts month names: october/21/2025 and 2025/october/21)
 extent   statewide | hawaii | maui | oahu | kauai | molokai | lanai
-options  ramp=<name>      colour ramp (see viewer/rasterSpec.reference.js NAMED_RAMPS)
-         scale=extreme    the 0–250 mm daily-rainfall scale
-         units=in|mm      display units (rainfall) / f|c (temperature)
-         stations=1       show station markers
-         lat=&lng=&z=     exact map view (like a Google Maps link)
-         compare=YYYY-MM  side-by-side second date
 ```
 Examples: `/viewer/rainfall/day/2025-10-21/hawaii`, `/viewer/spi-3/month/2026-08/statewide`,
-`/viewer/rainfall/month/2026-09/kauai?units=in&stations=1`.
-`frontend/src/viewer/urlGrammar.js` is the single source of truth: `parseViewerPath()`,
-`formatViewerPath()`, `DATASETS`, `EXTENTS`; dates must be real calendar dates. Do not duplicate its logic.
-Colour ramps live in `frontend/src/viewer/map/ramps.js` (extracted from the AI interface's rasterSpec).
+`/viewer/rainfall/month/2026-09/kauai?units=in&layers=stations`.
+
+**The path is the identity, the query is what the map shows, the hash (if any) is chrome.** The query keys are
+written in ONE fixed order with defaults omitted, so one view has exactly one spelling (its canonical form):
+
+| key | values | default (omitted) | history | meaning |
+|---|---|---|---|---|
+| `ramp` | a name from `viewer/map/ramps.js` NAMED_RAMPS | the dataset's portal default | replace | colour ramp |
+| `scale` | `extreme` | portal scale | replace | the 0–250 mm daily-rainfall scale |
+| `units` | `in` · `f` (`mm` · `c` are defaults) | metric | replace | display units (data never converted) |
+| `basemap` | `satellite` · `street` · `imagery` · `topo` · `relief` · `light` | `satellite` | replace | base map |
+| `opacity` | integer 0–100 | 75 | replace | data layer opacity |
+| `layers` | comma list of `stations`, `outline` (reserved: `boundaries`, `ahupuaa`, `moku`) | none | replace | overlays on |
+| `station` | an SKN such as `1020.1` | none | **push** | the selected station (opens its time series) |
+| `pin` | `lat,lng` (4 decimals, inside Hawaiʻi) | none | **push** | the selected grid cell (a "virtual station") |
+| `ts` | `YYYY-MM-DD..YYYY-MM-DD` or `YYYY-MM..YYYY-MM` | the dataset's whole record | replace | the time-series window (only with station/pin) |
+| `tsp` | `day` · `month` | the map's period | replace | the time-series period |
+| `compare` | a date in the map's period format | none | replace | side-by-side second date |
+| `lat`,`lng`,`z` | 4 decimals, integer zoom 5–20 | the extent's own view | replace | the camera |
+
+History: dataset, period, date, extent, station and pin **push** an entry (Back undoes a choice); everything
+else **replaces** (Back never retraces a pan or a colour flip). The camera is written with `replaceState`
+400 ms after a gesture ends, and every writer runs through one page-wide limiter of at most one history write
+per 300 ms (Mobile Safari throws after 100 `replaceState` calls in 30 s).
+
+Aliases (resolved on parse, rewritten to canonical on load with `replaceState`): dataset `rain`, `temp-max`,
+`tmax`, `rh`, `fire`, `spi3`, `spi-03`, `legacy-rainfall`, `ignition+2` …; period `monthly`/`daily`; extent
+`big-island`, `bigisland`, `bi`, `oa`, `ka`, `mn`, `state` …; and the first grammar's `?stations=1` →
+`layers=stations`. Nothing published ever 404s: a renamed slug gets an alias, never a removal.
+
+`frontend/src/viewer/urlGrammar.js` is the single source of truth: `parseViewerPath()`, `parseViewerOptions()`,
+`formatViewerPath()`, `canonicalize()`, `isCanonical()`, `DATASETS`, `EXTENTS`, `QUERY_KEYS`, the alias
+tables. `backend/navigator.py` mirrors it (`parse_viewer_path`, `canonical_viewer_path`,
+`parse_viewer_options`, `format_viewer_options`); keep the two in step. Dates must be real calendar dates.
+Do not duplicate its logic. Colour ramps live in `frontend/src/viewer/map/ramps.js`.
 
 Mapping to the HCDP API (the backend does this in `/api/raster`):
-rainfall → datatype=rainfall&production=new; temperature-* → datatype=temperature&aggregation=mean|max|min;
-humidity → relative_humidity (day only); ndvi → ndvi_modis (day only); ignition → ignition_probability (day only);
-spi-N → datatype=spi&timescale=timescaleNNN (month only). Extents: statewide, bi (hawaii), mn (maui, molokai, lanai), oa, ka.
+rainfall → datatype=rainfall&production=new; rainfall-legacy → production=legacy (statewide only, 1920–2012);
+temperature-* → datatype=temperature&aggregation=mean|max|min; humidity → relative_humidity (day only);
+ndvi → ndvi_modis (day only); ignition → ignition_probability (day only; ignition-lead-N → lead=lead0N);
+spi-N → datatype=spi&timescale=timescaleNNN (month only, statewide only).
+Extents: statewide, bi (hawaii), mn (maui, molokai, lanai), oa, ka.
+
+## Viewer data endpoints (the HCDP token never leaves the server)
+```
+GET /api/raster?dataset&period&date&extent                 the GeoTIFF (re-encoded, cached on disk, Range + ETag)
+GET /api/dates?dataset&period&extent                       [first, last] published dates
+GET /api/climate-stations                                  every station of HCDP's hawaii_climate_primary group
+                                                           {stations:[{skn,name,island,lat,lng,elevation_m,network,observer}]}
+GET /api/station-values?dataset&period&date[&fill]         the stations with a value that day/month, joined with metadata
+                                                           {stations:[{skn,name,island,lat,lng,value}], units, count}
+GET /api/timeseries?dataset&period&start&end&station=SKN   a station's record (chunked server-side, cached)
+GET /api/timeseries?dataset&period&start&end&lat&lng       a grid cell's record (HCDP /raster/timeseries)
+                                                           {points:[["2026-09-01", 7.72], …], units, dataset, period, location}
+GET /api/og.png?path=/viewer/...                           1200×630 preview image of a view (cached)
+POST /api/shorten {path}  →  {id, url}                     deterministic short link; GET /s/{id} → 302 to the view
+```
+Station datasets: rainfall, temperature-mean/max/min, humidity (`fill=partial` is HCDP's quality-controlled series,
+`fill=raw` the unfilled one; gridded maps always use partial).
 
 ## The navigator's action protocol (backend → assistant)
 `POST /api/navigate` body: `{ "message": str, "history": [{"role","content"}] (last 8, memory only),

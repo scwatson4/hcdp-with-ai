@@ -1,27 +1,24 @@
-// The Leaflet map of the climate viewer: the HCDP portal's basemap, one
-// GeoTIFF drawn in the browser with georaster-layer-for-leaflet, Leaflet's
-// scale bar, and the two-way sync between the map view and the URL
-// (?lat=&lng=&z=). Loaded lazily by ViewerPage so pages without a map never
-// download Leaflet. Title card, legend and compass are drawn by the page on
-// top of this component (they do not need Leaflet).
+// The Leaflet map of the climate viewer: one of the HCDP portal's base maps
+// (?basemap=), one GeoTIFF drawn in the browser with
+// georaster-layer-for-leaflet at the URL's opacity, the island outlines
+// (?layers=outline), Leaflet's scale bar, and the two-way sync between the
+// map view and the URL (?lat=&lng=&z=). Loaded lazily by ViewerPage so pages
+// without a map never download Leaflet. Title card, legend and compass are
+// drawn by the page on top of this component (they do not need Leaflet).
 
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
-import { MapContainer, TileLayer, ScaleControl, useMap, useMapEvents } from 'react-leaflet'
+import { GeoJSON, MapContainer, TileLayer, ScaleControl, useMap, useMapEvents } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { EXTENT_BOUNDS, extentView } from './viewerModel'
+import { BASEMAPS, DEFAULT_BASEMAP, basemapFor } from './basemaps'
+import { ISLAND_GEOJSON } from '../../data/hawaiiIslands'
 
-// The HCDP portal's default basemap, as the AI interface draws it
-// (HawaiiMap.jsx TILE_LAYERS.hybrid): Google's hybrid imagery with Google's
-// own labels — the deep-blue ocean and the island and town names people
-// know from the portal. `basemap-photo` keeps the dark theme from
-// inverting the imagery (see globals.css).
-export const BASEMAP = {
-  url: 'https://www.google.com/maps/vt?lyrs=y@189&gl=en&x={x}&y={y}&z={z}',
-  maxZoom: 20,
-  attribution: 'Map data &copy; Google',
-}
+// The portal's default basemap (Google's hybrid imagery), kept under its old name.
+export const BASEMAP = BASEMAPS[DEFAULT_BASEMAP]
 
 const DATA_PANE = 'climate-data'
+// Island outlines: a thin dark line, no fill, under the pointer-transparent.
+const OUTLINE_STYLE = { color: '#111', weight: 1, opacity: 0.85, fill: false }
 const round4 = (n) => Number(n.toFixed(4))
 const keyOf = (v) => (v ? `${v.lat.toFixed(4)},${v.lng.toFixed(4)},${Math.round(v.z)}` : '')
 
@@ -202,9 +199,14 @@ function PointerProbe({ onHover, onPick }) {
   return null
 }
 
-function ClimateMap({ extent, view = null, onViewChange = null, georaster = null, colorFn = null, opacity = 0.75, onHover = null, onPick = null, syncBus = null, leader = false }) {
+function ClimateMap({
+  extent, view = null, onViewChange = null, georaster = null, colorFn = null,
+  basemap = DEFAULT_BASEMAP, opacity = 0.75, layers = [],
+  onHover = null, onPick = null, syncBus = null, leader = false,
+}) {
   // MapContainer reads center/zoom once; ViewSync owns the view after that.
   const initial = useMemo(() => viewFromUrl(view, extent, null), []) // eslint-disable-line react-hooks/exhaustive-deps
+  const base = basemapFor(basemap)
   return (
     <MapContainer
       center={[initial.lat, initial.lng]}
@@ -214,9 +216,16 @@ function ClimateMap({ extent, view = null, onViewChange = null, georaster = null
       className="h-full w-full"
     >
       <AutoResize />
-      <TileLayer url={BASEMAP.url} maxZoom={BASEMAP.maxZoom} attribution={BASEMAP.attribution} className="basemap-photo" />
+      {/* Keyed by name: a TileLayer only follows url changes, not maxZoom or class. */}
+      <TileLayer
+        key={basemap} url={base.url} maxZoom={base.maxZoom} maxNativeZoom={base.maxNativeZoom}
+        attribution={base.attribution} className={base.photo ? 'basemap-photo' : undefined}
+      />
       <DataPane>
         <GeoRasterLeafletLayer georaster={georaster} colorFn={colorFn} opacity={opacity} />
+        {layers.includes('outline') && (
+          <GeoJSON data={ISLAND_GEOJSON} pane={DATA_PANE} interactive={false} style={OUTLINE_STYLE} data-testid="island-outlines" />
+        )}
       </DataPane>
       {/* The portal's scale control (bottom-left, metric + imperial) with
           the AI interface's shorter bar. */}

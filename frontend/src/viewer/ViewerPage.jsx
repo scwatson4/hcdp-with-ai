@@ -10,7 +10,7 @@
 
 import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { DATASETS, canonicalize, describeViewer, foreignQuery, formatViewerPath, parseViewerPath } from './urlGrammar'
+import { DATASETS, DEFAULT_BASEMAP, DEFAULT_OPACITY, LAYER_KEYS, canonicalize, describeViewer, foreignQuery, formatViewerPath, parseViewerPath } from './urlGrammar'
 import { scheduleUrlWrite } from './urlWrites'
 import { NAMED_RAMPS, makeColorFn, rampPosition, valueAtLatLng } from './map/ramps'
 import {
@@ -19,7 +19,7 @@ import {
 } from './map/viewerModel'
 import { useRaster } from './map/rasterCache'
 import { getDateRange, getDateRangeSoon, useDateRange } from './map/dateRanges'
-import { Controls, CompareControl, ShareActions } from './map/Controls'
+import { Controls, CompareControl, LayerControls, ShareActions } from './map/Controls'
 import { Compass, Legend, TitleCard, ValueReadout } from './map/MapFurniture'
 import { GrammarError, MapStatus } from './map/ErrorStates'
 import Launcher from './map/Launcher'
@@ -67,10 +67,22 @@ function Viewer({ v }) {
   latest.current = v
   const seq = useRef(0)
 
-  /** Navigate to the current view with `patch` applied: a push (a choice
-   *  Back can undo) unless `replace`. */
+  // The view the last write in this task produced, before React has rendered
+  // it: a second write in the same task (two limiter flushes, two toggles)
+  // builds on it instead of on the stale rendered view.
+  const written = useRef(null)
+
+  /** Navigate to the current view with `patch` applied (a function patch is
+   *  computed from the current view at write time): a push (a choice Back
+   *  can undo) unless `replace`. */
   const go = useCallback((patch, replace = false) => {
-    navigate(pathWith(latest.current, patch), { replace })
+    const base = written.current || latest.current
+    const path = pathWith(base, typeof patch === 'function' ? patch(base) : patch)
+    const q = path.indexOf('?')
+    const next = q < 0 ? parseViewerPath(path) : parseViewerPath(path.slice(0, q), path.slice(q))
+    written.current = next && !next.error ? next : null
+    queueMicrotask(() => { written.current = null })
+    navigate(path, { replace })
   }, [navigate])
   /** A replace write for one option, through the page-wide limiter (one
    *  history write per 300 ms; a burst on one key keeps only its last). */
@@ -135,6 +147,21 @@ function Viewer({ v }) {
   const onCompare = (date) => set('compare', { opts: { compare: date || undefined } })
   // The camera: 400 ms after the gesture ends (ClimateMap), then the limiter.
   const onViewChange = useCallback((view) => set('camera', { opts: { view } }), [set])
+  // Base map, opacity, overlays: replace writes; defaults leave the URL.
+  const onBasemap = (b) => set('basemap', { opts: { basemap: b === DEFAULT_BASEMAP ? undefined : b } })
+  const onOpacity = (n) => set('opacity', { opts: { opacity: n === DEFAULT_OPACITY ? undefined : n } })
+  // One key per overlay, and the list is built at write time, so two quick
+  // toggles both land.
+  const onLayerToggle = (layer, on) => set(`layers:${layer}`, (cur) => {
+    const next = LAYER_KEYS.filter((k) => (k === layer ? on : (cur.opts.layers || []).includes(k)))
+    return { opts: { layers: next.length ? next : undefined } }
+  })
+  // The slider's thumb drives the map at once; the URL follows on release.
+  const opacityPct = v.opts.opacity ?? DEFAULT_OPACITY
+  const [opacityDraft, setOpacityDraft] = useState(null)
+  useEffect(() => { setOpacityDraft(null) }, [opacityPct])
+  const mapOpacity = (opacityDraft ?? opacityPct) / 100
+  const layers = v.opts.layers || []
 
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const shareUrl = origin + formatViewerPath(v)
@@ -146,6 +173,7 @@ function Viewer({ v }) {
   const pane = (date, r, fn, extra) => (
     <MapPane
       v={v} date={date} raster={r} colorFn={fn} ramp={ramp} domain={domain} dateRange={dateRange}
+      opacity={mapOpacity} layers={layers}
       syncBus={compareDate ? busRef.current : null} {...extra}
     />
   )
@@ -162,6 +190,7 @@ function Viewer({ v }) {
             v={v} range={range}
             onDataset={onDataset} onPeriod={onPeriod} onDate={onDate} onExtent={onExtent}
             onRamp={onRamp} onUnits={onUnits} onScale={onScale}
+            layers={<LayerControls v={v} onBasemap={onBasemap} onOpacity={onOpacity} onOpacityPreview={setOpacityDraft} onLayerToggle={onLayerToggle} />}
             extra={<CompareControl v={v} range={range} compareDate={compareDate} onChange={onCompare} />}
           />
           <ShareActions url={shareUrl} />
@@ -192,7 +221,7 @@ function Viewer({ v }) {
 
 /** One map with its furniture. Hover state lives here so moving the
  *  pointer never re-renders the controls. */
-const MapPane = memo(function MapPane({ v, date, raster, colorFn, ramp, domain, dateRange, onViewChange = null, syncBus = null, leader = false, showLegend = true, showCompass = true }) {
+const MapPane = memo(function MapPane({ v, date, raster, colorFn, ramp, domain, dateRange, opacity = DEFAULT_OPACITY / 100, layers = [], onViewChange = null, syncBus = null, leader = false, showLegend = true, showCompass = true }) {
   const [hover, setHover] = useState(null)
   const [pick, setPick] = useState(null)
   // A new map (date, dataset, place) forgets the old pointer position.
@@ -211,6 +240,7 @@ const MapPane = memo(function MapPane({ v, date, raster, colorFn, ramp, domain, 
         <ClimateMap
           extent={v.extent} view={v.opts.view || null} onViewChange={onViewChange}
           georaster={ready ? raster.georaster : null} colorFn={colorFn}
+          basemap={v.opts.basemap || DEFAULT_BASEMAP} opacity={opacity} layers={layers}
           onHover={setHover} onPick={setPick} syncBus={syncBus} leader={leader}
         />
       </Suspense>

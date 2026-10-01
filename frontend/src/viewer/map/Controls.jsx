@@ -5,9 +5,11 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Check, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Link2, SlidersHorizontal } from 'lucide-react'
 import { Button } from '../../components/ui/button'
+import { Slider } from '../../components/ui/slider'
 import { Switch } from '../../components/ui/switch'
 import { cn } from '../../lib/utils'
-import { DATASETS, EXTENTS } from '../urlGrammar'
+import { DATASETS, DEFAULT_BASEMAP, DEFAULT_OPACITY, EXTENTS, LAYER_KEYS, hasStations } from '../urlGrammar'
+import { BASEMAP_OPTIONS } from './basemaps'
 import {
   PORTAL_URL, clampDate, hasExtremeScale, inRange, isRealDate, rampOptionsFor, rampNameFor,
   selectedUnit, shiftDate, shortDate, toDisplay, displayUnit, unitChoicesFor, hawaiiToday, specFor,
@@ -156,9 +158,9 @@ function scaleLabel(v, range) {
  *  phones the display options (colours, scale, comparison) fold away behind
  *  one button so the map starts higher; they open by themselves when the
  *  link already sets one. */
-export function Controls({ v, range, onDataset, onPeriod, onDate, onExtent, onRamp, onUnits, onScale, extra = null }) {
+export function Controls({ v, range, onDataset, onPeriod, onDate, onExtent, onRamp, onUnits, onScale, layers = null, extra = null }) {
   const ids = { dataset: useId(), extent: useId(), ramp: useId(), more: useId() }
-  const [more, setMore] = useState(() => Boolean(v.opts?.ramp || v.opts?.scale || v.opts?.compare))
+  const [more, setMore] = useState(() => Boolean(v.opts?.ramp || v.opts?.scale || v.opts?.compare || v.opts?.basemap || v.opts?.opacity != null || v.opts?.layers))
   const ds = DATASETS[v.dataset]
   const units = unitChoicesFor(v.dataset)
   const portal = portalDataset(specFor(v))
@@ -188,7 +190,7 @@ export function Controls({ v, range, onDataset, onPeriod, onDate, onExtent, onRa
         type="button" variant="ghost" size="sm" className="col-span-2 justify-between px-2 text-subtle lg:hidden"
         aria-expanded={more} aria-controls={ids.more} onClick={() => setMore((m) => !m)} data-testid="more-options"
       >
-        <span className="inline-flex items-center gap-1.5"><SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" /> Colours, scale and comparison</span>
+        <span className="inline-flex items-center gap-1.5"><SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" /> Colours, layers and comparison</span>
         <ChevronDown className={cn('h-4 w-4 transition-transform', more && 'rotate-180')} aria-hidden="true" />
       </Button>
       <div id={ids.more} className={cn('col-span-2 grid-cols-2 gap-x-3 gap-y-3 lg:grid lg:gap-y-4', more ? 'grid' : 'hidden')} data-testid="display-options">
@@ -209,8 +211,84 @@ export function Controls({ v, range, onDataset, onPeriod, onDate, onExtent, onRa
             onChange={onScale}
           />
         )}
+        {layers && <div className="col-span-2">{layers}</div>}
         {extra && <div className="col-span-2">{extra}</div>}
       </div>
+    </div>
+  )
+}
+
+/** ?basemap=: one of the portal's base maps (plus a light grey one). */
+export function BasemapSelect({ value, onChange }) {
+  const id = useId()
+  return (
+    <div>
+      <label htmlFor={id} className={LABEL}>Base map</label>
+      <Select id={id} value={value || DEFAULT_BASEMAP} onChange={onChange} data-testid="basemap-select">
+        {BASEMAP_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </Select>
+    </div>
+  )
+}
+
+/** ?opacity=: the data layer's opacity. The map follows the thumb while it
+ *  moves (onPreview); the URL is written once, on release (onChange). */
+export function OpacitySlider({ value, onChange, onPreview = null }) {
+  const id = useId()
+  const [draft, setDraft] = useState(null)
+  useEffect(() => { setDraft(null) }, [value]) // the URL caught up
+  const shown = draft ?? value ?? DEFAULT_OPACITY
+  return (
+    <div data-testid="opacity-control">
+      <div className="mb-1 flex items-baseline justify-between">
+        <label htmlFor={id} className={cn(LABEL, 'mb-0')}>Opacity</label>
+        <output htmlFor={id} className="font-mono text-[11px] tabular-nums text-subtle" data-testid="opacity-value">{shown} %</output>
+      </div>
+      <Slider
+        id={id} min={0} max={100} step={5} value={[shown]} aria-label="Data layer opacity"
+        className="py-2 [@media(pointer:coarse)]:py-3.5"
+        onValueChange={([n]) => { setDraft(n); onPreview?.(n) }}
+        onValueCommit={([n]) => onChange(n)}
+        data-testid="opacity-slider"
+      />
+    </div>
+  )
+}
+
+const LAYER_LABELS = { stations: 'Stations', outline: 'Island outlines' }
+
+/** ?layers=: the overlays. Native checkboxes in a fieldset: one tap each,
+ *  arrow keys and screen readers for free. Reports one toggle at a time
+ *  (the page builds the list, so two quick toggles both land). */
+export function LayerToggles({ dataset, value = [], onToggle }) {
+  const keys = LAYER_KEYS.filter((k) => k !== 'stations' || hasStations(dataset))
+  return (
+    <fieldset className="min-w-0" data-testid="layer-toggles">
+      <legend className={LABEL}>Layers</legend>
+      <div className="flex flex-col gap-0.5">
+        {keys.map((key) => (
+          <label key={key} className="flex min-h-9 cursor-pointer items-center gap-2.5 rounded-md px-1 text-sm hover:bg-muted [@media(pointer:coarse)]:min-h-11">
+            <input
+              type="checkbox" className="h-4 w-4 shrink-0 rounded border-border accent-accent"
+              checked={value.includes(key)} onChange={(e) => onToggle(key, e.target.checked)}
+              data-testid={`layer-${key}`}
+            />
+            {LAYER_LABELS[key]}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  )
+}
+
+/** Base map, opacity and overlays together (the rail's "Layers" block and
+ *  the phone sheet's Layers tab). */
+export function LayerControls({ v, onBasemap, onOpacity, onOpacityPreview = null, onLayerToggle }) {
+  return (
+    <div className="grid grid-cols-1 gap-3" data-testid="layer-controls">
+      <BasemapSelect value={v.opts?.basemap} onChange={onBasemap} />
+      <OpacitySlider value={v.opts?.opacity ?? DEFAULT_OPACITY} onChange={onOpacity} onPreview={onOpacityPreview} />
+      <LayerToggles dataset={v.dataset} value={v.opts?.layers || []} onToggle={onLayerToggle} />
     </div>
   )
 }

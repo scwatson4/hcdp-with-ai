@@ -46,8 +46,19 @@ vi.mock('react-leaflet', async () => {
       }
       return <div data-testid="leaflet-map" data-center={center.join(',')} data-zoom={zoom}>{children}</div>
     },
-    TileLayer: ({ url }) => <div data-testid="tile-layer" data-url={url} />,
+    TileLayer: ({ url, className }) => <div data-testid="tile-layer" data-url={url} className={className} />,
     ScaleControl: () => <div data-testid="scale-control" />,
+    GeoJSON: (props) => <div data-testid={props['data-testid'] || 'geojson'} data-pane={props.pane} />,
+    CircleMarker: ({ center, radius, pathOptions, pane, eventHandlers, children, ...rest }) => (
+      <div
+        data-testid={rest['data-testid'] || 'circle-marker'} data-center={center.join(',')} data-radius={radius}
+        data-fill={pathOptions?.fillColor} data-stroke={pathOptions?.color} data-weight={pathOptions?.weight} data-pane={pane}
+        onClick={(e) => eventHandlers?.click?.({ latlng: { lat: center[0], lng: center[1] }, originalEvent: e.nativeEvent })}
+      >
+        {children}
+      </div>
+    ),
+    Tooltip: ({ children }) => <span data-testid="marker-tooltip">{children}</span>,
     useMap: () => fake.map,
     useMapEvents: (h) => {
       React.useEffect(() => {
@@ -73,12 +84,15 @@ vi.mock('georaster', () => ({
 
 vi.mock('georaster-layer-for-leaflet', () => ({
   default: class {
-    constructor(opts) { this.opts = opts; this.ownCache = false; fake.layers.push(opts); fake.instances.push(this) }
+    constructor(opts) { this.opts = opts; this.opacity = opts.opacity; this.ownCache = false; fake.layers.push(opts); fake.instances.push(this) }
     clearCache() { this.ownCache = true }
     addTo() { return this }
-    setOpacity() {}
+    setOpacity(o) { this.opacity = o }
   },
 }))
+
+// Radix's slider measures its thumb with a ResizeObserver; jsdom has none.
+if (!global.ResizeObserver) global.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} }
 
 // ── fetch ───────────────────────────────────────────────────────────────────
 const DAY_RANGE = ['1990-01-01T10:00:00.000Z', '2026-09-23T10:00:00.000Z']
@@ -386,6 +400,48 @@ describe('controls write the URL', () => {
     fireEvent.click(within(screen.getByTestId('units-toggle')).getByLabelText('mm'))
     await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?scale=extreme'))
     expect(navType()).toBe('REPLACE')
+  })
+
+  it('replaces for base map, opacity and layers, draws them, and drops their defaults', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    await waitFor(() => expect(fake.layers.length).toBeGreaterThan(0))
+    expect(screen.getByTestId('tile-layer')).toHaveClass('basemap-photo')
+    fireEvent.change(screen.getByTestId('basemap-select'), { target: { value: 'topo' } })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?basemap=topo'))
+    expect(navType()).toBe('REPLACE')
+    expect(screen.getByTestId('tile-layer').dataset.url).toContain('USGSTopo')
+    expect(screen.getByTestId('tile-layer')).not.toHaveClass('basemap-photo')
+    // Overlays: the island outlines are a GeoJSON layer in the data pane.
+    expect(screen.queryByTestId('island-outlines')).toBeNull()
+    fireEvent.click(screen.getByTestId('layer-outline'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?basemap=topo&layers=outline'))
+    expect(navType()).toBe('REPLACE')
+    expect(screen.getByTestId('island-outlines').dataset.pane).toBe('climate-data')
+    fireEvent.click(screen.getByTestId('layer-stations'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?basemap=topo&layers=stations,outline'))
+    // Opacity: the slider writes on commit (keyboard commits at once) and the layer follows.
+    fireEvent.keyDown(screen.getByRole('slider', { name: 'Data layer opacity' }), { key: 'End' })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?basemap=topo&opacity=100&layers=stations,outline'))
+    expect(navType()).toBe('REPLACE')
+    expect(screen.getByTestId('opacity-value')).toHaveTextContent('100 %')
+    await waitFor(() => expect(fake.instances[fake.instances.length - 1].opacity).toBe(1))
+    // Back to the defaults: the keys leave the address (0 % is not a default).
+    fireEvent.keyDown(screen.getByRole('slider', { name: 'Data layer opacity' }), { key: 'Home' })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?basemap=topo&opacity=0&layers=stations,outline'))
+    fireEvent.change(screen.getByTestId('basemap-select'), { target: { value: 'satellite' } })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?opacity=0&layers=stations,outline'))
+    fireEvent.click(screen.getByTestId('layer-outline'))
+    fireEvent.click(screen.getByTestId('layer-stations'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?opacity=0'))
+    expect(screen.queryByTestId('island-outlines')).toBeNull()
+  })
+
+  it('offers the Stations layer only for datasets HCDP has station values for', async () => {
+    renderAt('/viewer/spi-3/month/2026-08/statewide?layers=outline')
+    expect(screen.queryByTestId('layer-stations')).toBeNull()
+    expect(screen.getByTestId('layer-outline')).toBeChecked()
+    expect(screen.getByTestId('basemap-select')).toHaveValue('satellite')
+    await settle()
   })
 
   it('writes map moves into the URL after 400 ms (replace, 4 decimals, integer zoom) — and only real moves', async () => {

@@ -136,6 +136,10 @@ function Viewer({ v }) {
         ramp: cur.opts.ramp && cur.opts.ramp !== defaultRampFor(dataset) ? cur.opts.ramp : undefined,
         scale: keepsScale(cur, dataset, period),
         compare: samePeriod ? cur.opts.compare : undefined,
+        // A station means nothing for a gridded-only product; a pin (a grid cell) survives.
+        station: hasStations(dataset) ? cur.opts.station : undefined,
+        // The time-series window is written in one period's date format.
+        ts: samePeriod ? cur.opts.ts : undefined,
       },
     })
   }
@@ -145,7 +149,7 @@ function Viewer({ v }) {
     if (period === cur.period) return
     const r = await getDateRangeSoon(cur.dataset, period, cur.extent)
     if (id !== seq.current) return
-    go({ period, date: dateForPeriod(cur.date, period, r), opts: { scale: keepsScale(cur, cur.dataset, period), compare: undefined } })
+    go({ period, date: dateForPeriod(cur.date, period, r), opts: { scale: keepsScale(cur, cur.dataset, period), compare: undefined, ts: undefined } })
   }
   const onDate = (date) => { seq.current++; go({ date }) }
   const onExtent = (extent) => { seq.current++; go({ extent, opts: { view: undefined } }) }

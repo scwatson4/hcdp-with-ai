@@ -904,6 +904,21 @@ describe('?station= and ?pin= open the time series', () => {
     vi.useRealTimers()
   })
 
+  it('a dataset without station values drops the station (a pin survives); a period change drops the window', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1&ts=2026-08-07..2026-09-07')
+    await screen.findByTestId('timeseries-panel')
+    fireEvent.click(within(screen.getByTestId('period-toggle')).getByLabelText('Monthly'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/month/2026-08/kauai?station=1020.1'))
+    fireEvent.change(screen.getByTestId('dataset-select'), { target: { value: 'spi-3' } })
+    await waitFor(() => expect(loc()).toBe('/viewer/spi-3/month/2026-08/kauai'))
+    expect(screen.queryByTestId('timeseries-panel')).toBeNull()
+    await act(async () => { fake.map.fire('click', { latlng: { lat: 22.1, lng: -159.6 } }) })
+    await waitFor(() => expect(loc()).toBe('/viewer/spi-3/month/2026-08/kauai?pin=22.1000,-159.6000'))
+    fireEvent.change(screen.getByTestId('dataset-select'), { target: { value: 'temperature-mean' } })
+    await waitFor(() => expect(loc()).toBe('/viewer/temperature-mean/month/2026-08/kauai?pin=22.1000,-159.6000'))
+    expect(screen.getByTestId('timeseries-heading')).toHaveTextContent('Grid cell 22.1000, -159.6000')
+  })
+
   it('closes with the × or Escape as a push that drops station, pin, ts and tsp', async () => {
     renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in&station=1020.1&ts=2026-08-07..2026-09-07&tsp=month')
     await screen.findByTestId('timeseries-panel')

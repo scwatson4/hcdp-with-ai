@@ -12,7 +12,7 @@ import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { cn } from '../lib/utils'
-import { DATASETS, DEFAULT_BASEMAP, DEFAULT_OPACITY, LAYER_KEYS, canonicalize, describeViewer, foreignQuery, formatViewerPath, hasStations, parseViewerPath } from './urlGrammar'
+import { DATASETS, DEFAULT_BASEMAP, DEFAULT_OPACITY, EXTENTS, LAYER_KEYS, canonicalize, describeViewer, foreignQuery, formatViewerPath, hasStations, parseViewerPath } from './urlGrammar'
 import { scheduleUrlWrite } from './urlWrites'
 import { CLIMATE_STATIONS_URL, findStation, stationValuesUrl, stationsOf, useJson } from './map/stationData'
 import { NAMED_RAMPS, makeColorFn, rampPosition, valueAtLatLng } from './map/ramps'
@@ -22,6 +22,7 @@ import {
   unitsForDataset, unitsLineFor,
 } from './map/viewerModel'
 import { TooltipProvider } from '../components/ui/tooltip'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { useRaster } from './map/rasterCache'
 import { getDateRange, getDateRangeSoon, useDateRange } from './map/dateRanges'
 import { ColourFields, Controls, CompareControl, DatasetField, DatePicker, LayerControls, PeriodUnitsFields, PlaceField, ScaleControls, ShareActions } from './map/Controls'
@@ -33,6 +34,7 @@ import Launcher from './map/Launcher'
 
 const ClimateMap = lazy(() => import('./map/ClimateMap'))
 const TimeSeriesPanel = lazy(() => import('./TimeSeriesPanel'))
+const StationList = lazy(() => import('./StationList'))
 
 const EYEBROW = 'font-mono text-[11px] font-medium uppercase tracking-wide text-subtle'
 
@@ -98,6 +100,8 @@ function Viewer({ v }) {
 
   const dateRange = useDateRange(v.dataset, v.period, v.extent)
   const range = dateRange.range
+  // The phone sheet's open tab (a station or pin in the address opens on its record).
+  const [tab, setTab] = useState(() => (v.opts.station || v.opts.pin ? 'stations' : 'dataset'))
   const raster = useRaster(rasterRequestUrl(v))
   const compareDate = compareDateFor(v)
   const compareRaster = useRaster(compareDate ? rasterRequestUrl({ ...v, date: compareDate }) : null)
@@ -191,13 +195,20 @@ function Viewer({ v }) {
   const layers = v.opts.layers || []
 
   // ── stations and the selection ──────────────────────────────────────────
+  // Below 768 px the rail becomes a bottom sheet with tabs (further down);
+  // on wide screens the rail has two tabs of its own, Map and Stations.
+  const narrow = useNarrowScreen()
+  const [railTab, setRailTab] = useState('map')
   const stationsOn = layers.includes('stations') && hasStations(v.dataset)
-  const stationValues = useJson(stationsOn ? stationValuesUrl(v) : null)
+  // The Stations list (the day's values joined with the station list) is
+  // fetched while its tab is open, whether or not the markers are on.
+  const listOn = hasStations(v.dataset) && (narrow ? tab === 'stations' : railTab === 'stations')
+  const stationValues = useJson(stationsOn || listOn ? stationValuesUrl(v) : null)
   const compareStationValues = useJson(stationsOn && compareDate ? stationValuesUrl({ ...v, date: compareDate }) : null)
   const skn = v.opts.station || null
   // A selected station is placed from the day's values when they are on
   // screen, else from the station list (which also has the elevation).
-  const stationMeta = useJson(skn ? CLIMATE_STATIONS_URL : null)
+  const stationMeta = useJson(skn || listOn ? CLIMATE_STATIONS_URL : null)
   const selectedStation = skn ? (findStation(stationMeta.data, skn) || findStation(stationValues.data, skn)) : null
   const pin = v.opts.pin || null
   const selected = useMemo(() => {
@@ -208,11 +219,18 @@ function Viewer({ v }) {
   // station and a pin exclude each other. The panel takes focus only for a
   // selection the visitor just made, never for one restored from the address.
   const userSelected = useRef(false)
-  const onSelectStation = useCallback((s) => {
-    if (String(latest.current.opts.station || '') === String(s.skn)) return
+  // From the list (`pan`), the camera moves to the station in the same
+  // push, so Back undoes both the choice and the move.
+  const onSelectStation = useCallback((s, { pan = false } = {}) => {
+    const cur = latest.current
+    if (String(cur.opts.station || '') === String(s.skn)) return
     userSelected.current = true
-    go({ opts: { station: String(s.skn), pin: undefined } })
+    const view = pan && Number.isFinite(s.lat) && Number.isFinite(s.lng)
+      ? { lat: Number(s.lat.toFixed(4)), lng: Number(s.lng.toFixed(4)), z: cur.opts.view?.z ?? EXTENTS[cur.extent].zoom }
+      : cur.opts.view
+    go({ opts: { station: String(s.skn), pin: undefined, view } })
   }, [go])
+  const onPickFromList = useCallback((s) => onSelectStation(s, { pan: true }), [onSelectStation])
   const onSelectPoint = useCallback(({ lat, lng }) => {
     const p = { lat: Number(lat.toFixed(4)), lng: Number(lng.toFixed(4)) }
     const cur = latest.current.opts.pin
@@ -242,15 +260,12 @@ function Viewer({ v }) {
   const busRef = useRef(null)
   if (!busRef.current) busRef.current = { maps: new Set(), leader: null, guard: false }
 
-  // Below 768 px the rail becomes a bottom sheet with tabs and the map runs
-  // edge to edge above it; a fresh selection opens the Station tab.
-  const narrow = useNarrowScreen()
-  const [tab, setTab] = useState(() => (selection ? 'station' : 'dataset'))
+  // The phone sheet's tabs: a fresh selection opens the Stations tab (which
+  // shows the selected station's record); closing it leaves the tab on the list.
   const [snap, setSnap] = useState('peek')
   const hadSelection = useRef(Boolean(selection))
   useEffect(() => {
-    if (selection && !hadSelection.current) { setTab('station'); if (userSelected.current) setSnap((s) => (s === 'peek' ? 'half' : s)) }
-    if (!selection && hadSelection.current) setTab((t) => (t === 'station' ? 'dataset' : t))
+    if (selection && !hadSelection.current) { setTab('stations'); if (userSelected.current) setSnap((s) => (s === 'peek' ? 'half' : s)) }
     hadSelection.current = Boolean(selection)
   }, [selection])
 
@@ -271,6 +286,14 @@ function Viewer({ v }) {
   )
   const stationProps = (sv) => (stationsOn ? { stations: sv.status === 'ready' ? stationsOf(sv.data) : null, stationStatus: sv.status } : {})
   const title = describeViewer(v)
+  const stationList = (hint = null, className = '') => (
+    <Suspense fallback={<p className="text-sm text-subtle" data-testid="station-list-skeleton">Loading the station list…</p>}>
+      <StationList
+        v={v} values={stationValues.data} meta={stationMeta.data} status={stationValues.status} selectedSkn={skn}
+        onSelect={onPickFromList} hint={hint} className={className}
+      />
+    </Suspense>
+  )
   const addressNote = (
     <p className="text-xs text-subtle">
       The address bar always describes this map. <Link to="/viewer" className="underline underline-offset-4 hover:text-foreground">How viewer addresses work</Link>
@@ -324,13 +347,17 @@ function Viewer({ v }) {
         ),
       },
       {
-        id: 'station', label: 'Station',
-        content: panel('border-0 p-0') || (
+        id: 'stations', label: 'Stations',
+        content: panel('border-0 p-0') || (hasStations(v.dataset) ? stationList(
           <p className="text-sm text-subtle" data-testid="station-hint">
-            Tap a station marker, or press and hold on the map, to see its record here.
-            {hasStations(v.dataset) && !layers.includes('stations') ? ' Turn on Stations under Layers to see the markers.' : ''}
+            Tap a station below or a marker on the map, or press and hold on the map, to see its record here.
+            {!layers.includes('stations') ? ' Turn on Stations under Layers to see the markers.' : ''}
+          </p>,
+        ) : (
+          <p className="text-sm text-subtle" data-testid="station-hint">
+            Press and hold on the map to see a grid cell's record here. This product has no station values.
           </p>
-        ),
+        )),
       },
     ]
     return (
@@ -352,15 +379,38 @@ function Viewer({ v }) {
             <p className={EYEBROW}>Climate viewer</p>
             <h1 className="mt-0.5 font-display text-xl leading-tight lg:text-2xl" data-testid="viewer-heading">{title}</h1>
           </header>
-          <Controls
-            v={v} range={range}
-            onDataset={onDataset} onPeriod={onPeriod} onDate={onDate} onExtent={onExtent}
-            onRamp={onRamp} onUnits={onUnits} onScale={onScale} onReverse={onReverse} onLog={onLog} onRange={onRange}
-            layers={<LayerControls v={v} onBasemap={onBasemap} onOpacity={onOpacity} onOpacityPreview={setOpacityDraft} onLayerToggle={onLayerToggle} />}
-            extra={<CompareControl v={v} range={range} compareDate={compareDate} onChange={onCompare} />}
-          />
-          <ShareActions path={sharePath} title={title} />
-          {addressNote}
+          {(() => {
+            const controls = (
+              <div className="space-y-4">
+                <Controls
+                  v={v} range={range}
+                  onDataset={onDataset} onPeriod={onPeriod} onDate={onDate} onExtent={onExtent}
+                  onRamp={onRamp} onUnits={onUnits} onScale={onScale} onReverse={onReverse} onLog={onLog} onRange={onRange}
+                  layers={<LayerControls v={v} onBasemap={onBasemap} onOpacity={onOpacity} onOpacityPreview={setOpacityDraft} onLayerToggle={onLayerToggle} />}
+                  extra={<CompareControl v={v} range={range} compareDate={compareDate} onChange={onCompare} />}
+                />
+                <ShareActions path={sharePath} title={title} />
+                {addressNote}
+              </div>
+            )
+            if (!hasStations(v.dataset)) return controls
+            // Two tabs: the map's settings, and the stations with a value for this date.
+            return (
+              <Tabs value={railTab} onValueChange={setRailTab}>
+                <TabsList className="grid h-auto w-full grid-cols-2 p-0.5" aria-label="Rail sections" data-testid="rail-tabs">
+                  <TabsTrigger value="map" className="h-8 font-nav font-semibold [@media(pointer:coarse)]:h-10" data-testid="rail-tab-map">Map</TabsTrigger>
+                  <TabsTrigger value="stations" className="h-8 font-nav font-semibold [@media(pointer:coarse)]:h-10" data-testid="rail-tab-stations">Stations</TabsTrigger>
+                </TabsList>
+                <TabsContent value="map" className="mt-4">{controls}</TabsContent>
+                <TabsContent value="stations" className="mt-4" data-testid="rail-stations">
+                  {stationList(
+                    <p className="text-xs text-subtle">The stations with a value on this date. Choose one to see its record; the map moves to it.</p>,
+                    'lg:max-h-[calc(100dvh-13rem)] lg:overflow-y-auto',
+                  )}
+                </TabsContent>
+              </Tabs>
+            )
+          })()}
         </aside>
         <section className="min-w-0" aria-label="Map">{maps}</section>
         {/* The time series: a 20 rem column beside the map on wide screens, below it otherwise. */}

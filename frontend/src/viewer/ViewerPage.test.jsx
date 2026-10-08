@@ -1151,6 +1151,124 @@ describe('?station= and ?pin= open the time series', () => {
   })
 })
 
+// ── the Stations tab ────────────────────────────────────────────────────────
+describe('the Stations tab', () => {
+  const rows = () => screen.getAllByTestId('station-row')
+  const names = () => rows().map((r) => within(r).getByTestId('station-pick').textContent)
+
+  it('lists the stations with a value for the date, sortable by column, and a row selects the station and pans to it (one push)', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    expect(screen.getByTestId('rail-tabs')).toBeInTheDocument()
+    expect(callsTo('/api/station-values')).toHaveLength(0)
+    fireEvent.mouseDown(screen.getByTestId('rail-tab-stations'))
+    const list = await screen.findByTestId('station-list')
+    await waitFor(() => expect(names()).toEqual(['Hilo Airport', 'Kahului']))
+    expect(callsTo('/api/station-values')).toEqual(['/api/station-values?dataset=rainfall&period=day&date=2026-09-07'])
+    expect(callsTo('/api/climate-stations')).toHaveLength(1)
+    expect(within(list).getByTestId('station-count')).toHaveTextContent('2 of 2 stations')
+    const hilo = rows()[0]
+    expect(within(hilo).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Hilo Airport', '1020.1', 'Hawaiʻi', '11', '12.3 mm'])
+    expect(within(rows()[1]).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Kahului', '800.2', 'Maui', '15', '—'])
+    // sort by value: highest first, a missing value last; again flips the order
+    fireEvent.click(within(list).getByTestId('station-sort-value'))
+    expect(names()).toEqual(['Hilo Airport', 'Kahului'])
+    expect(within(list).getByTestId('station-sort-value').closest('th')).toHaveAttribute('aria-sort', 'descending')
+    fireEvent.click(within(list).getByTestId('station-sort-elevation'))
+    expect(names()).toEqual(['Kahului', 'Hilo Airport'])
+    fireEvent.click(within(list).getByTestId('station-sort-elevation'))
+    expect(names()).toEqual(['Hilo Airport', 'Kahului'])
+    // the map has not been moved yet; nothing of the chrome is in the address
+    expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai')
+    // choosing a row: the station is selected and the camera moves to it in the same push
+    fireEvent.click(within(rows()[1]).getByTestId('station-pick'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?station=800.2&lat=20.9000&lng=-156.4300&z=10'))
+    expect(navType()).toBe('PUSH')
+    expect(visited.filter((p) => p.includes('station=800.2'))).toHaveLength(1)
+    await waitFor(() => expect(fake.map.getCenter()).toEqual({ lat: 20.9, lng: -156.43 }))
+    expect(await screen.findByTestId('timeseries-heading')).toHaveTextContent('Kahului')
+    expect(screen.getByTestId('timeseries-details')).toHaveTextContent('SKN 800.2 · Maui · 15 m · NWS')
+    expect(rows()[1]).toHaveAttribute('data-selected', 'true')
+    expect(within(rows()[1]).getByTestId('station-pick')).toHaveAttribute('aria-pressed', 'true')
+    // clicking anywhere on the already selected row changes nothing
+    fireEvent.click(rows()[1])
+    await settle()
+    expect(visited.filter((p) => p.includes('station=800.2'))).toHaveLength(1)
+  })
+
+  it('filters by island, name, elevation and value with exclude switches — chrome that never reaches the address', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in')
+    fireEvent.mouseDown(screen.getByTestId('rail-tab-stations'))
+    const list = await screen.findByTestId('station-list')
+    await waitFor(() => expect(names()).toEqual(['Hilo Airport', 'Kahului']))
+    fireEvent.click(within(list).getByTestId('station-filters-toggle'))
+    fireEvent.change(within(list).getByTestId('filter-text'), { target: { value: 'kah' } })
+    expect(names()).toEqual(['Kahului'])
+    expect(within(list).getByTestId('station-count')).toHaveTextContent('1 of 2 stations')
+    fireEvent.click(within(list).getByTestId('filter-text-negate'))
+    expect(names()).toEqual(['Hilo Airport'])
+    fireEvent.click(within(list).getByTestId('station-filters-clear'))
+    expect(names()).toEqual(['Hilo Airport', 'Kahului'])
+    // islands are offered with their counts, from the data
+    fireEvent.click(within(list).getByTestId('filter-island-Maui'))
+    expect(names()).toEqual(['Kahului'])
+    fireEvent.click(within(list).getByTestId('filter-islands-negate'))
+    expect(names()).toEqual(['Hilo Airport'])
+    fireEvent.click(within(list).getByTestId('station-filters-clear'))
+    fireEvent.change(within(list).getByTestId('filter-elev-min'), { target: { value: '12' } })
+    expect(names()).toEqual(['Kahului'])
+    fireEvent.click(within(list).getByTestId('station-filters-clear'))
+    // value bounds are in the display units: 0.4 in = 10.16 mm
+    fireEvent.change(within(list).getByTestId('filter-value-min'), { target: { value: '0.4' } })
+    expect(names()).toEqual(['Hilo Airport'])
+    expect(within(rows()[0]).getAllByRole('cell')[4]).toHaveTextContent('0.48 in')
+    expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?units=in')
+    await settle()
+    expect(visited).toEqual(['/viewer/rainfall/day/2026-09-07/kauai?units=in'])
+  })
+
+  it('has no Stations tab for a gridded-only product, and says so on the phone', async () => {
+    renderAt('/viewer/spi-3/month/2026-08/statewide')
+    expect(screen.queryByTestId('rail-tabs')).toBeNull()
+    expect(screen.getByTestId('viewer-controls')).toBeInTheDocument()
+    await settle()
+  })
+
+  it('on the phone, a gridded-only product offers no list, only the press-and-hold hint', async () => {
+    narrowScreen(true)
+    renderAt('/viewer/spi-3/month/2026-08/statewide')
+    const sheet = screen.getByTestId('bottom-sheet')
+    fireEvent.mouseDown(within(sheet).getByRole('tab', { name: 'Stations' }))
+    expect(await within(sheet).findByTestId('station-hint')).toHaveTextContent('no station values')
+    expect(screen.queryByTestId('station-list')).toBeNull()
+    expect(callsTo('/api/station-values')).toHaveLength(0)
+  })
+
+  it('on the phone, a station row opens its record, and no values for the date is said plainly', async () => {
+    narrowScreen(true)
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    const sheet = screen.getByTestId('bottom-sheet')
+    fireEvent.mouseDown(within(sheet).getByRole('tab', { name: 'Stations' }))
+    await within(sheet).findByTestId('station-list')
+    await waitFor(() => expect(names()).toEqual(['Hilo Airport', 'Kahului']))
+    expect(within(sheet).getByTestId('station-hint')).toHaveTextContent('Tap a station below')
+    fireEvent.click(within(rows()[0]).getByTestId('station-pick'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1&lat=19.7200&lng=-155.0500&z=10'))
+    expect(await within(sheet).findByTestId('timeseries-panel')).toBeInTheDocument()
+    expect(within(sheet).queryByTestId('station-list')).toBeNull()
+    fireEvent.click(within(sheet).getByTestId('timeseries-close'))
+    expect(await within(sheet).findByTestId('station-list')).toBeInTheDocument()
+  })
+
+  it('says when there are no station values for the date', async () => {
+    stationsMode = 404
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    fireEvent.mouseDown(screen.getByTestId('rail-tab-stations'))
+    const list = await screen.findByTestId('station-list')
+    await waitFor(() => expect(within(list).getByTestId('station-count')).toHaveTextContent('No station values for this date.'))
+    expect(screen.queryByTestId('station-table')).toBeNull()
+  })
+})
+
 // ── phone layout: the bottom sheet ──────────────────────────────────────────
 describe('below 768 px', () => {
   // jsdom has no PointerEvent: a plain event carrying the pointer fields.
@@ -1169,7 +1287,7 @@ describe('below 768 px', () => {
     const sheet = screen.getByTestId('bottom-sheet')
     expect(sheet.dataset.snap).toBe('peek')
     expect(within(sheet).getByTestId('viewer-heading')).toHaveTextContent('Rainfall, September 7, 2026, Kauaʻi')
-    expect(within(sheet).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Dataset', 'Date', 'Layers', 'Station'])
+    expect(within(sheet).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Dataset', 'Date', 'Layers', 'Stations'])
     expect(screen.queryByTestId('viewer-controls')).toBeNull() // no rail
     expect(screen.getByTestId('map-pane')).toHaveClass('border-y')
     expect(screen.getByTestId('map-pane')).not.toHaveClass('rounded-lg')
@@ -1185,7 +1303,7 @@ describe('below 768 px', () => {
     expect(await within(sheet).findByTestId('basemap-select')).toBeInTheDocument()
     expect(within(sheet).getByTestId('ramp-select')).toBeInTheDocument()
     expect(within(sheet).getByTestId('layer-stations')).toBeInTheDocument()
-    pickTab(sheet, 'Station')
+    pickTab(sheet, 'Stations')
     expect(await within(sheet).findByTestId('station-hint')).toHaveTextContent('press and hold')
     // The controls still write the address.
     pickTab(sheet, 'Dataset')
@@ -1233,21 +1351,22 @@ describe('below 768 px', () => {
     await waitFor(() => expect(screen.getAllByTestId('station-marker')).toHaveLength(2))
     fireEvent.click(screen.getAllByTestId('station-marker')[0])
     await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?layers=stations&station=1020.1'))
-    await waitFor(() => expect(within(sheet).getByRole('tab', { name: 'Station' })).toHaveAttribute('aria-selected', 'true'))
+    await waitFor(() => expect(within(sheet).getByRole('tab', { name: 'Stations' })).toHaveAttribute('aria-selected', 'true'))
     expect(sheet.dataset.snap).toBe('half')
     expect(await within(sheet).findByTestId('timeseries-panel')).toBeInTheDocument()
     expect(within(sheet).getByTestId('timeseries-heading')).toHaveTextContent('Hilo Airport')
-    // Closing returns to the Dataset tab.
+    // Closing leaves the Stations tab on the list of the day's stations.
     fireEvent.click(within(sheet).getByTestId('timeseries-close'))
     await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?layers=stations'))
-    await waitFor(() => expect(within(sheet).getByRole('tab', { name: 'Dataset' })).toHaveAttribute('aria-selected', 'true'))
+    expect(within(sheet).getByRole('tab', { name: 'Stations' })).toHaveAttribute('aria-selected', 'true')
+    expect(await within(sheet).findByTestId('station-list')).toBeInTheDocument()
   })
 
   it('a station in the address opens the Station tab on arrival, at peek height', async () => {
     narrowScreen(true)
     renderAt('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1')
     const sheet = screen.getByTestId('bottom-sheet')
-    expect(within(sheet).getByRole('tab', { name: 'Station' })).toHaveAttribute('aria-selected', 'true')
+    expect(within(sheet).getByRole('tab', { name: 'Stations' })).toHaveAttribute('aria-selected', 'true')
     expect(sheet.dataset.snap).toBe('peek')
     expect(await within(sheet).findByTestId('timeseries-panel')).toBeInTheDocument()
   })

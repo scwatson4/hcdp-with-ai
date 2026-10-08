@@ -212,8 +212,10 @@ function Viewer({ v }) {
     return pin ? { kind: 'pin', lat: pin.lat, lng: pin.lng } : null
   }, [skn, selectedStation, pin?.lat, pin?.lng]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const shareUrl = origin + formatViewerPath(v)
+  // What "Copy link" copies: the canonical spelling of this address (what
+  // the bar shows after the load-time rewrite), never the raw href.
+  const { pathname, search } = useLocation()
+  const sharePath = canonicalize(pathname, search) || formatViewerPath(v)
 
   // One sync bus per viewer for the side-by-side maps.
   const busRef = useRef(null)
@@ -252,7 +254,7 @@ function Viewer({ v }) {
             layers={<LayerControls v={v} onBasemap={onBasemap} onOpacity={onOpacity} onOpacityPreview={setOpacityDraft} onLayerToggle={onLayerToggle} />}
             extra={<CompareControl v={v} range={range} compareDate={compareDate} onChange={onCompare} />}
           />
-          <ShareActions url={shareUrl} />
+          <ShareActions path={sharePath} title={describeViewer(v)} />
           <p className="text-xs text-subtle">
             The address bar always describes this map. <Link to="/viewer" className="underline underline-offset-4 hover:text-foreground">How viewer addresses work</Link>
           </p>

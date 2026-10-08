@@ -138,6 +138,7 @@ const RECORD = (u) => ({
 let rasterMode = 'data' // 'data' | 'empty' | 404 | 500 | 'network' | 'hang'
 let stationsMode = 'data' // 'data' | 404 | 'hang'
 let seriesMode = 'data' // 'data' | 404 | 500 | 'hang'
+let shortenMode = 'data' // 'data' | 500
 let hung = []
 let hungStations = []
 let hungSeries = []
@@ -160,6 +161,11 @@ function installFetch() {
       return { ok: true, status: 200, json: async () => STATION_VALUES }
     }
     if (u.pathname === '/api/climate-stations') return { ok: true, status: 200, json: async () => CLIMATE_STATIONS }
+    if (u.pathname === '/api/shorten') {
+      if (shortenMode === 500) return { ok: false, status: 502, json: async () => ({ detail: 'down' }) }
+      const { path } = JSON.parse(init.body)
+      return { ok: true, status: 200, json: async () => ({ id: 'k7Qz2', url: `http://localhost/s/k7Qz2`, path }) }
+    }
     if (u.pathname === '/api/timeseries') {
       if (seriesMode === 404) return { ok: false, status: 404, json: async () => ({ detail: 'no record' }) }
       if (seriesMode === 500) return { ok: false, status: 502, json: async () => ({ detail: 'HCDP API returned 500' }) }
@@ -204,6 +210,7 @@ beforeEach(() => {
   rasterMode = 'data'
   stationsMode = 'data'
   seriesMode = 'data'
+  shortenMode = 'data'
   hung = []
   hungStations = []
   hungSeries = []
@@ -938,13 +945,52 @@ describe('?station= and ?pin= open the time series', () => {
 
 // ── sharing and comparing ───────────────────────────────────────────────────
 describe('sharing', () => {
-  it('copies the link with the clipboard API', async () => {
+  it('copies the canonical link with the clipboard API, whatever spelling the page was opened with', async () => {
     const writeText = vi.fn(async () => {})
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
-    renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in')
+    renderAt('/viewer/rain/daily/2026-09-07/ka?stations=1&units=in')
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?units=in&layers=stations'))
     fireEvent.click(screen.getByTestId('copy-link'))
     await waitFor(() => expect(screen.getByTestId('copy-link')).toHaveTextContent('Link copied'))
-    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/viewer/rainfall/day/2026-09-07/kauai?units=in`)
+    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/viewer/rainfall/day/2026-09-07/kauai?units=in&layers=stations`)
+  })
+
+  it('offers the system share sheet only where the browser has one, with the map title and the canonical link', async () => {
+    Object.defineProperty(navigator, 'share', { value: undefined, configurable: true, writable: true })
+    const { unmount } = renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in')
+    expect(screen.queryByTestId('share-link')).toBeNull()
+    unmount()
+    const share = vi.fn(async () => {})
+    Object.defineProperty(navigator, 'share', { value: share, configurable: true, writable: true })
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in')
+    fireEvent.click(screen.getByTestId('share-link'))
+    await waitFor(() => expect(share).toHaveBeenCalledWith({ title: 'Rainfall, September 7, 2026, Kauaʻi', url: `${window.location.origin}/viewer/rainfall/day/2026-09-07/kauai?units=in` }))
+    Object.defineProperty(navigator, 'share', { value: undefined, configurable: true, writable: true })
+  })
+
+  it('QR / short link asks /api/shorten for the canonical path and shows the short link with a QR code of it', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in')
+    fireEvent.click(screen.getByTestId('qr-link'))
+    const field = await screen.findByTestId('short-link')
+    await waitFor(() => expect(field).toHaveValue('http://localhost/s/k7Qz2'))
+    const post = global.fetch.mock.calls.find(([u]) => String(u) === '/api/shorten')
+    expect(post[1].method).toBe('POST')
+    expect(JSON.parse(post[1].body)).toEqual({ path: '/viewer/rainfall/day/2026-09-07/kauai?units=in' })
+    const qr = await screen.findByTestId('qr-code')
+    expect(qr.getAttribute('src')).toMatch(/^data:image\/svg\+xml;charset=utf-8,/)
+    expect(decodeURIComponent(qr.getAttribute('src'))).toContain('<svg')
+    expect(qr).toHaveAttribute('alt', 'QR code that opens http://localhost/s/k7Qz2')
+    expect(screen.getByText(/Print this page/)).toBeInTheDocument()
+  })
+
+  it('falls back to the long link (and a QR code of it) when the shortener fails', async () => {
+    shortenMode = 500
+    renderAt('/viewer/spi-3/month/2026-08/statewide')
+    fireEvent.click(screen.getByTestId('qr-link'))
+    const field = await screen.findByTestId('short-link')
+    await waitFor(() => expect(field).toHaveValue(`${window.location.origin}/viewer/spi-3/month/2026-08/statewide`))
+    expect(screen.getByTestId('short-link-fallback')).toHaveTextContent('did not answer')
+    expect(await screen.findByTestId('qr-code')).toHaveAttribute('alt', `QR code that opens ${window.location.origin}/viewer/spi-3/month/2026-08/statewide`)
   })
 
   it('shows the address to copy by hand when the clipboard is refused', async () => {

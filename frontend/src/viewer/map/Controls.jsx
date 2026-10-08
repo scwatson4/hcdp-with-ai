@@ -3,8 +3,10 @@
 // the view except the half-typed text of the date field.
 
 import { useEffect, useId, useRef, useState } from 'react'
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ExternalLink, Link2, SkipBack, SkipForward, SlidersHorizontal } from 'lucide-react'
+import QRCode from 'qrcode'
+import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Copy, ExternalLink, Link2, Loader2, QrCode, Share2, SkipBack, SkipForward, SlidersHorizontal } from 'lucide-react'
 import { Button } from '../../components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
 import { Slider } from '../../components/ui/slider'
 import { Switch } from '../../components/ui/switch'
 import { cn } from '../../lib/utils'
@@ -337,41 +339,61 @@ export function CompareControl({ v, range, compareDate, onChange }) {
   )
 }
 
-/** Copy link (clipboard, or the address shown to copy by hand) and the way
- *  out to the real portal. */
-export function ShareActions({ url }) {
+/** Write to the clipboard; false when the browser refuses. */
+async function copyText(text) {
+  try {
+    if (!navigator.clipboard?.writeText) return false
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch { return false }
+}
+
+/** Copy link (the canonical address — never the raw href), the system share
+ *  sheet where there is one, a QR code with a short link, and the way out to
+ *  the real portal. */
+export function ShareActions({ path, title }) {
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const url = origin + path
   const [state, setState] = useState('idle') // 'idle' | 'copied' | 'manual'
   const timer = useRef(null)
   const fieldRef = useRef(null)
   useEffect(() => () => clearTimeout(timer.current), [])
   useEffect(() => { if (state === 'manual') fieldRef.current?.select() }, [state])
+  const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
 
   const copy = async () => {
-    try {
-      if (!navigator.clipboard?.writeText) throw new Error('no clipboard')
-      await navigator.clipboard.writeText(url)
+    if (await copyText(url)) {
       setState('copied')
       clearTimeout(timer.current)
       timer.current = setTimeout(() => setState('idle'), 2500)
-    } catch {
+    } else {
       setState('manual')
     }
+  }
+  const share = async () => {
+    try { await navigator.share({ title, url }) } catch { /* dismissed */ }
   }
 
   return (
     <div className="space-y-2" data-testid="share-actions">
       <div className="flex flex-wrap gap-2">
-        <Button type="button" onClick={copy} className="flex-1" data-testid="copy-link">
+        <Button type="button" onClick={copy} className="min-w-0 flex-1 [@media(pointer:coarse)]:h-11" data-testid="copy-link">
           {state === 'copied' ? <Check className="h-4 w-4" aria-hidden="true" /> : <Link2 className="h-4 w-4" aria-hidden="true" />}
           {state === 'copied' ? 'Link copied' : 'Copy link'}
         </Button>
-        <Button asChild variant="outline" className="flex-1">
-          <a href={PORTAL_URL} target="_blank" rel="noopener noreferrer" data-testid="portal-link">
-            Open in the HCDP data portal <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-            <span className="sr-only">(opens in a new tab)</span>
-          </a>
-        </Button>
+        {canShare && (
+          <Button type="button" variant="outline" onClick={share} className="min-w-0 flex-1 [@media(pointer:coarse)]:h-11" data-testid="share-link">
+            <Share2 className="h-4 w-4" aria-hidden="true" /> Share…
+          </Button>
+        )}
+        <ShortLinkPopover path={path} url={url} />
       </div>
+      <Button asChild variant="outline" className="w-full [@media(pointer:coarse)]:h-11">
+        <a href={PORTAL_URL} target="_blank" rel="noopener noreferrer" data-testid="portal-link">
+          Open in the HCDP data portal <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+          <span className="sr-only">(opens in a new tab)</span>
+        </a>
+      </Button>
       <p className="sr-only" aria-live="polite">{state === 'copied' ? 'Link copied to the clipboard.' : ''}</p>
       {state === 'manual' && (
         <div data-testid="copy-fallback">
@@ -385,5 +407,86 @@ export function ShareActions({ url }) {
         </div>
       )}
     </div>
+  )
+}
+
+// Short links already made this visit, by canonical path.
+const shortLinks = new Map()
+
+/** POST /api/shorten {path} → {id, url}; rejects when the service does not answer. */
+export async function shortenPath(path) {
+  if (shortLinks.has(path)) return shortLinks.get(path)
+  const resp = await fetch('/api/shorten', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path }) })
+  if (!resp.ok) throw new Error(`shorten: HTTP ${resp.status}`)
+  const body = await resp.json()
+  if (!body?.url) throw new Error('shorten: no url in the answer')
+  shortLinks.set(path, body.url)
+  return body.url
+}
+
+/** A QR code of `text` as an SVG data URL (error correction M) — crisp at
+ *  any size, so it prints well. */
+export async function qrDataUrl(text) {
+  const svg = await QRCode.toString(text, { type: 'svg', errorCorrectionLevel: 'M', margin: 1 })
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+}
+
+/** "QR / short link": the short address (copyable) and a QR code of it;
+ *  when the shortener fails, the long link does the same job. */
+function ShortLinkPopover({ path, url }) {
+  const [open, setOpen] = useState(false)
+  const [state, setState] = useState({ path: null, status: 'idle', short: null, qr: null })
+  const [copied, setCopied] = useState(false)
+  const id = useId()
+
+  // Asked once per path while open; an answer for a path no longer shown is dropped.
+  const requested = useRef(null)
+  useEffect(() => {
+    if (!open || requested.current === path) return
+    requested.current = path
+    setState({ path, status: 'loading', short: null, qr: null })
+    ;(async () => {
+      let short = null
+      try { short = await shortenPath(path) } catch { short = null }
+      let qr = null
+      try { qr = await qrDataUrl(short || url) } catch { qr = null }
+      if (requested.current === path) setState({ path, status: short ? 'short' : 'long', short, qr })
+    })()
+  }, [open, path, url])
+
+  const link = state.short || url
+  const copy = async () => {
+    setCopied(await copyText(link))
+    setTimeout(() => setCopied(false), 2200)
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button type="button" variant="outline" className="min-w-0 flex-1 [@media(pointer:coarse)]:h-11" data-testid="qr-link" aria-label="QR code and short link">
+          <QrCode className="h-4 w-4" aria-hidden="true" /> QR / short link
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[17.5rem]" data-testid="qr-popover">
+        <p className={LABEL}>{state.status === 'long' ? 'Link' : 'Short link'}</p>
+        <div className="flex items-center gap-1">
+          <input
+            id={id} readOnly value={state.status === 'loading' ? '' : link} placeholder={state.status === 'loading' ? 'Making a short link…' : ''}
+            aria-label={state.status === 'long' ? 'Link to this map' : 'Short link to this map'} onFocus={(e) => e.target.select()}
+            className={cn(FIELD, 'min-w-0 flex-1 font-mono text-xs')} data-testid="short-link"
+          />
+          <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={copy} aria-label={copied ? 'Copied' : 'Copy the link'} title="Copy" disabled={state.status === 'loading'} data-testid="short-link-copy">
+            {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
+          </Button>
+        </div>
+        {state.status === 'long' && <p className="mt-1 text-xs text-subtle" data-testid="short-link-fallback">The short-link service did not answer; this is the full address.</p>}
+        <div className="mt-3 flex items-center justify-center rounded-md bg-white p-2" aria-busy={state.status === 'loading'}>
+          {state.qr
+            ? <img src={state.qr} width={176} height={176} alt={`QR code that opens ${link}`} className="h-44 w-44" data-testid="qr-code" />
+            : <div className="flex h-44 w-44 items-center justify-center text-subtle">{state.status === 'loading' ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> : <span className="text-xs">No QR code</span>}</div>}
+        </div>
+        <p className="mt-2 text-xs text-subtle">Scan to open this map. Print this page to put the code on a handout — the code is a vector, so it stays sharp at any size.</p>
+      </PopoverContent>
+    </Popover>
   )
 }

@@ -1,16 +1,15 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { ChevronDown, ExternalLink, Menu } from 'lucide-react'
 import { useState } from 'react'
-import ThemeToggle from './ThemeToggle'
 import { Button } from './ui/button'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from './ui/dropdown-menu'
 import { NAV } from '../site/nav'
 import { cn } from '../lib/utils'
 
 // The portal's header: the logo centred on its own row, the menu centred under it in
-// Raleway small caps (tightened: 20 px gaps, 12.5 px type). The theme toggle sits at
-// the right edge of the logo row. App.jsx keeps the header sticky together with the
-// docked ask bar that sits under it on inner pages (R1 D).
+// Raleway small caps (tightened: 20 px gaps, 12.5 px type). The site is always light —
+// there is no theme toggle. App.jsx keeps the header sticky together with the docked
+// ask bar that sits under it on inner pages (R1 D).
 function MenuItem({ item }) {
   if (item.external) {
     return (
@@ -41,7 +40,6 @@ export default function SiteHeader() {
           <img src="/hcdp_logo_dark.png" alt="" width="1120" height="150" decoding="async" className="hidden h-8 w-auto sm:h-[52px] dark:block" />
         </Link>
         <div className="absolute right-4 top-1/2 flex -translate-y-1/2 items-center gap-1">
-          <ThemeToggle />
           <Button variant="ghost" size="sm" className="h-8 w-8 p-0 md:hidden" aria-label="Menu" aria-expanded={mobile} onClick={() => setMobile((v) => !v)}><Menu className="h-4 w-4" /></Button>
         </div>
       </div>

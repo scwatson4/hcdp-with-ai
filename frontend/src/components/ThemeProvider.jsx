@@ -1,46 +1,24 @@
 import * as React from 'react'
 
+// The site is always light (2026-10-08): there is no theme toggle, and a theme remembered
+// by an earlier visit is cleared rather than applied. The dark-mode CSS stays in the
+// stylesheet but is never activated. `useTheme` keeps its shape for any consumer.
 const ThemeContext = React.createContext({ theme: 'light', setTheme: () => {} })
 
-const STORAGE_KEY = 'hcdp-theme'
+export const STORAGE_KEY = 'hcdp-theme'
 
-function applyTheme(theme) {
+function applyLight() {
   const root = document.documentElement
-  root.classList.remove('light', 'dark')
-  if (theme === 'system') {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    root.classList.add(prefersDark ? 'dark' : 'light')
-  } else {
-    root.classList.add(theme)
-  }
-  root.style.colorScheme = theme === 'system'
-    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-    : theme
+  root.classList.remove('dark')
+  root.classList.add('light')
+  root.style.colorScheme = 'light'
+  try { localStorage.removeItem(STORAGE_KEY) } catch { /* no storage */ }
 }
 
-export function ThemeProvider({ children, defaultTheme = 'light' }) {
-  const [theme, setThemeState] = React.useState(() => {
-    try {
-      return localStorage.getItem(STORAGE_KEY) || defaultTheme
-    } catch { return defaultTheme }
-  })
-
-  React.useEffect(() => { applyTheme(theme) }, [theme])
-
-  React.useEffect(() => {
-    if (theme !== 'system') return
-    const media = window.matchMedia('(prefers-color-scheme: dark)')
-    const handler = () => applyTheme('system')
-    media.addEventListener('change', handler)
-    return () => media.removeEventListener('change', handler)
-  }, [theme])
-
-  const setTheme = React.useCallback((t) => {
-    try { localStorage.setItem(STORAGE_KEY, t) } catch {}
-    setThemeState(t)
-  }, [])
-
-  return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>
+export function ThemeProvider({ children }) {
+  React.useEffect(() => { applyLight() }, [])
+  const value = React.useMemo(() => ({ theme: 'light', setTheme: () => {} }), [])
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
 }
 
 export function useTheme() {

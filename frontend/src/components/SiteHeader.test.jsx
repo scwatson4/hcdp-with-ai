@@ -6,7 +6,7 @@ import { ThemeProvider } from './ThemeProvider'
 import { TooltipProvider } from './ui/tooltip'
 import { AI_INTERFACE } from '../site/handoff'
 
-const renderHeader = () => render(<ThemeProvider defaultTheme="light"><TooltipProvider><MemoryRouter><SiteHeader /></MemoryRouter></TooltipProvider></ThemeProvider>)
+const renderHeader = () => render(<ThemeProvider><TooltipProvider><MemoryRouter><SiteHeader /></MemoryRouter></TooltipProvider></ThemeProvider>)
 
 describe('SiteHeader', () => {
   it('ends the menu row with the AI Data Analysis Tool pill: external, rainbow-outlined, says it opens a new tab', () => {
@@ -25,6 +25,15 @@ describe('SiteHeader', () => {
     // last in DOM order among the row's items
     expect(nav.lastElementChild).toBe(pill)
     expect(items.length).toBeGreaterThan(5)
+  })
+
+  it('has no theme toggle: the site is always light', () => {
+    localStorage.setItem('hcdp-theme', 'dark')
+    renderHeader()
+    expect(screen.queryByRole('button', { name: 'Theme' })).toBeNull()
+    expect(document.documentElement.classList.contains('light')).toBe(true)
+    expect(document.documentElement.classList.contains('dark')).toBe(false)
+    expect(localStorage.getItem('hcdp-theme')).toBeNull()
   })
 
   it('offers the same door in the phone menu', () => {

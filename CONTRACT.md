@@ -42,8 +42,9 @@ no sign-in, saves no conversation history (memory only, per tab), and has no vis
 
 ## Stack and layout
 - `frontend/` — React 18 + Vite + Tailwind. Same design system as the AI interface: tokens in
-  `src/styles/globals.css`, primitives in `src/components/ui/*`, the HCDP mark in `HeaderLogo.jsx`, light and
-  dark themes via `ThemeProvider`. Fonts are the portal's: the system stack (`-apple-system, Segoe UI, Roboto,
+  `src/styles/globals.css`, primitives in `src/components/ui/*`, the HCDP mark in `HeaderLogo.jsx`. The site is
+  always light (`ThemeProvider` applies the light theme and clears any remembered one; there is no toggle, and
+  the dark-mode CSS stays unused). Fonts are the portal's: the system stack (`-apple-system, Segoe UI, Roboto,
   Helvetica Neue, Arial`) for body and headings, Raleway 600 for the menus (`font-nav`), Roboto in the map furniture.
   Router: `react-router-dom`. Alias `@` → `src`.
 - `backend/` — FastAPI (`app.py`). LLM calls go through `llm.py` to gpt-5.6-sol on the NAIRR
@@ -237,7 +238,8 @@ Viewer entries carry `internal_path` templates such as `/viewer/rainfall/day/{da
 - Match the real HCDP site's section names and order: Access Data, Hawaiʻi Mesonet, Climate Summary,
   Pacific Portal, Extreme Events, Climate Tools; top nav Home · About · Data Portal · Research · Climate Tools.
 - Every page works at phone width. External links open in a new tab and say so.
-- No cookies, no analytics, no sign-in, nothing persisted except the theme — and one exception: the viewer's unit
+- No cookies, no analytics, no sign-in, no theme (the site is always light; a `hcdp-theme` key left by an earlier
+  visit is removed), nothing persisted — with one exception: the viewer's unit
   system (`mm`/`°C` or `in`/`°F`) is remembered per browser (`localStorage` key `hcdp-units`, read and written in
   try/catch; `frontend/src/viewer/unitsPreference.js`). It only fills in a viewer link that names no units, as a
   load-time `replaceState` (`?units=in` / `?units=f`); a `units=` key in the address always wins, even `units=mm`.

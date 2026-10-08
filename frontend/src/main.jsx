@@ -19,7 +19,7 @@ import NotFound from './pages/NotFound'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <ThemeProvider defaultTheme="light">
+    <ThemeProvider>
       <TooltipProvider delayDuration={300}>
       <BrowserRouter>
         <AssistantProvider>

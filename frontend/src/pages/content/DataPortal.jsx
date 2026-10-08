@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { PageShell, Section, FactList } from './PageShell'
 import ExternalLink from './ExternalLink'
-import EmbedFrame from './EmbedFrame'
+import ExportForm from './ExportForm'
 import { CodeBlock, CopyBlock } from './CopyButton'
 import { dataRelated, lastCompleteMonth, yesterday } from './contentUtils'
 
@@ -189,8 +189,12 @@ export function AccessData() {
         </ul>
       </Section>
 
-      <Section id="export" title="Export data" lead={<p>Downloads — gridded maps, error and anomaly maps, metadata, station CSVs, as a package by email — stay with the portal's own Export tool until this site has its own. Everything else on this page is the viewer: every map here has an address you can share.</p>}>
-        <EmbedFrame src={`${PORTAL_APP}/?datatype=rainfall&period=month`} title="HCDP data portal — Export Data" fallbackHref={PORTAL_PAGE} fallbackLabel="open the data portal" deferred />
+      <Section id="export" title="Export data" lead={<p>Rainfall and temperature as HCDP packages them: gridded maps (GeoTIFF), their standard-error and anomaly maps, metadata and error metrics, and the station data as CSV, for the dates and extents you choose. Small packages download at once; larger ones are zipped by HCDP and a link is emailed to you.</p>}>
+        <ExportForm originalHref={`${PORTAL_APP}/?datatype=rainfall&period=month`} />
+        <p className="mt-3 text-sm text-subtle" data-testid="export-original-link">
+          Drought index (SPI), vegetation (NDVI), ignition probability, climate projections and the climatologies are exported from the{' '}
+          <ExternalLink href={`${PORTAL_APP}/?datatype=spi&period=month`}>original HCDP data portal app</ExternalLink>.
+        </p>
       </Section>
 
       <Section id="more" title="More ways in">

@@ -36,16 +36,23 @@ def _hex(h: str) -> tuple[int, int, int]:
     return int(h[1:3], 16), int(h[3:5], 16), int(h[5:7], 16)
 
 
-def lut(ramp: str = "viridis", n: int = 256) -> np.ndarray:
+def lut(ramp: str = "viridis", n: int = 256, reverse: bool = False) -> np.ndarray:
     """An n×3 uint8 lookup table for a named ramp: linear RGB interpolation between the stops,
-    exactly as the viewer's interpolateColorRamp paints pixels. Unknown names fall back to viridis."""
+    exactly as the viewer's interpolateColorRamp paints pixels. Unknown names fall back to viridis;
+    `reverse` runs the ramp the other way (the viewer's ?ramp=name-r)."""
     stops = NAMED_RAMPS.get(ramp) or NAMED_RAMPS["viridis"]
     seen: dict[float, str] = {}
     for p, h in stops:                      # a few HCDP ramps repeat a stop; np.interp wants strictly increasing positions
         seen.setdefault(float(p), h)
     pos = np.array(sorted(seen)); cols = np.array([_hex(seen[p]) for p in pos], dtype=float)
     t = np.linspace(0, 1, n)
-    return np.stack([np.interp(t, pos, cols[:, c]) for c in range(3)], axis=1).round().astype(np.uint8)
+    table = np.stack([np.interp(t, pos, cols[:, c]) for c in range(3)], axis=1).round().astype(np.uint8)
+    return table[::-1].copy() if reverse else table
+
+
+def pseudo_log(a):
+    """The viewer's ?log=1 scaling (ramps.js pseudoLog): sign(v)·ln(1+|v|), for arrays and scalars."""
+    return np.sign(a) * np.log1p(np.abs(a))
 
 
 def _read_grid(tif: Path, crop_bounds: tuple[float, float, float, float] | None = None) -> tuple[np.ndarray, np.ndarray]:
@@ -73,11 +80,14 @@ def _read_grid(tif: Path, crop_bounds: tuple[float, float, float, float] | None 
     return a, mask
 
 
-def _colourise(a: np.ndarray, mask: np.ndarray, ramp: str, vmin: float, vmax: float, bg: str | None) -> Image.Image:
+def _colourise(a: np.ndarray, mask: np.ndarray, ramp: str, vmin: float, vmax: float, bg: str | None, reverse: bool = False, log: bool = False) -> Image.Image:
     if vmax <= vmin:
         vmax = vmin + 1.0
-    t = np.clip((np.where(mask, a, vmin) - vmin) / (vmax - vmin), 0, 1)
-    rgb = lut(ramp)[(t * 255).astype(np.uint8)]
+    vals = np.where(mask, a, vmin)
+    if log:
+        vals, vmin, vmax = pseudo_log(vals), float(pseudo_log(vmin)), float(pseudo_log(vmax))
+    t = np.clip((vals - vmin) / (vmax - vmin), 0, 1)
+    rgb = lut(ramp, reverse=reverse)[(t * 255).astype(np.uint8)]
     if bg:
         ocean = np.array(_hex("#" + bg.lstrip("#")), dtype=np.uint8)
         rgb = np.where(mask[..., None], rgb, ocean)
@@ -148,10 +158,13 @@ def _shrink(draw: ImageDraw.ImageDraw, text: str, size: int, max_width: int, bol
 
 
 def render_og(tif: Path, ramp: str, domain: tuple[float, float], title: str, subtitle: str, legend: tuple[str, str, str] | None = None,
-              crop_bounds: tuple[float, float, float, float] | None = None, fmt: str = "png", brand: str = "Hawaiʻi Climate Data Portal") -> bytes:
-    """A 1200×630 preview card: the grid painted on the portal's fixed `domain` with `ramp`, centred on an
-    ocean of OCEAN above a white strip carrying `title` (the view's description), `subtitle` (the product and
-    units line), a legend bar (`legend` = (low label, high label, header)) and the portal's name."""
+              crop_bounds: tuple[float, float, float, float] | None = None, fmt: str = "png", brand: str = "Hawaiʻi Climate Data Portal",
+              reverse: bool = False, log: bool = False) -> bytes:
+    """A 1200×630 preview card: the grid painted on `domain` (the portal's fixed range, or the link's locked
+    ?range=) with `ramp` — run the other way with `reverse`, on a pseudo-log scale with `log`, as the viewer
+    does for ?ramp=name-r and ?log=1 — centred on an ocean of OCEAN above a white strip carrying `title`
+    (the view's description), `subtitle` (the product and units line), a legend bar (`legend` = (low label,
+    high label, header)) and the portal's name."""
     a, mask = _read_grid(tif, crop_bounds)
     if crop_bounds and not mask.any():       # nothing of the product inside the island box: show the whole grid instead
         a, mask = _read_grid(tif)
@@ -160,7 +173,7 @@ def render_og(tif: Path, ramp: str, domain: tuple[float, float], title: str, sub
     W, H = OG_SIZE
     strip = 118
     card = Image.new("RGB", (W, H), _hex(OCEAN))
-    island = _colourise(a, mask, ramp, float(domain[0]), float(domain[1]), OCEAN.lstrip("#")).convert("RGB")
+    island = _colourise(a, mask, ramp, float(domain[0]), float(domain[1]), OCEAN.lstrip("#"), reverse, log).convert("RGB")
     pad = 14
     box_w, box_h = W - 2 * pad, H - strip - 2 * pad
     h0, w0 = mask.shape
@@ -183,7 +196,7 @@ def render_og(tif: Path, ramp: str, domain: tuple[float, float], title: str, sub
         lo_label, hi_label, header = legend
         bar_w, bar_h, x1 = 240, 12, W - 40
         x0, y0 = x1 - bar_w, top + 44
-        grad = Image.fromarray(np.repeat(lut(ramp, bar_w)[None, :, :], bar_h, axis=0), "RGB")
+        grad = Image.fromarray(np.repeat(lut(ramp, bar_w, reverse)[None, :, :], bar_h, axis=0), "RGB")
         card.paste(grad, (x0, y0))
         draw.rectangle([x0, y0, x1, y0 + bar_h], outline=(148, 163, 184), width=1)
         draw.text((x0, top + 20), _fit(draw, header, small, bar_w), font=small, fill=(71, 85, 105))

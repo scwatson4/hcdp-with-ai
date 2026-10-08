@@ -76,14 +76,15 @@ export function TitleCard({ title, unitsLine, sourceLine, extra = null, caution 
 }
 
 /** The portal's legend: header, a 25×120 vertical bar with high values at
- *  the top, five labels with the portal's "+" / "-" open-end marks. */
-export function Legend({ header, labels, ramp, tick = null }) {
+ *  the top, five labels with the portal's "+" / "-" open-end marks; the bar
+ *  reads from the other end for a reversed ramp (?ramp=name-r). */
+export function Legend({ header, labels, ramp, reverse = false, tick = null }) {
   return (
     <div className="hcdp-legend pointer-events-none absolute bottom-2 right-2 z-[1000]" data-testid="legend" role="img" aria-label={`Legend: ${header}, from ${labels[labels.length - 1]} to ${labels[0]}`}>
       <div className="hcdp-legend__title">{header}</div>
       <div className="hcdp-legend__scale">
         <div className="hcdp-legend__bar-wrap">
-          <div className="hcdp-legend__bar" data-testid="legend-gradient" style={{ background: rampGradient(ramp) }}>
+          <div className="hcdp-legend__bar" data-testid="legend-gradient" data-reversed={reverse ? 'true' : undefined} style={{ background: rampGradient(ramp, reverse) }}>
             {tick != null && <span className="hcdp-legend__tick" data-testid="legend-tick" style={{ bottom: `${tick * 100}%` }} />}
           </div>
         </div>

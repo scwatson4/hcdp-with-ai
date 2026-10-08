@@ -4,7 +4,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react'
 import QRCode from 'qrcode'
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Copy, ExternalLink, Link2, Loader2, QrCode, Share2, SkipBack, SkipForward, SlidersHorizontal } from 'lucide-react'
+import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Copy, ExternalLink, Link2, Loader2, Palette, QrCode, Share2, SkipBack, SkipForward, SlidersHorizontal } from 'lucide-react'
 import { Button } from '../../components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
 import { Slider } from '../../components/ui/slider'
@@ -13,9 +13,9 @@ import { cn } from '../../lib/utils'
 import { DATASETS, DEFAULT_BASEMAP, DEFAULT_OPACITY, EXTENTS, LAYER_KEYS, hasStations } from '../urlGrammar'
 import { BASEMAP_OPTIONS } from './basemaps'
 import {
-  PORTAL_URL, clampDate, hasExtremeScale, inRange, isRealDate, rampOptionsFor, rampNameFor,
-  selectedUnit, shiftDate, shiftMonths, shortDate, toDisplay, displayUnit, unitChoicesFor, hawaiiToday, specFor,
-  yearBefore,
+  PORTAL_URL, autoDomainFor, clampDate, convertDisplay, domainFor, fromDisplay, hasExtremeScale, inRange, isLogScale, isRampReversed,
+  isRealDate, rampOptionsFor, rampNameFor, selectedUnit, shiftDate, shiftMonths, shortDate, toDisplay, displayUnit, unitChoicesFor,
+  hawaiiToday, specFor, yearBefore,
 } from './viewerModel'
 import { portalDataset } from '../portalDatasets.reference'
 
@@ -184,9 +184,9 @@ function scaleLabel(v, range) {
  *  phones the display options (colours, scale, comparison) fold away behind
  *  one button so the map starts higher; they open by themselves when the
  *  link already sets one. */
-export function Controls({ v, range, onDataset, onPeriod, onDate, onExtent, onRamp, onUnits, onScale, layers = null, extra = null }) {
+export function Controls({ v, range, onDataset, onPeriod, onDate, onExtent, onRamp, onUnits, onScale, onReverse = null, onLog = null, onRange = null, layers = null, extra = null }) {
   const moreId = useId()
-  const [more, setMore] = useState(() => Boolean(v.opts?.ramp || v.opts?.scale || v.opts?.compare || v.opts?.basemap || v.opts?.opacity != null || v.opts?.layers))
+  const [more, setMore] = useState(() => Boolean(v.opts?.ramp || v.opts?.scale || v.opts?.range || v.opts?.log || v.opts?.compare || v.opts?.basemap || v.opts?.opacity != null || v.opts?.layers))
   return (
     <div className="grid grid-cols-2 gap-x-3 gap-y-3 lg:gap-y-4" data-testid="viewer-controls">
       <DatasetField v={v} onChange={onDataset} />
@@ -204,6 +204,7 @@ export function Controls({ v, range, onDataset, onPeriod, onDate, onExtent, onRa
       </Button>
       <div id={moreId} className={cn('col-span-2 grid-cols-2 gap-x-3 gap-y-3 lg:grid lg:gap-y-4', more ? 'grid' : 'hidden')} data-testid="display-options">
         <ColourFields v={v} onRamp={onRamp} onScale={onScale} />
+        {onRange && <div className="col-span-2"><ScaleControls v={v} onReverse={onReverse} onLog={onLog} onRange={onRange} /></div>}
         {layers && <div className="col-span-2">{layers}</div>}
         {extra && <div className="col-span-2">{extra}</div>}
       </div>
@@ -275,6 +276,129 @@ export function ColourFields({ v, onRamp, onScale }) {
         />
       )}
     </>
+  )
+}
+
+// ── the colour scale's modifiers (?ramp=-r, ?log=1, ?range=) ─────────────────
+
+const fmtNum = (n) => Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 })
+
+/** One line on the scale in effect: "0–20 mm", "0–100 mm · locked · log · reversed". */
+export function scaleSummary(v) {
+  const { min, max } = domainFor(v)
+  const unit = displayUnit(v.dataset, v.opts)
+  const lo = fmtNum(convertDisplay(min, v.dataset, v.opts)), hi = fmtNum(convertDisplay(max, v.dataset, v.opts))
+  const parts = [`${lo}–${hi}${unit ? ` ${unit}` : ''}`]
+  if (v.opts?.range) parts.push('locked')
+  if (isLogScale(v)) parts.push('log')
+  if (isRampReversed(v)) parts.push('reversed')
+  return parts.join(' · ')
+}
+
+/** Two numbers in display units → a native-unit legend range, or null when
+ *  they do not make one (not numbers, or low ≥ high). */
+export function rangeFromInputs(lowText, highText, v) {
+  const low = Number(String(lowText).trim()), high = Number(String(highText).trim())
+  if (String(lowText).trim() === '' || String(highText).trim() === '' || !Number.isFinite(low) || !Number.isFinite(high)) return null
+  const min = Number(fromDisplay(low, v.dataset, v.opts).toFixed(2))
+  const max = Number(fromDisplay(high, v.dataset, v.opts).toFixed(2))
+  return min < max ? { min, max } : null
+}
+
+/** The HCDP v2 portal's scale-configuration dialog, reduced to what the URL
+ *  carries: reverse the ramp (?ramp=name-r), pseudo-log scaling (?log=1) and
+ *  a locked legend range (?range=lo..hi, edited in display units, written in
+ *  the dataset's). A popover behind one button in the rail; `inline` in the
+ *  phone sheet, where there is room. Every change is a replace write. */
+export function ScaleControls({ v, onReverse, onLog, onRange, inline = false }) {
+  const id = useId()
+  const unit = displayUnit(v.dataset, v.opts)
+  const locked = Boolean(v.opts?.range)
+  const shown = domainFor(v)
+  const auto = autoDomainFor(v)
+  const text = (n) => String(Number(convertDisplay(n, v.dataset, v.opts).toFixed(2)))
+  const [low, setLow] = useState(() => text(shown.min))
+  const [high, setHigh] = useState(() => text(shown.max))
+  const [warn, setWarn] = useState(null)
+  // The URL (or the units) changed under the fields: show what is in effect.
+  useEffect(() => { setLow(text(shown.min)); setHigh(text(shown.max)); setWarn(null) }, [shown.min, shown.max, v.opts?.units, v.dataset]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const commit = (lo, hi) => {
+    const range = rangeFromInputs(lo, hi, v)
+    if (!range) { setWarn('Two numbers, low below high.'); return }
+    setWarn(null)
+    if (range.min === shown.min && range.max === shown.max && locked) return
+    onRange(range)
+  }
+  const onKey = (e) => { if (e.key === 'Enter') { e.preventDefault(); commit(low, high) } }
+  const reset = () => { setWarn(null); onRange(null) }
+
+  const fields = (
+    <div className="space-y-3" data-testid="scale-controls">
+      <div className="flex items-center justify-between gap-3">
+        <label htmlFor={`${id}-reverse`} className="text-sm">Reverse the colours</label>
+        <Switch id={`${id}-reverse`} checked={isRampReversed(v)} onCheckedChange={onReverse} data-testid="reverse-switch" className="[@media(pointer:coarse)]:h-6 [@media(pointer:coarse)]:w-11" />
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <label htmlFor={`${id}-log`} className="text-sm">Pseudo-log scale</label>
+          <p className="text-xs text-subtle">Spreads out the small values: sign(v)·ln(1+|v|).</p>
+        </div>
+        <Switch id={`${id}-log`} checked={isLogScale(v)} onCheckedChange={onLog} data-testid="log-switch" className="[@media(pointer:coarse)]:h-6 [@media(pointer:coarse)]:w-11" />
+      </div>
+      <fieldset className="min-w-0" data-testid="range-fields">
+        <legend className={LABEL}>Legend range{unit ? ` (${unit})` : ''}</legend>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label htmlFor={`${id}-low`} className="mb-0.5 block text-xs text-subtle">Low</label>
+            <input
+              id={`${id}-low`} type="number" step="any" inputMode="decimal" value={low}
+              onChange={(e) => setLow(e.target.value)} onBlur={() => commit(low, high)} onKeyDown={onKey}
+              className={cn(FIELD, 'font-mono text-[13px] [@media(pointer:coarse)]:h-11')} data-testid="range-low"
+            />
+          </div>
+          <div>
+            <label htmlFor={`${id}-high`} className="mb-0.5 block text-xs text-subtle">High</label>
+            <input
+              id={`${id}-high`} type="number" step="any" inputMode="decimal" value={high}
+              onChange={(e) => setHigh(e.target.value)} onBlur={() => commit(low, high)} onKeyDown={onKey}
+              className={cn(FIELD, 'font-mono text-[13px] [@media(pointer:coarse)]:h-11')} data-testid="range-high"
+            />
+          </div>
+        </div>
+        <div className="mt-1.5 flex items-center justify-between gap-2">
+          <p className={cn('min-w-0 text-xs', warn ? 'text-destructive' : 'text-subtle')} aria-live="polite" data-testid="range-hint">
+            {warn || (locked ? `Locked. HCDP's scale is ${text(auto.min)}–${text(auto.max)}${unit ? ` ${unit}` : ''}.` : "Auto: HCDP's scale for this product.")}
+          </p>
+          <Button type="button" variant="outline" size="sm" className="shrink-0 [@media(pointer:coarse)]:h-11" onClick={reset} disabled={!locked} data-testid="range-reset">
+            Reset to auto
+          </Button>
+        </div>
+      </fieldset>
+    </div>
+  )
+
+  if (inline) {
+    return (
+      <div className="space-y-2">
+        <p className={LABEL}>Colours and scale</p>
+        {fields}
+      </div>
+    )
+  }
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button type="button" variant="outline" className="w-full justify-between gap-2 [@media(pointer:coarse)]:h-11" data-testid="scale-button" aria-label={`Colours and scale: ${scaleSummary(v)}`}>
+          <span className="inline-flex shrink-0 items-center gap-1.5"><Palette className="h-3.5 w-3.5" aria-hidden="true" /> Colours and scale</span>
+          <span className="min-w-0 truncate font-mono text-[11px] font-normal text-subtle" data-testid="scale-summary">{scaleSummary(v)}</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[18rem]" data-testid="scale-popover">
+        <p className={cn(LABEL, 'mb-2')}>Colours and scale</p>
+        {fields}
+      </PopoverContent>
+    </Popover>
   )
 }
 

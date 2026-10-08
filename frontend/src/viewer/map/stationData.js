@@ -94,6 +94,10 @@ export function stationsOf(data) {
   return Array.isArray(data?.stations) ? data.stations : []
 }
 
+// HCDP's island codes (station metadata) → names; a name passes through.
+export const ISLAND_NAMES = { BI: 'Hawaiʻi', MA: 'Maui', OA: 'Oʻahu', KA: 'Kauaʻi', MO: 'Molokaʻi', LA: 'Lānaʻi', KO: 'Kahoʻolawe' }
+export const islandName = (code) => (code == null || code === '' ? null : (ISLAND_NAMES[String(code).toUpperCase()] || String(code)))
+
 /** One station by SKN out of an answer's list (SKNs compare as strings). */
 export function findStation(data, skn) {
   if (skn == null) return null

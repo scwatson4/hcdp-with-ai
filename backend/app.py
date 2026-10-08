@@ -11,6 +11,9 @@ Endpoints
   GET  /api/timeseries        a station's (station=SKN) or a grid cell's (lat&lng) record (disk cache)
   GET  /api/og.png|webp       1200×630 link-preview card for a viewer address (disk cache)
   POST /api/shorten           deterministic short link for a viewer address; GET /s/{id} redirects to it
+  GET  /api/export/options    the products, files, extents and station fills the Export form offers
+  POST /api/export/instant    a zip of HCDP files, streamed from HCDP /genzip/instant/content (≤ 150 files, a byte budget, per-IP limit)
+  POST /api/export/email      asks HCDP /genzip/email to send the package to an address (validated here; a harder per-IP limit)
   GET  /api/stations          the Hawaiʻi Mesonet station registry (Mesonet page)
   GET  /api/catalog           the site catalog the navigator reasons over
   GET  /api/health
@@ -34,13 +37,15 @@ from urllib.parse import quote, urlparse
 import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT.parent / ".env")  # local development; containers get the env from compose
 
+from export import (EMAIL_MAX_FILES, INSTANT_MAX_FILES, ExportError, options as export_options, payload as export_payload,  # noqa: E402
+                    validate as export_validate, zip_filename)
 from llm import NavigatorLLM  # noqa: E402
 from navigator import (DATASETS, EXTENTS, HAWAII_BOX, STATEWIDE_ONLY, STATION_DATASETS, Navigator, canonical_viewer_path,  # noqa: E402
                        describe_view, load_catalog, parse_viewer_path)
@@ -61,6 +66,9 @@ AI_INTERFACE_URL = os.environ.get("AI_INTERFACE_URL", "https://hcdp-ai-interface
 SITE_ADDRESS = os.environ.get("SITE_ADDRESS", "")
 # Every dataset opens on the portal's default scheme for its datatype (Viridis, oriented per product).
 DEFAULT_RAMP = {k: default_ramp(v["api"]["datatype"]) for k, v in DATASETS.items()}
+# An instant export is streamed through this process: stop at this many bytes (HCDP zips 150 files at most anyway).
+EXPORT_MAX_BYTES = int(os.environ.get("EXPORT_MAX_BYTES", str(500 * 1024 * 1024)))
+EXPORT_TIMEOUT = float(os.environ.get("EXPORT_TIMEOUT", "300"))
 
 app = FastAPI(title="HCDP with AI — navigator", docs_url=None, redoc_url=None)
 app.state.llm = NavigatorLLM()
@@ -70,6 +78,9 @@ app.state.limiter = RateLimiter(per_minute=int(os.environ.get("NAV_PER_MINUTE", 
                                  global_per_day=int(os.environ.get("NAV_GLOBAL_PER_DAY", "5000")))
 # Short links are cheap but write files: a second limiter keeps one visitor from filling the disk.
 app.state.short_limiter = RateLimiter(per_minute=int(os.environ.get("SHORT_PER_MINUTE", "30")), per_hour=int(os.environ.get("SHORT_PER_HOUR", "300")), global_per_day=200000)
+# Exports cost HCDP real work: a limiter per visitor for downloads, a harder one for emailed packages.
+app.state.export_limiter = RateLimiter(per_minute=int(os.environ.get("EXPORT_PER_MINUTE", "6")), per_hour=int(os.environ.get("EXPORT_PER_HOUR", "40")), global_per_day=int(os.environ.get("EXPORT_GLOBAL_PER_DAY", "2000")))
+app.state.email_limiter = RateLimiter(per_minute=int(os.environ.get("EMAIL_PER_MINUTE", "2")), per_hour=int(os.environ.get("EMAIL_PER_HOUR", "10")), global_per_day=int(os.environ.get("EMAIL_GLOBAL_PER_DAY", "500")))
 app.state.climate_stations = None      # (fetched_at, [station, …]) — HCDP's climate station list
 app.state.stations_index = None        # (that list, {skn: station})
 app.state.stations_lock = asyncio.Lock()
@@ -547,9 +558,12 @@ async def api_timeseries(dataset: str, period: str, start: str, end: str, statio
 
 
 def og_cache_key(v: dict, ramp: str, fmt: str) -> str:
-    """Only what changes the picture: dataset, period, date, extent, ramp, scale, units (not camera, basemap, layers, station)."""
+    """Only what changes the picture: dataset, period, date, extent, ramp (and its direction), scale, a locked range,
+    pseudo-log, units (not camera, basemap, layers, station)."""
     o = v["opts"]
-    return hashlib.sha1("|".join([v["dataset"], v["period"], v["date"], v["extent"], ramp, o.get("scale", ""), o.get("units", ""), fmt]).encode()).hexdigest()
+    rng = o.get("range")
+    return hashlib.sha1("|".join([v["dataset"], v["period"], v["date"], v["extent"], ramp, "r" if o.get("reverse") else "", o.get("scale", ""),
+                                  f"{rng[0]}..{rng[1]}" if rng else "", "log" if o.get("log") else "", o.get("units", ""), fmt]).encode()).hexdigest()
 
 
 async def og_image(path: str, fmt: str) -> Path:
@@ -566,7 +580,8 @@ async def og_image(path: str, fmt: str) -> Path:
         crop = ISLAND_BOUNDS.get(extent) if extent != "statewide" and (dataset in STATEWIDE_ONLY or EXTENTS[extent] == "mn") else None
         subtitle = f"{legend['label']} ({legend['units']})" if legend["units"] else legend["label"]
         try:
-            data = await run_in_threadpool(render_og, tif, ramp, legend["domain"], describe_view(v), subtitle, (legend["lo"], legend["hi"], legend["header"]), crop, fmt)
+            data = await run_in_threadpool(render_og, tif, ramp, legend["domain"], describe_view(v), subtitle, (legend["lo"], legend["hi"], legend["header"]), crop, fmt,
+                                           "Hawaiʻi Climate Data Portal", bool(opts.get("reverse")), bool(opts.get("log")))
         except ValueError:
             raise HTTPException(404, "no data in that map") from None
         await run_in_threadpool(_atomic_write, out, data)
@@ -629,6 +644,96 @@ async def short_link(sid: str):
     if not target or canonical_viewer_path(target) != target:
         return JSONResponse({"error": "unknown short link", "hint": "Short links are made by this site's Share button and point at /viewer/… addresses; ask the sender for the full link."}, status_code=404)
     return RedirectResponse(target, status_code=302)
+
+
+# ----- native export (CONTRACT.md "Export endpoints") ------------------------------------------
+class ExportBody(BaseModel):
+    dataset: str = Field(max_length=40)
+    period: str = Field(max_length=10)
+    start: str = Field(max_length=10)
+    end: str = Field(max_length=10)
+    extents: list[str] = Field(default_factory=list, max_length=10)
+    files: list[str] = Field(default_factory=list, max_length=10)
+    station_files: list[str] = Field(default_factory=list, max_length=4)
+    email: str | None = Field(default=None, max_length=254)
+
+
+@app.get("/api/export/options")
+async def api_export_options():
+    """The products the Export form offers, with their files, extents and station fills (export.py mirrors hcdp_v2)."""
+    return JSONResponse(export_options(), headers={"Cache-Control": "public, max-age=3600"})
+
+
+def _export_request(body: ExportBody) -> dict:
+    try:
+        return export_validate(body.model_dump())
+    except ExportError as e:
+        raise HTTPException(400, str(e)) from None
+
+
+@app.post("/api/export/instant")
+async def api_export_instant(body: ExportBody, request: Request):
+    """HCDP /genzip/instant/content, streamed back as a zip download. Capped at hcdp_v2's 150 files (413 above: have it
+    emailed) and at EXPORT_MAX_BYTES (413 when HCDP says the size up front; otherwise the stream stops there)."""
+    if request.app.state.export_limiter.check(request.client.host if request.client else "?"):
+        return JSONResponse({"detail": "That is a lot of downloads from one connection in a short time. Wait a minute and try again, or have the package emailed."}, status_code=429)
+    req = _export_request(body)
+    if req["files"] > INSTANT_MAX_FILES:
+        raise HTTPException(413, f"about {req['files']:,} files: HCDP zips at most {INSTANT_MAX_FILES} for a direct download — have the package emailed instead")
+    client = _hcdp_client(EXPORT_TIMEOUT)
+    try:
+        resp = await client.send(client.build_request("POST", "/genzip/instant/content", json=export_payload(req)), stream=True)
+    except httpx.HTTPError as e:
+        await client.aclose()
+        raise HTTPException(502, f"HCDP did not answer ({type(e).__name__})") from None
+    if resp.status_code != 200:
+        await resp.aread()
+        await client.aclose()
+        raise HTTPException(502, f"HCDP returned {resp.status_code} for this package")
+    length = resp.headers.get("content-length")
+    if length and length.isdigit() and int(length) > EXPORT_MAX_BYTES:
+        await resp.aclose()
+        await client.aclose()
+        raise HTTPException(413, f"this package is {int(length) / 1048576:,.0f} MB, more than this site streams ({EXPORT_MAX_BYTES / 1048576:,.0f} MB) — have it emailed instead")
+
+    async def chunks():
+        sent = 0
+        try:
+            async for chunk in resp.aiter_bytes():
+                sent += len(chunk)
+                if sent > EXPORT_MAX_BYTES:
+                    break      # the budget: a stream already under way can only stop
+                yield chunk
+        finally:
+            await resp.aclose()
+            await client.aclose()
+
+    headers = {"Content-Disposition": f'attachment; filename="{zip_filename(req)}"', "Cache-Control": "no-store", "X-HCDP-Files": str(req["files"])}
+    if length and length.isdigit():
+        headers["Content-Length"] = length
+    return StreamingResponse(chunks(), media_type="application/zip", headers=headers)
+
+
+@app.post("/api/export/email")
+async def api_export_email(body: ExportBody, request: Request):
+    """HCDP /genzip/email: the package is zipped on their side and a link mailed to the address (which is never stored here)."""
+    if request.app.state.email_limiter.check(request.client.host if request.client else "?"):
+        return JSONResponse({"detail": "That is a lot of email requests from one connection in a short time. Wait a few minutes and try again."}, status_code=429)
+    req = _export_request(body)
+    if not req["email"]:
+        raise HTTPException(400, "an email address is needed to send the package")
+    if req["files"] > EMAIL_MAX_FILES:
+        raise HTTPException(413, f"about {req['files']:,} files is more than one package can hold ({EMAIL_MAX_FILES:,}); narrow the dates or the files")
+    try:
+        async with _hcdp_client(60) as client:
+            r = await client.post("/genzip/email", json=export_payload(req))
+    except httpx.HTTPError as e:
+        raise HTTPException(502, f"HCDP did not answer ({type(e).__name__})") from None
+    if r.status_code not in (200, 202):
+        raise HTTPException(502, f"HCDP returned {r.status_code} for this package")
+    return JSONResponse({"ok": True, "email": req["email"], "files": req["files"],
+                         "message": f"HCDP is packaging about {req['files']:,} files and will email a download link to {req['email']}. Large packages can take a while; if nothing arrives within a few hours, check the address and try again or write to hcdp@hawaii.edu."},
+                        status_code=202, headers={"Cache-Control": "no-store"})
 
 
 @app.on_event("startup")

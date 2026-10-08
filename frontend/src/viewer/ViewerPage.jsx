@@ -12,19 +12,21 @@ import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { cn } from '../lib/utils'
-import { DATASETS, DEFAULT_BASEMAP, DEFAULT_OPACITY, LAYER_KEYS, canonicalize, describeViewer, foreignQuery, formatViewerPath, hasStations, parseViewerPath } from './urlGrammar'
+import { DATASETS, DEFAULT_BASEMAP, DEFAULT_OPACITY, EXTENTS, LAYER_KEYS, canonicalize, describeViewer, foreignQuery, formatViewerPath, hasStations, parseViewerPath } from './urlGrammar'
 import { scheduleUrlWrite } from './urlWrites'
+import { readUnitsPreference, writeUnitsPreference } from './unitsPreference'
 import { CLIMATE_STATIONS_URL, findStation, stationValuesUrl, stationsOf, useJson } from './map/stationData'
 import { NAMED_RAMPS, makeColorFn, rampPosition, valueAtLatLng } from './map/ramps'
 import {
   clampDate, compareDateFor, dateForPeriod, defaultRampFor, domainFor, formatValue, hasExtremeScale,
-  isExperimental, isIgnition, isRealDate, legendFor, pathWith, rampNameFor, rasterRequestUrl, sourceLineFor,
-  unitsForDataset, unitsLineFor,
+  isExperimental, isIgnition, isLogScale, isRampReversed, isRealDate, legendFor, pathWith, rampNameFor, rasterRequestUrl, sourceLineFor,
+  unitChoicesFor, unitSystem, unitsForDataset, unitsLineFor,
 } from './map/viewerModel'
 import { TooltipProvider } from '../components/ui/tooltip'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { useRaster } from './map/rasterCache'
 import { getDateRange, getDateRangeSoon, useDateRange } from './map/dateRanges'
-import { ColourFields, Controls, CompareControl, DatasetField, DatePicker, LayerControls, PeriodUnitsFields, PlaceField, ShareActions } from './map/Controls'
+import { ColourFields, Controls, CompareControl, DatasetField, DatePicker, LayerControls, PeriodUnitsFields, PlaceField, ScaleControls, ShareActions } from './map/Controls'
 import BottomSheet from '../components/BottomSheet'
 import { useNarrowScreen } from './useMediaQuery'
 import { Compass, CornerStack, ExperimentalBadge, IGNITION_CAUTION, Legend, MapPill, TitleCard, ValueReadout } from './map/MapFurniture'
@@ -33,18 +35,31 @@ import Launcher from './map/Launcher'
 
 const ClimateMap = lazy(() => import('./map/ClimateMap'))
 const TimeSeriesPanel = lazy(() => import('./TimeSeriesPanel'))
+const StationList = lazy(() => import('./StationList'))
 
 const EYEBROW = 'font-mono text-[11px] font-medium uppercase tracking-wide text-subtle'
 
-/** The one spelling of an address the grammar accepts, with any query keys
- *  that are not the grammar's (another feature's) kept after it, or null
- *  when the address is already spelled that way or is not a viewer map. */
-export function canonicalRewrite(pathname, search = '') {
-  const canonical = canonicalize(pathname, search)
-  if (canonical == null) return null
+/** The one spelling of an address the grammar accepts (with `patch`, if
+ *  any, applied to it), with any query keys that are not the grammar's
+ *  (another feature's) kept after it, or null when the address is already
+ *  spelled that way or is not a viewer map. */
+export function canonicalRewrite(pathname, search = '', patch = null) {
+  const v = parseViewerPath(pathname, search)
+  if (!v || v.error) return null
+  const canonical = patch ? pathWith(v, patch) : formatViewerPath(v)
   const foreign = foreignQuery(search)
   const target = canonical + (foreign ? (canonical.includes('?') ? '&' : '?') + foreign : '')
   return target === `${pathname}${search || ''}` ? null : target
+}
+
+/** The units key the remembered preference adds to an address that names
+ *  none: 'in' or 'f' for an imperial preference on a dataset with units;
+ *  null otherwise — and null whenever the address itself says `units=`
+ *  (even `units=mm`: a key in the URL always wins). */
+export function preferredUnitsFor(v, search = '', preference = readUnitsPreference()) {
+  if (!v || v.error || preference !== 'imperial') return null
+  if (new URLSearchParams(search).has('units')) return null
+  return unitChoicesFor(v.dataset) ? unitsForDataset(v.dataset, { units: 'in' }) : null
 }
 
 export default function ViewerPage() {
@@ -53,9 +68,16 @@ export default function ViewerPage() {
   const v = useMemo(() => parseViewerPath(pathname, search), [pathname, search])
   const launcher = /^\/viewer\/?$/i.test(pathname)
   // Load-time canonical rewrite: aliases, month names, the first grammar's
-  // ?stations=1, keys out of order. A replace, so Back is not affected, and
-  // the parsed view is identical, so nothing below re-mounts.
-  const rewrite = !launcher && v && !v.error ? canonicalRewrite(pathname, search) : null
+  // ?stations=1, keys out of order — and the remembered unit system when
+  // the address names none. A replace, so Back is not affected, and the
+  // parsed view is identical (units aside), so nothing below re-mounts.
+  // Once an address of this visit has named its units (a pasted link, the
+  // toggle, or this rewrite), they are settled: the preference never fills
+  // them in again — so `units=mm`, dropped as the default, stays metric.
+  const unitsSettled = useRef(false)
+  if (new URLSearchParams(search).has('units')) unitsSettled.current = true
+  const units = !launcher && !unitsSettled.current ? preferredUnitsFor(v, search) : null
+  const rewrite = !launcher && v && !v.error ? canonicalRewrite(pathname, search, units ? { opts: { units } } : null) : null
   useEffect(() => {
     if (rewrite) navigate(rewrite + (hash || ''), { replace: true })
   }, [rewrite, hash, navigate])
@@ -98,6 +120,8 @@ function Viewer({ v }) {
 
   const dateRange = useDateRange(v.dataset, v.period, v.extent)
   const range = dateRange.range
+  // The phone sheet's open tab (a station or pin in the address opens on its record).
+  const [tab, setTab] = useState(() => (v.opts.station || v.opts.pin ? 'stations' : 'dataset'))
   const raster = useRaster(rasterRequestUrl(v))
   const compareDate = compareDateFor(v)
   const compareRaster = useRaster(compareDate ? rasterRequestUrl({ ...v, date: compareDate }) : null)
@@ -116,8 +140,12 @@ function Viewer({ v }) {
   const ramp = NAMED_RAMPS[rampNameFor(v)]
   const { min, max } = domainFor(v)
   const domain = useMemo(() => ({ min, max }), [min, max])
-  const colorFn = useMemo(() => makeColorFn(ramp, domain, raster.georaster?.noDataValue), [ramp, domain, raster.georaster])
-  const compareColorFn = useMemo(() => makeColorFn(ramp, domain, compareRaster.georaster?.noDataValue), [ramp, domain, compareRaster.georaster])
+  // ?ramp=name-r and ?log=1 shape one colour function; the grid, the station
+  // markers and the legend all read it, so they can never disagree.
+  const reverse = isRampReversed(v)
+  const log = isLogScale(v)
+  const colorFn = useMemo(() => makeColorFn(ramp, domain, raster.georaster?.noDataValue, { reverse, log }), [ramp, domain, raster.georaster, reverse, log])
+  const compareColorFn = useMemo(() => makeColorFn(ramp, domain, compareRaster.georaster?.noDataValue, { reverse, log }), [ramp, domain, compareRaster.georaster, reverse, log])
 
   // ── control handlers ────────────────────────────────────────────────────
   const onDataset = async (dataset) => {
@@ -133,8 +161,11 @@ function Viewer({ v }) {
       date: samePeriod ? clampDate(cur.date, r) : dateForPeriod(cur.date, period, r),
       opts: {
         units: unitsForDataset(dataset, cur.opts),
-        ramp: cur.opts.ramp && cur.opts.ramp !== defaultRampFor(dataset) ? cur.opts.ramp : undefined,
+        // A chosen ramp travels; the old dataset's default does not, unless it is reversed (reverse rides on the ramp key).
+        ramp: cur.opts.ramp && (cur.opts.ramp !== defaultRampFor(dataset) || cur.opts.reverse) ? cur.opts.ramp : undefined,
         scale: keepsScale(cur, dataset, period),
+        // A locked range is in one product's units and scale: it does not survive a change of product or period.
+        range: undefined,
         compare: samePeriod ? cur.opts.compare : undefined,
         // A station means nothing for a gridded-only product; a pin (a grid cell) survives.
         station: hasStations(dataset) ? cur.opts.station : undefined,
@@ -149,12 +180,21 @@ function Viewer({ v }) {
     if (period === cur.period) return
     const r = await getDateRangeSoon(cur.dataset, period, cur.extent)
     if (id !== seq.current) return
-    go({ period, date: dateForPeriod(cur.date, period, r), opts: { scale: keepsScale(cur, cur.dataset, period), compare: undefined, ts: undefined } })
+    go({ period, date: dateForPeriod(cur.date, period, r), opts: { scale: keepsScale(cur, cur.dataset, period), range: undefined, compare: undefined, ts: undefined } })
   }
   const onDate = (date) => { seq.current++; go({ date }) }
   const onExtent = (extent) => { seq.current++; go({ extent, opts: { view: undefined } }) }
-  const onRamp = (name) => set('ramp', { opts: { ramp: name === defaultRampFor(latest.current.dataset) ? undefined : name } })
-  const onUnits = (u) => set('units', { opts: { units: u === 'in' || u === 'f' ? u : undefined } })
+  // The ramp key carries the direction too (ramp=name-r), so the dataset's
+  // default ramp is only omitted while it runs the portal's way.
+  const onRamp = (name) => set('ramp', (cur) => ({ opts: { ramp: name === defaultRampFor(cur.dataset) && !cur.opts.reverse ? undefined : name } }))
+  const onReverse = (on) => set('ramp', (cur) => {
+    const name = rampNameFor(cur)
+    return { opts: { ramp: on || name !== defaultRampFor(cur.dataset) ? name : undefined, reverse: on || undefined } }
+  })
+  const onLog = (on) => set('log', { opts: { log: on || undefined } })
+  const onRange = (range) => set('range', { opts: { range: range || undefined } })
+  // The unit system is the one thing remembered per browser (besides the theme).
+  const onUnits = (u) => { writeUnitsPreference(unitSystem({ units: u })); set('units', { opts: { units: u === 'in' || u === 'f' ? u : undefined } }) }
   const onScale = (s) => set('scale', { opts: { scale: s === 'extreme' ? 'extreme' : undefined } })
   const onCompare = (date) => set('compare', { opts: { compare: date || undefined } })
   // The camera: 400 ms after the gesture ends (ClimateMap), then the limiter.
@@ -176,13 +216,20 @@ function Viewer({ v }) {
   const layers = v.opts.layers || []
 
   // ── stations and the selection ──────────────────────────────────────────
+  // Below 768 px the rail becomes a bottom sheet with tabs (further down);
+  // on wide screens the rail has two tabs of its own, Map and Stations.
+  const narrow = useNarrowScreen()
+  const [railTab, setRailTab] = useState('map')
   const stationsOn = layers.includes('stations') && hasStations(v.dataset)
-  const stationValues = useJson(stationsOn ? stationValuesUrl(v) : null)
+  // The Stations list (the day's values joined with the station list) is
+  // fetched while its tab is open, whether or not the markers are on.
+  const listOn = hasStations(v.dataset) && (narrow ? tab === 'stations' : railTab === 'stations')
+  const stationValues = useJson(stationsOn || listOn ? stationValuesUrl(v) : null)
   const compareStationValues = useJson(stationsOn && compareDate ? stationValuesUrl({ ...v, date: compareDate }) : null)
   const skn = v.opts.station || null
   // A selected station is placed from the day's values when they are on
   // screen, else from the station list (which also has the elevation).
-  const stationMeta = useJson(skn ? CLIMATE_STATIONS_URL : null)
+  const stationMeta = useJson(skn || listOn ? CLIMATE_STATIONS_URL : null)
   const selectedStation = skn ? (findStation(stationMeta.data, skn) || findStation(stationValues.data, skn)) : null
   const pin = v.opts.pin || null
   const selected = useMemo(() => {
@@ -193,11 +240,18 @@ function Viewer({ v }) {
   // station and a pin exclude each other. The panel takes focus only for a
   // selection the visitor just made, never for one restored from the address.
   const userSelected = useRef(false)
-  const onSelectStation = useCallback((s) => {
-    if (String(latest.current.opts.station || '') === String(s.skn)) return
+  // From the list (`pan`), the camera moves to the station in the same
+  // push, so Back undoes both the choice and the move.
+  const onSelectStation = useCallback((s, { pan = false } = {}) => {
+    const cur = latest.current
+    if (String(cur.opts.station || '') === String(s.skn)) return
     userSelected.current = true
-    go({ opts: { station: String(s.skn), pin: undefined } })
+    const view = pan && Number.isFinite(s.lat) && Number.isFinite(s.lng)
+      ? { lat: Number(s.lat.toFixed(4)), lng: Number(s.lng.toFixed(4)), z: cur.opts.view?.z ?? EXTENTS[cur.extent].zoom }
+      : cur.opts.view
+    go({ opts: { station: String(s.skn), pin: undefined, view } })
   }, [go])
+  const onPickFromList = useCallback((s) => onSelectStation(s, { pan: true }), [onSelectStation])
   const onSelectPoint = useCallback(({ lat, lng }) => {
     const p = { lat: Number(lat.toFixed(4)), lng: Number(lng.toFixed(4)) }
     const cur = latest.current.opts.pin
@@ -227,21 +281,18 @@ function Viewer({ v }) {
   const busRef = useRef(null)
   if (!busRef.current) busRef.current = { maps: new Set(), leader: null, guard: false }
 
-  // Below 768 px the rail becomes a bottom sheet with tabs and the map runs
-  // edge to edge above it; a fresh selection opens the Station tab.
-  const narrow = useNarrowScreen()
-  const [tab, setTab] = useState(() => (selection ? 'station' : 'dataset'))
+  // The phone sheet's tabs: a fresh selection opens the Stations tab (which
+  // shows the selected station's record); closing it leaves the tab on the list.
   const [snap, setSnap] = useState('peek')
   const hadSelection = useRef(Boolean(selection))
   useEffect(() => {
-    if (selection && !hadSelection.current) { setTab('station'); if (userSelected.current) setSnap((s) => (s === 'peek' ? 'half' : s)) }
-    if (!selection && hadSelection.current) setTab((t) => (t === 'station' ? 'dataset' : t))
+    if (selection && !hadSelection.current) { setTab('stations'); if (userSelected.current) setSnap((s) => (s === 'peek' ? 'half' : s)) }
     hadSelection.current = Boolean(selection)
   }, [selection])
 
   const pane = (date, r, fn, extra) => (
     <MapPane
-      v={v} date={date} raster={r} colorFn={fn} ramp={ramp} domain={domain} dateRange={dateRange}
+      v={v} date={date} raster={r} colorFn={fn} ramp={ramp} domain={domain} reverse={reverse} log={log} dateRange={dateRange}
       opacity={mapOpacity} layers={layers} selected={selected} onSelectStation={onSelectStation} onSelectPoint={onSelectPoint}
       syncBus={compareDate ? busRef.current : null} flush={narrow} {...extra}
     />
@@ -256,6 +307,14 @@ function Viewer({ v }) {
   )
   const stationProps = (sv) => (stationsOn ? { stations: sv.status === 'ready' ? stationsOf(sv.data) : null, stationStatus: sv.status } : {})
   const title = describeViewer(v)
+  const stationList = (hint = null, className = '') => (
+    <Suspense fallback={<p className="text-sm text-subtle" data-testid="station-list-skeleton">Loading the station list…</p>}>
+      <StationList
+        v={v} values={stationValues.data} meta={stationMeta.data} status={stationValues.status} selectedSkn={skn}
+        onSelect={onPickFromList} hint={hint} className={className}
+      />
+    </Suspense>
+  )
   const addressNote = (
     <p className="text-xs text-subtle">
       The address bar always describes this map. <Link to="/viewer" className="underline underline-offset-4 hover:text-foreground">How viewer addresses work</Link>
@@ -303,18 +362,23 @@ function Viewer({ v }) {
         content: (
           <div className={grid}>
             <ColourFields v={v} onRamp={onRamp} onScale={onScale} />
+            <div className="col-span-2"><ScaleControls v={v} onReverse={onReverse} onLog={onLog} onRange={onRange} inline /></div>
             <div className="col-span-2"><LayerControls v={v} onBasemap={onBasemap} onOpacity={onOpacity} onOpacityPreview={setOpacityDraft} onLayerToggle={onLayerToggle} /></div>
           </div>
         ),
       },
       {
-        id: 'station', label: 'Station',
-        content: panel('border-0 p-0') || (
+        id: 'stations', label: 'Stations',
+        content: panel('border-0 p-0') || (hasStations(v.dataset) ? stationList(
           <p className="text-sm text-subtle" data-testid="station-hint">
-            Tap a station marker, or press and hold on the map, to see its record here.
-            {hasStations(v.dataset) && !layers.includes('stations') ? ' Turn on Stations under Layers to see the markers.' : ''}
+            Tap a station below or a marker on the map, or press and hold on the map, to see its record here.
+            {!layers.includes('stations') ? ' Turn on Stations under Layers to see the markers.' : ''}
+          </p>,
+        ) : (
+          <p className="text-sm text-subtle" data-testid="station-hint">
+            Press and hold on the map to see a grid cell's record here. This product has no station values.
           </p>
-        ),
+        )),
       },
     ]
     return (
@@ -336,15 +400,38 @@ function Viewer({ v }) {
             <p className={EYEBROW}>Climate viewer</p>
             <h1 className="mt-0.5 font-display text-xl leading-tight lg:text-2xl" data-testid="viewer-heading">{title}</h1>
           </header>
-          <Controls
-            v={v} range={range}
-            onDataset={onDataset} onPeriod={onPeriod} onDate={onDate} onExtent={onExtent}
-            onRamp={onRamp} onUnits={onUnits} onScale={onScale}
-            layers={<LayerControls v={v} onBasemap={onBasemap} onOpacity={onOpacity} onOpacityPreview={setOpacityDraft} onLayerToggle={onLayerToggle} />}
-            extra={<CompareControl v={v} range={range} compareDate={compareDate} onChange={onCompare} />}
-          />
-          <ShareActions path={sharePath} title={title} />
-          {addressNote}
+          {(() => {
+            const controls = (
+              <div className="space-y-4">
+                <Controls
+                  v={v} range={range}
+                  onDataset={onDataset} onPeriod={onPeriod} onDate={onDate} onExtent={onExtent}
+                  onRamp={onRamp} onUnits={onUnits} onScale={onScale} onReverse={onReverse} onLog={onLog} onRange={onRange}
+                  layers={<LayerControls v={v} onBasemap={onBasemap} onOpacity={onOpacity} onOpacityPreview={setOpacityDraft} onLayerToggle={onLayerToggle} />}
+                  extra={<CompareControl v={v} range={range} compareDate={compareDate} onChange={onCompare} />}
+                />
+                <ShareActions path={sharePath} title={title} />
+                {addressNote}
+              </div>
+            )
+            if (!hasStations(v.dataset)) return controls
+            // Two tabs: the map's settings, and the stations with a value for this date.
+            return (
+              <Tabs value={railTab} onValueChange={setRailTab}>
+                <TabsList className="grid h-auto w-full grid-cols-2 p-0.5" aria-label="Rail sections" data-testid="rail-tabs">
+                  <TabsTrigger value="map" className="h-8 font-nav font-semibold [@media(pointer:coarse)]:h-10" data-testid="rail-tab-map">Map</TabsTrigger>
+                  <TabsTrigger value="stations" className="h-8 font-nav font-semibold [@media(pointer:coarse)]:h-10" data-testid="rail-tab-stations">Stations</TabsTrigger>
+                </TabsList>
+                <TabsContent value="map" className="mt-4">{controls}</TabsContent>
+                <TabsContent value="stations" className="mt-4" data-testid="rail-stations">
+                  {stationList(
+                    <p className="text-xs text-subtle">The stations with a value on this date. Choose one to see its record; the map moves to it.</p>,
+                    'lg:max-h-[calc(100dvh-13rem)] lg:overflow-y-auto',
+                  )}
+                </TabsContent>
+              </Tabs>
+            )
+          })()}
         </aside>
         <section className="min-w-0" aria-label="Map">{maps}</section>
         {/* The time series: a 20 rem column beside the map on wide screens, below it otherwise. */}
@@ -358,7 +445,7 @@ function Viewer({ v }) {
 /** One map with its furniture. Hover state lives here so moving the
  *  pointer never re-renders the controls. */
 const MapPane = memo(function MapPane({
-  v, date, raster, colorFn, ramp, domain, dateRange, opacity = DEFAULT_OPACITY / 100, layers = [],
+  v, date, raster, colorFn, ramp, domain, reverse = false, log = false, dateRange, opacity = DEFAULT_OPACITY / 100, layers = [],
   stations = null, stationStatus = null, selected = null, onSelectStation = null, onSelectPoint = null,
   onViewChange = null, syncBus = null, leader = false, showLegend = true, showCompass = true, flush = false,
 }) {
@@ -376,7 +463,7 @@ const MapPane = memo(function MapPane({
   const point = hover || pick
   const value = point && ready ? valueAtLatLng(raster.georaster, point.lat, point.lng) : null
   const readout = point && ready ? (value == null ? 'no data here' : formatValue(value, v.dataset, v.opts)) : null
-  const tick = value != null ? rampPosition(value, domain.min, domain.max) : null
+  const tick = value != null ? rampPosition(value, domain.min, domain.max, log) : null
   const shown = { ...v, date }
   const title = describeViewer(shown)
   const legend = legendFor(v)
@@ -401,7 +488,7 @@ const MapPane = memo(function MapPane({
         {stationStatus === 'notfound' && <MapPill quiet testid="stations-none">no station values for this date</MapPill>}
         {stationStatus === 'error' && <MapPill quiet testid="stations-error">station values did not load</MapPill>}
       </CornerStack>
-      {showLegend && <Legend header={legend.header} labels={legend.labels} ramp={ramp} tick={tick} />}
+      {showLegend && <Legend header={legend.header} labels={legend.labels} ramp={ramp} reverse={reverse} tick={tick} />}
       {showCompass && <Compass />}
       <ValueReadout text={readout} />
       <MapStatus v={shown} raster={raster} dateRange={dateRange} />

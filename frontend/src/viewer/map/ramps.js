@@ -685,27 +685,49 @@ export function isNoData(v, noDataValue) {
   return v <= -1e30 || v >= 1e30
 }
 
-/** Ramp position (0–1) of a value on a linear domain — the portal paints
- *  every product linearly on its fixed range, values past the ends clamp. */
-export function rampPosition(value, min, max) {
-  const range = (max - min) || 1
-  return Math.max(0, Math.min(1, (value - min) / range))
-}
+/** The HCDP v2 portal's pseudo-log (?log=1): sign(v)·ln(1+|v|) — defined at
+ *  and below zero, near-linear around it, so SPI and temperature work too. */
+export const pseudoLog = (v) => Math.sign(v) * Math.log1p(Math.abs(v))
+const pseudoExp = (y) => Math.sign(y) * Math.expm1(Math.abs(y))
+const identity = (x) => x
 
-/** pixelValuesToColorFn for GeoRasterLayer: nodata is transparent, every
- *  other pixel takes the ramp colour of its position on the domain. */
-export function makeColorFn(ramp, domain, noDataValue) {
-  const { min, max } = domain
-  return (values) => {
-    const v = values[0]
-    if (isNoData(v, noDataValue)) return null
-    return interpolateColorRamp(ramp, rampPosition(v, min, max))
+/** Value ↔ ramp position (0–1) on a domain, linear or pseudo-log; values
+ *  past the ends clamp (the portal paints every product on a fixed range). */
+export function makeScale(domain, { log = false } = {}) {
+  const f = log ? pseudoLog : identity
+  const inv = log ? pseudoExp : identity
+  const lo = f(domain.min), hi = f(domain.max)
+  const span = (hi - lo) || 1
+  return {
+    position: (value) => Math.max(0, Math.min(1, (f(value) - lo) / span)),
+    valueAt: (t) => inv(lo + t * span),
   }
 }
 
-/** CSS gradient for the legend bar, high values at the top (portal). */
-export function rampGradient(ramp) {
-  return `linear-gradient(to top, ${ramp.map(([t, c]) => `${c} ${t * 100}%`).join(', ')})`
+/** Ramp position (0–1) of a value on the domain (the legend's tick). */
+export function rampPosition(value, min, max, log = false) {
+  return makeScale({ min, max }, { log }).position(value)
+}
+
+/** pixelValuesToColorFn for GeoRasterLayer: nodata is transparent, every
+ *  other pixel takes the ramp colour of its position on the domain — run
+ *  the other way with `reverse` (?ramp=name-r), pseudo-log with `log`. The
+ *  station markers use the same function, so they always match the grid. */
+export function makeColorFn(ramp, domain, noDataValue, { reverse = false, log = false } = {}) {
+  const scale = makeScale(domain, { log })
+  return (values) => {
+    const v = values[0]
+    if (isNoData(v, noDataValue)) return null
+    const t = scale.position(v)
+    return interpolateColorRamp(ramp, reverse ? 1 - t : t)
+  }
+}
+
+/** CSS gradient for the legend bar, high values at the top (portal); a
+ *  reversed ramp reads the stops from the other end. */
+export function rampGradient(ramp, reverse = false) {
+  const stops = reverse ? ramp.map(([t, c]) => [1 - t, c]).reverse() : ramp
+  return `linear-gradient(to top, ${stops.map(([t, c]) => `${c} ${Number((t * 100).toFixed(2))}%`).join(', ')})`
 }
 
 /** True when the parsed raster holds at least one real value. HCDP answers a

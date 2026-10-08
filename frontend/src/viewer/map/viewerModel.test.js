@@ -17,10 +17,12 @@ describe('shiftMonths', () => {
 })
 import {
   parseDateRange, dateForPeriod, shiftDate, clampDate, isRealDate, yearBefore, hawaiiYesterday, hawaiiLastMonth,
-  legendFor, domainFor, displayUnit, toDisplay, formatValue, unitsForDataset, selectedUnit, rampNameFor,
+  legendFor, domainFor, autoDomainFor, rangeAbsoluteFor, legendValuesFor, legendLabelsFor, fromDisplay, convertDisplay, displayUnit, toDisplay,
+  formatValue, unitsForDataset, selectedUnit, rampNameFor,
   rampOptionsFor, specFor, rasterRequestUrl, pathWith, compareDateFor, sourceLineFor, unitsLineFor, portalLabelFor,
 } from './viewerModel'
-import { NAMED_RAMPS, COLORMAP_OPTIONS, makeColorFn, hasData, valueAtLatLng, isNoData } from './ramps'
+import { NAMED_RAMPS, COLORMAP_OPTIONS, makeColorFn, makeScale, pseudoLog, rampGradient, rampPosition, hasData, valueAtLatLng, isNoData } from './ramps'
+import { portalLegendLabels } from '../portalDatasets.reference'
 
 const v = (dataset, period, date, extent = 'statewide', opts = {}) => ({ dataset, period, date, extent, opts })
 
@@ -94,6 +96,38 @@ describe('the portal facts behind the legend', () => {
     expect(legendFor(v('spi-3', 'month', '2026-08')).labels).toEqual(['+3+', '+1.5', '0', '-1.5', '-3-'])
     expect(legendFor(v('humidity', 'day', '2026-09-01')).header).toBe('Relative Humidity (%)')
   })
+  it('lets a locked ?range= win over the portal scale and marks its open ends', () => {
+    const locked = v('rainfall', 'month', '2026-08', 'kauai', { range: { min: 0, max: 300 } })
+    expect(domainFor(locked)).toEqual({ min: 0, max: 300 })
+    expect(autoDomainFor(locked)).toEqual({ min: 0, max: 650 })
+    expect(domainFor(v('rainfall', 'day', '2026-09-07', 'kauai', { scale: 'extreme', range: { min: 0, max: 400 } }))).toEqual({ min: 0, max: 400 })
+    expect(legendFor(locked).labels).toEqual(['+300+', '+225', '+150', '+75', '0'])                   // 0 is the portal's closed end, 300 is open
+    expect(rangeAbsoluteFor(v('rainfall', 'month', '2026-08', 'kauai', { range: { min: 10, max: 300 } }))).toEqual([false, false])
+    expect(legendFor(v('humidity', 'day', '2026-09-01', 'oahu', { range: { min: 20, max: 100 } })).labels).toEqual(['+100', '+80', '+60', '+40', '+20-'])
+    expect(legendFor(v('temperature-max', 'month', '2026-08', 'oahu', { range: { min: 0, max: 30 }, units: 'f' })).labels).toEqual(['+86+', '+72.5', '+59', '+45.5', '+32-'])
+    // a nonsense range object (min ≥ max) falls back to the automatic domain
+    expect(domainFor(v('rainfall', 'month', '2026-08', 'kauai', { range: { min: 5, max: 5 } }))).toEqual({ min: 0, max: 650 })
+  })
+  it('reads pseudo-log legends at the values the colours stand for', () => {
+    const log = v('rainfall', 'day', '2026-09-07', 'kauai', { log: true })
+    expect(legendFor(log).labels).toEqual(['+20+', '+8.81', '+3.58', '+1.14', '0'])                    // 21^t − 1 at t = 1, ¾, ½, ¼, 0
+    expect(legendValuesFor(v('spi-3', 'month', '2026-08', 'statewide', { log: true })).map((x) => Math.round(x * 100) / 100)).toEqual([3, 1, 0, -1, -3])
+    expect(legendFor(v('spi-3', 'month', '2026-08', 'statewide', { log: true })).labels).toEqual(['+3+', '+1', '0', '-1', '-3-'])
+    // the linear labels are the portal's own, to the character
+    for (const view of [v('rainfall', 'month', '2026-08'), v('spi-3', 'month', '2026-08'), v('humidity', 'day', '2026-09-01')]) {
+      const { min, max } = domainFor(view)
+      expect(legendFor(view).labels).toEqual(portalLegendLabels([min, max], rangeAbsoluteFor(view)))
+    }
+    expect(legendLabelsFor([0.001, -0.001])).toEqual(['0', '0'])                                       // never "-0"
+  })
+  it('converts display units both ways', () => {
+    expect(fromDisplay(1, 'rainfall', { units: 'in' })).toBeCloseTo(25.4)
+    expect(fromDisplay(50, 'temperature-max', { units: 'f' })).toBeCloseTo(10)
+    expect(fromDisplay(7, 'rainfall', {})).toBe(7)
+    expect(fromDisplay(0.5, 'spi-3', { units: 'in' })).toBe(0.5)
+    expect(convertDisplay(20, 'rainfall', { units: 'in' })).toBeCloseTo(0.7874, 4)
+    expect(toDisplay(20, 'rainfall', { units: 'in' })).toBe(0.79)
+  })
   it('converts readouts and keeps a unit system across datasets', () => {
     expect(displayUnit('rainfall', { units: 'in' })).toBe('in')
     expect(displayUnit('temperature-min', { units: 'in' })).toBe('°F')
@@ -156,6 +190,25 @@ describe('pixels', () => {
     expect(fn([500])).toBe('rgb(68,1,84)') // past the end clamps, like the portal
     expect(fn([-9999])).toBeNull()
     expect(fn([-3.4e38])).toBeNull()
+  })
+  it('runs a ramp the other way and on a pseudo-log scale', () => {
+    const reversed = makeColorFn(NAMED_RAMPS.viridis_r, { min: 0, max: 20 }, -9999, { reverse: true })
+    expect(reversed([0])).toBe('rgb(68,1,84)')
+    expect(reversed([20])).toBe('rgb(253,231,37)')
+    expect(reversed([-9999])).toBeNull()
+    const log = makeColorFn(NAMED_RAMPS.viridis_r, { min: 0, max: 20 }, -9999, { log: true })
+    const linear = makeColorFn(NAMED_RAMPS.viridis_r, { min: 0, max: 20 }, -9999)
+    expect(log([0])).toBe(linear([0]))
+    expect(log([20])).toBe(linear([20]))
+    expect(log([5])).toBe(linear([20 * Math.log1p(5) / Math.log1p(20)]))                              // 5 mm sits where 11.8 mm does linearly
+    expect(pseudoLog(-3)).toBe(-pseudoLog(3))
+    const scale = makeScale({ min: -3, max: 3 }, { log: true })
+    expect(scale.position(0)).toBeCloseTo(0.5)
+    expect(scale.valueAt(scale.position(1.7))).toBeCloseTo(1.7)
+    expect(rampPosition(5, 0, 20)).toBe(0.25)
+    expect(rampPosition(5, 0, 20, true)).toBeCloseTo(Math.log1p(5) / Math.log1p(20))
+    expect(rampGradient([[0, '#000000'], [0.25, '#444444'], [1, '#ffffff']])).toBe('linear-gradient(to top, #000000 0%, #444444 25%, #ffffff 100%)')
+    expect(rampGradient([[0, '#000000'], [0.25, '#444444'], [1, '#ffffff']], true)).toBe('linear-gradient(to top, #ffffff 0%, #444444 75%, #000000 100%)')
   })
   it('reads a value at a point and knows an all-nodata grid', () => {
     expect(valueAtLatLng(g, 22.5, -158.5)).toBe(20)

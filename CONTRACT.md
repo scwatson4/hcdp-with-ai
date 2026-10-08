@@ -56,7 +56,7 @@ the URL, register the query keys / route pattern in `backend/navigator.py` (`PAG
 ```
 /                         landing: tools + "What are you looking for?"
 /about  /about/team  /about/history  /about/acknowledgements  /about/how-to-cite
-/data                     Access Data (the native viewer; the original portal stays embedded for Export only)
+/data                     Access Data (the native viewer and the native Export form; the original app is linked for the rest)
 /data/api  /data/tutorials
 /mesonet                  Hawaiʻi Mesonet
 /climate-summary          Monthly Climate Summary
@@ -87,8 +87,10 @@ written in ONE fixed order with defaults omitted, so one view has exactly one sp
 
 | key | values | default (omitted) | history | meaning |
 |---|---|---|---|---|
-| `ramp` | a name from `viewer/map/ramps.js` NAMED_RAMPS | the dataset's portal default | replace | colour ramp |
+| `ramp` | a name from `viewer/map/ramps.js` NAMED_RAMPS, with the suffix `-r` to run it the other way (`viridis-r`) | the dataset's portal default, not reversed | replace | colour ramp (and its direction) |
 | `scale` | `extreme` | portal scale | replace | the 0–250 mm daily-rainfall scale |
+| `range` | `lo..hi` — two numbers in the dataset's native units (mm, °C, …), up to 2 decimals, lo < hi (swapped ends are put in order) | auto: the portal's scale (or `scale=extreme`'s) | replace | the legend locked to lo..hi; wins over `scale` |
+| `log` | `1` | linear | replace | pseudo-log colour scaling, sign(v)·ln(1+\|v\|), between the legend's ends |
 | `units` | `in` · `f` (`mm` · `c` are defaults) | metric | replace | display units (data never converted) |
 | `basemap` | `satellite` · `street` · `imagery` · `topo` · `relief` · `light` | `satellite` | replace | base map |
 | `opacity` | integer 0–100 | 75 | replace | data layer opacity |
@@ -101,7 +103,7 @@ written in ONE fixed order with defaults omitted, so one view has exactly one sp
 | `lat`,`lng`,`z` | 4 decimals, integer zoom 5–20 | the extent's own view | replace | the camera |
 
 History: dataset, period, date, extent, station and pin **push** an entry (Back undoes a choice); everything
-else **replaces** (Back never retraces a pan or a colour flip). The camera is written with `replaceState`
+else **replaces** (Back never retraces a pan or a colour flip — nor a reversed ramp, a locked range or a log scale). The camera is written with `replaceState`
 400 ms after a gesture ends, and every writer runs through one page-wide limiter of at most one history write
 per 300 ms (Mobile Safari throws after 100 `replaceState` calls in 30 s).
 
@@ -139,6 +141,27 @@ POST /api/shorten {path}  →  {id, url}                     deterministic short
 ```
 Station datasets: rainfall, temperature-mean/max/min, humidity (`fill=partial` is HCDP's quality-controlled series,
 `fill=raw` the unfilled one; gridded maps always use partial).
+
+Numbers the site computes itself (the time-series panel's count, min, max, mean and standard deviation of the
+points in view) carry a provenance tag in the UI — "computed from HCDP station data" for a station, "computed from
+HCDP gridded data" for a grid cell — so no computed figure reads as an HCDP product.
+
+## Export endpoints (the native Export form on /data; `backend/export.py` mirrors hcdp_v2's export recipes)
+```
+GET  /api/export/options                   the products with their files, extents and station fills, and the limits
+POST /api/export/instant  {dataset, period, start, end, extents:[slugs], files:[ids], station_files:[fills], email?}
+                                           → HCDP POST /genzip/instant/content, the zip streamed back
+                                             (Content-Disposition attachment; ≤ 150 files — hcdp_v2's IN_SITE_EXPORT_MAX — else 413;
+                                             EXPORT_MAX_BYTES budget, 500 MB by default; per-IP limit, 6/min 40/h)
+POST /api/export/email    {…the same, email required}
+                                           → HCDP POST /genzip/email, 202 {ok, email, files, message}
+                                             (the address is validated here and never stored; per-IP limit, 2/min 10/h)
+```
+Products: rainfall (new) by month and day, legacy rainfall by month (statewide only), temperature max/min/mean by
+month and day. Grid files: `data_map`, `se`, `anom`, `anom_se` (rainfall), `metadata` (every map pulls it in);
+station fills: `partial`, and `raw` for daily rainfall. The body HCDP receives is hcdp_v2's exactly:
+`{email?, data: [{fileData: [{fileParams: {extent: [codes], units: [unit], fill?: [fills]}, files: [tags]}], params: {location, datatype, …, period},
+dates: {start, end, unit, interval: 1}}]}`. The HCDP token stays server-side; the frontend never calls HCDP.
 
 ## The navigator's action protocol (backend → assistant)
 `POST /api/navigate` body: `{ "message": str, "history": [{"role","content"}] (last 8, memory only),
@@ -182,4 +205,8 @@ Viewer entries carry `internal_path` templates such as `/viewer/rainfall/day/{da
 - Match the real HCDP site's section names and order: Access Data, Hawaiʻi Mesonet, Climate Summary,
   Pacific Portal, Extreme Events, Climate Tools; top nav Home · About · Data Portal · Research · Climate Tools.
 - Every page works at phone width. External links open in a new tab and say so.
-- No cookies, no analytics, no sign-in, nothing persisted except the theme.
+- No cookies, no analytics, no sign-in, nothing persisted except the theme — and one exception: the viewer's unit
+  system (`mm`/`°C` or `in`/`°F`) is remembered per browser (`localStorage` key `hcdp-units`, read and written in
+  try/catch; `frontend/src/viewer/unitsPreference.js`). It only fills in a viewer link that names no units, as a
+  load-time `replaceState` (`?units=in` / `?units=f`); a `units=` key in the address always wins, even `units=mm`.
+  The export email is never stored.

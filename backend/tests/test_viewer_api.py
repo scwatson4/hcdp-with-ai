@@ -227,10 +227,14 @@ def test_og_png_renders_a_card_and_keys_it_by_the_canonical_view(client, tmp_pat
     # an alias spelling, a camera and a basemap do not make a second image
     r2 = client.get("/api/og.png", params={"path": "/viewer/rain/monthly/2026-09/ka?units=in&basemap=street&lat=22.06&lng=-159.5&z=10&station=1020.1"})
     assert r2.status_code == 200 and len(list(og_dir.glob("*.png"))) == 1
-    # a different ramp or units does
+    # a different ramp or units does — and so do a reversed ramp, a locked range and pseudo-log
     client.get("/api/og.png", params={"path": "/viewer/rainfall/month/2026-09/kauai?ramp=turbo"})
     client.get("/api/og.png", params={"path": "/viewer/rainfall/month/2026-09/kauai"})
     assert len(list(og_dir.glob("*.png"))) == 3
+    for q in ("?ramp=turbo-r", "?range=0..300", "?log=1", "?range=0..300&log=1"):
+        assert client.get("/api/og.png", params={"path": "/viewer/rainfall/month/2026-09/kauai" + q}).status_code == 200
+    assert len(list(og_dir.glob("*.png"))) == 7
+    assert client.get("/api/og.png", params={"path": "/viewer/rainfall/month/2026-09/kauai?range=abc"}).status_code == 404   # not a viewer address
     r3 = client.get("/api/og.webp", params={"path": "https://hcdp.example.org/viewer/rainfall/month/2026-09/kauai"})
     assert r3.status_code == 200 and r3.headers["content-type"] == "image/webp"
     assert client.get("/api/og.png", params={"path": "/about"}).status_code == 404
@@ -253,6 +257,20 @@ def test_og_png_crops_shared_grids_to_the_island(client, tmp_path):
     assert _land_pixels(kauai.content) > 3 * _land_pixels(whole.content)                     # the island fills the card
     maui = client.get("/api/og.png", params={"path": "/viewer/spi-3/month/2026-08/maui"})    # no data in that box: the whole grid
     assert maui.status_code == 200 and _land_pixels(maui.content) == _land_pixels(whole.content)
+
+
+def test_server_legend_honours_a_locked_range():
+    from viewer_meta import legend_for
+    auto = legend_for("rainfall", "month", {})
+    assert auto["domain"] == (0, 650) and (auto["lo"], auto["hi"]) == ("0", "+650+")
+    locked = legend_for("rainfall", "month", {"range": (0.0, 300.0)})
+    assert locked["domain"] == (0.0, 300.0) and (locked["lo"], locked["hi"]) == ("0", "+300+")      # 0 is the portal's closed end; 300 is open
+    inside = legend_for("rainfall", "month", {"range": (10.0, 300.0), "units": "in"})
+    assert (inside["lo"], inside["hi"]) == ("+0.39-", "+11.81+") and inside["units"] == "in"          # both ends open, in inches
+    rh = legend_for("humidity", "day", {"range": (20.0, 100.0)})
+    assert (rh["lo"], rh["hi"]) == ("+20-", "+100")                                                    # 100 % is the portal's closed top
+    extreme = legend_for("rainfall", "day", {"scale": "extreme", "range": (0.0, 400.0)})
+    assert extreme["domain"] == (0.0, 400.0) and extreme["hi"] == "+400+"                              # the lock wins over the storm scale
 
 
 # ----- link previews in index.html -----------------------------------------------------------

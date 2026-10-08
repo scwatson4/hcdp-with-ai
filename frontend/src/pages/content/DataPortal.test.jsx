@@ -33,10 +33,17 @@ describe('AccessData', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-09-25T12:00:00-10:00'))
+    // The export form asks for its options and the published dates; the page needs neither to render.
+    global.fetch = vi.fn(async (url) => {
+      const u = new URL(url, 'http://localhost')
+      if (u.pathname === '/api/export/options') return { ok: true, status: 200, json: async () => ({ datasets: [{ id: 'rainfall', label: 'Rainfall', periods: ['month', 'day'], units: 'mm', extents: ['statewide'], grid_files: [], station_fills: { month: [], day: [] } }], file_types: {}, instant_max_files: 150 }) }
+      if (u.pathname === '/api/dates') return { ok: true, status: 200, json: async () => ['1990-01-01T10:00:00.000Z', '2026-08-01T10:00:00.000Z'] }
+      return { ok: false, status: 404, json: async () => ({}) }
+    })
   })
   afterEach(() => vi.useRealTimers())
 
-  it('has the portal button, the datasets table and the embedded portal', () => {
+  it('has the portal button, the datasets table and the native export form (the original app only linked)', () => {
     renderAt(<AccessData />, '/data')
     expect(screen.getByRole('heading', { level: 1, name: 'Access Data' })).toBeInTheDocument()
     const open = screen.getByRole('link', { name: /Open the HCDP data portal/ })
@@ -51,14 +58,17 @@ describe('AccessData', () => {
     expect(within(table).getAllByRole('rowheader')[2]).toHaveTextContent(/^Maximum Temperature \(°C\)/)
     expect(within(table).getByRole('link', { name: 'Map Rainfall, August 2026, Statewide in the viewer' })).toHaveAttribute('href', '/viewer/rainfall/month/2026-08/statewide')
 
-    // The native viewer is the headline action; the original app is framed for Export only, and only on request.
+    // The native viewer is the headline action; Export is this site's own form now — no iframe anywhere on the page.
     expect(screen.getByRole('link', { name: 'Open the climate viewer' })).toHaveAttribute('href', '/viewer/rainfall/month/2026-08/statewide')
-    expect(screen.queryByTitle('HCDP data portal — Export Data')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Load it here' }))
-    const frame = screen.getByTitle('HCDP data portal — Export Data')
-    expect(frame.tagName).toBe('IFRAME')
-    expect(frame).toHaveAttribute('src', 'https://rainfall.ikewai.org/?datatype=rainfall&period=month')
-    expect(frame).toHaveAttribute('loading', 'lazy')
+    expect(screen.getByTestId('export-form')).toBeInTheDocument()
+    expect(screen.getByTestId('export-download')).toHaveTextContent('Download now')
+    expect(screen.getByTestId('export-email-send')).toHaveTextContent('Email me the package')
+    expect(document.querySelector('iframe')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Load it here' })).toBeNull()
+    // what the form does not cover stays a plain link to the original app
+    const original = within(screen.getByTestId('export-original-link')).getByRole('link')
+    expect(original).toHaveAttribute('href', 'https://rainfall.ikewai.org/?datatype=spi&period=month')
+    expect(original).toHaveAttribute('target', '_blank')
   })
 
   it('builds the quick maps from today\'s date', () => {

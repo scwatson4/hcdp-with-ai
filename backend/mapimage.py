@@ -137,6 +137,16 @@ def _fit(draw: ImageDraw.ImageDraw, text: str, font, max_width: int) -> str:
     return text.rstrip() + "…"
 
 
+def _shrink(draw: ImageDraw.ImageDraw, text: str, size: int, max_width: int, bold: bool = False, floor: int = 22):
+    """The largest font size (from `size` down to `floor`) at which the line fits, then the font and the
+    (possibly ellipsized) text: long descriptions get smaller type before they get cut."""
+    while True:
+        font = _font(size, bold)
+        if draw.textlength(text, font=font) <= max_width or size <= floor:
+            return font, _fit(draw, text, font, max_width)
+        size -= 2
+
+
 def render_og(tif: Path, ramp: str, domain: tuple[float, float], title: str, subtitle: str, legend: tuple[str, str, str] | None = None,
               crop_bounds: tuple[float, float, float, float] | None = None, fmt: str = "png", brand: str = "Hawaiʻi Climate Data Portal") -> bytes:
     """A 1200×630 preview card: the grid painted on the portal's fixed `domain` with `ramp`, centred on an
@@ -163,10 +173,12 @@ def render_og(tif: Path, ramp: str, domain: tuple[float, float], title: str, sub
     top = H - strip
     draw.rectangle([0, top, W, H], fill=(255, 255, 255))
     draw.line([(0, top), (W, top)], fill=(203, 213, 225), width=1)
-    title_font, sub_font, small = _font(34, bold=True), _font(21), _font(17)
+    small = _font(17)
     right_w = 300 if legend else 0
-    draw.text((40, top + 22), _fit(draw, title, title_font, W - 80 - right_w), font=title_font, fill=(17, 24, 39))
-    draw.text((40, top + 70), _fit(draw, subtitle, sub_font, W - 80 - right_w), font=sub_font, fill=(71, 85, 105))
+    title_font, title_text = _shrink(draw, title, 34, W - 80 - right_w, bold=True)
+    sub_font, sub_text = _shrink(draw, subtitle, 21, W - 80 - right_w, floor=16)
+    draw.text((40, top + 22 + (34 - getattr(title_font, "size", 34)) // 2), title_text, font=title_font, fill=(17, 24, 39))
+    draw.text((40, top + 70), sub_text, font=sub_font, fill=(71, 85, 105))
     if legend:
         lo_label, hi_label, header = legend
         bar_w, bar_h, x1 = 240, 12, W - 40

@@ -509,7 +509,7 @@ async def api_timeseries(dataset: str, period: str, start: str, end: str, statio
         meta = (await stations_by_skn()).get(skn)
         if meta is None:
             raise HTTPException(404, f"no climate station {skn}")
-        location = {"kind": "station", "skn": skn, "name": meta["name"], "island": meta["island"], "lat": meta["lat"], "lng": meta["lng"]}
+        location = {"kind": "station", "skn": skn, "name": meta["name"], "island": meta["island"], "extent": meta["extent"], "lat": meta["lat"], "lng": meta["lng"]}
         key = f"station|{dataset}|{period}|{start}|{end}|{skn}|{fill}"
 
         async def load():

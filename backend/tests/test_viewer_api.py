@@ -131,7 +131,7 @@ def test_station_timeseries_windows_newest_first_merged_ascending(client):
     assert r.status_code == 200 and r.headers["cache-control"] == "public, max-age=3600"
     body = r.json()
     assert body["units"] == "mm" and body["dataset"] == "rainfall" and body["period"] == "day" and body["start"] == "2024-01-01" and body["end"] == "2026-09-30"
-    assert body["location"] == {"kind": "station", "skn": "1146", "name": "Moloaa Dairy", "island": "KA", "lat": 22.19, "lng": -159.33}
+    assert body["location"] == {"kind": "station", "skn": "1146", "name": "Moloaa Dairy", "island": "KA", "extent": "kauai", "lat": 22.19, "lng": -159.33}
     pts = body["points"]
     dates = [p[0] for p in pts]
     assert dates == sorted(dates) and dates[0] == "2024-01-01" and dates[-1] == "2026-09-30"

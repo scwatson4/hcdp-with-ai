@@ -922,11 +922,88 @@ describe('?station= and ?pin= open the time series', () => {
     expect(chart.data[0]).toEqual([SEC('2026-09-01'), SEC('2026-09-02'), SEC('2026-09-03')])
     expect(chart.data[1]).toEqual([0.3, null, 0.06]) // 7.72 mm and 1.5 mm in inches, a gap between
     expect(chart.opts.series[1].spanGaps).toBe(false)
-    expect(within(panel).getByTestId('timeseries-readout')).toHaveTextContent('2 days · 0.06 to 0.3 in')
+    expect(within(panel).getByTestId('timeseries-readout')).toHaveTextContent('Sep 1, 2026 to Sep 3, 2026')
     expect(within(panel).getByTestId('timeseries-csv')).toBeEnabled()
     // Default window is "All"; rainfall has both periods, so the series period can be switched.
     expect(within(screen.getByTestId('ts-window')).getByLabelText('All')).toBeChecked()
     expect(within(screen.getByTestId('ts-period')).getByLabelText('Daily')).toBeChecked()
+  })
+
+  it('shows the statistics of the points in view, tagged with where the numbers come from, and the network in the header', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in&station=1020.1')
+    const panel = await screen.findByTestId('timeseries-panel')
+    await waitFor(() => expect(fake.charts).toHaveLength(1))
+    expect(screen.getByTestId('timeseries-details')).toHaveTextContent('SKN 1020.1 · Hawaiʻi · 11 m · NWS')
+    const stats = within(panel).getByTestId('timeseries-stats')
+    expect(within(stats).getByTestId('stat-in-view')).toHaveTextContent('2 days')      // the gap on the 2nd is not a value
+    expect(within(stats).getByTestId('stat-min')).toHaveTextContent('0.06 in')
+    expect(within(stats).getByTestId('stat-max')).toHaveTextContent('0.3 in')
+    expect(within(stats).getByTestId('stat-mean')).toHaveTextContent('0.18 in')
+    expect(within(stats).getByTestId('stat-std-dev')).toHaveTextContent('0.12 in')     // population σ of 0.3 and 0.06
+    expect(within(stats).getByTestId('stats-provenance')).toHaveTextContent('computed from HCDP station data')
+    // the chart carries a dashed marker at the map's date and zooms by drag along x
+    const chart = fake.charts[0]
+    expect(chart.opts.hcdp.marker).toEqual({ x: SEC('2026-09-07'), label: 'Map date · Sep 7, 2026' })
+    expect(chart.opts.hooks.draw).toHaveLength(1)
+    expect(chart.opts.cursor.drag.x).toBe(true)
+    // a zoom narrows the statistics to the dates in view, at most once per 500 ms
+    await act(async () => { chart.opts.hooks.setScale[0]({ scales: { x: { min: SEC('2026-09-03'), max: SEC('2026-09-03') } } }, 'x') })
+    await waitFor(() => expect(within(stats).getByTestId('stat-in-view')).toHaveTextContent('1 days'), { timeout: 1500 })
+    expect(within(stats).getByTestId('stat-std-dev')).toHaveTextContent('0 in')
+    expect(within(stats).getByTestId('stat-mean')).toHaveTextContent('0.06 in')
+  })
+
+  it('a grid cell says its numbers come from the gridded data', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?pin=22.1000,-159.6000')
+    await screen.findByTestId('timeseries-panel')
+    await waitFor(() => expect(fake.charts).toHaveLength(1))
+    expect(screen.getByTestId('stats-provenance')).toHaveTextContent('computed from HCDP gridded data')
+  })
+
+  it('a drag-select or a wheel zoom on the chart writes ts= (replace) for the dates it covers; Zoom to the map\'s month writes the month', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1')
+    await screen.findByTestId('timeseries-panel')
+    await waitFor(() => expect(fake.charts).toHaveLength(1))
+    const chart = fake.charts[0]
+    // uPlot reports a selection in CSS pixels; a fake posToVal maps them to the record's days
+    const u = { select: { left: 10, width: 50 }, posToVal: (px) => SEC('2026-09-01') + (px - 10) * 3600, scales: { x: {} } }
+    await act(async () => { chart.opts.hooks.setSelect[0](u) })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1&ts=2026-09-01..2026-09-03'))
+    expect(navType()).toBe('REPLACE')
+    await waitFor(() => expect(callsTo('/api/timeseries')).toContain('/api/timeseries?dataset=rainfall&period=day&start=2026-09-01&end=2026-09-03&station=1020.1'))
+    // an empty selection (a click) writes nothing
+    await act(async () => { chart.opts.hooks.setSelect[0]({ select: { left: 10, width: 0 }, posToVal: u.posToVal }) })
+    await settle()
+    expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1&ts=2026-09-01..2026-09-03')
+    // the wheel: a fake plot area with a scale and an extent; wheel up zooms in about the cursor and writes the window
+    const latest = fake.charts[fake.charts.length - 1]
+    const over = document.createElement('div')
+    over.getBoundingClientRect = () => ({ left: 0, top: 0, width: 300, height: 200 })
+    // (the record's two days in view, the cursor on the left edge: a step in keeps three quarters of them, to noon on the 2nd)
+    const fakeU = { over, scales: { x: { min: SEC('2026-09-01'), max: SEC('2026-09-03') } }, posToVal: (px) => SEC('2026-09-01') + (px / 300) * 2 * 86400, setScale: vi.fn() }
+    await act(async () => { latest.opts.hooks.ready[0](fakeU) })
+    const wheel = new Event('wheel', { bubbles: true, cancelable: true })
+    Object.assign(wheel, { deltaY: -100, clientX: 0, clientY: 50 })
+    await act(async () => { over.dispatchEvent(wheel) })
+    expect(fakeU.setScale).toHaveBeenCalledWith('x', { min: SEC('2026-09-01'), max: SEC('2026-09-01') + 1.5 * 86400 })
+    expect(wheel.defaultPrevented).toBe(true)
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1&ts=2026-09-01..2026-09-02'))
+    // the map's period: September 2026, clamped to the published record
+    fireEvent.click(screen.getByTestId('ts-zoom-period'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1&ts=2026-09-01..2026-09-23'))
+    expect(screen.getByTestId('ts-zoom-period')).toHaveTextContent("Zoom to the map's month")
+    // the window buttons still work after a zoom
+    fireEvent.click(within(screen.getByTestId('ts-window')).getByLabelText('All'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1'))
+  })
+
+  it('zooms a monthly series to the map\'s year', async () => {
+    renderAt('/viewer/rainfall/month/2026-08/kauai?station=1020.1')
+    await screen.findByTestId('timeseries-panel')
+    await waitFor(() => expect(screen.getByTestId('ts-zoom-period')).toBeEnabled())
+    expect(screen.getByTestId('ts-zoom-period')).toHaveTextContent("Zoom to the map's year")
+    fireEvent.click(screen.getByTestId('ts-zoom-period'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/month/2026-08/kauai?station=1020.1&ts=2026-01..2026-08'))
   })
 
   it('writes the window with ts= (replace) from the Month / Year / All buttons, and Custom from two date fields', async () => {

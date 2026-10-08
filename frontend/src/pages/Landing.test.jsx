@@ -25,6 +25,14 @@ describe('Landing hero', () => {
     expect(hero.className).toContain('grid-rows-[45fr_auto_55fr]')
     expect(screen.getByTestId('landing-assistant').parentElement.className).toContain('row-start-2')
   })
+
+  it('puts the bar on frosted glass over the map, with no white glow behind it (L3 A)', () => {
+    renderLanding()
+    const hero = screen.getByTestId('landing-hero')
+    expect(hero.querySelector('.hcdp-ask-field').className).toContain('hcdp-ask-glass')
+    const glows = [...hero.querySelectorAll('[aria-hidden="true"]')].filter((el) => /radial-gradient/.test(el.getAttribute('style') || ''))
+    expect(glows).toHaveLength(0)
+  })
 })
 
 describe('Landing sidebar', () => {

@@ -58,12 +58,12 @@ export default function Landing() {
             45 % of the hero's height; a tall answers card still grows the hero as before. */}
         <section className="relative isolate grid min-h-[62vh] grid-rows-[45fr_auto_55fr] overflow-hidden lg:min-h-[70vh]" data-testid="landing-hero" style={{ background: ocean }}>
           <MapBackdrop />
-          {/* R4 B: a soft white glow behind the bar; the ocean and its islands stay visible around it. */}
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[5]" style={{ background: 'radial-gradient(ellipse 44% 36% at 50% 45%, hsl(var(--canvas) / 0.94) 0%, hsl(var(--canvas) / 0.72) 50%, hsl(var(--canvas) / 0) 100%)' }} />
+          {/* L3 pick A: no glow behind the bar any more — the bar's field is frosted glass (hcdp-ask-glass), so the
+              islands stay visible around and through it. */}
           <div className="relative z-10 row-start-2 mx-auto w-full max-w-3xl px-4 py-6">
             <h1 className="sr-only">Hawaiʻi Climate Data Portal</h1>
             <div data-testid="landing-assistant">
-              <AssistantPanel bar />
+              <AssistantPanel bar glass />
             </div>
           </div>
         </section>

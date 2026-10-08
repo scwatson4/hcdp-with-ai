@@ -50,7 +50,7 @@ function HandoffReply({ m }) {
 // The chat itself. `compact` is the dock panel; otherwise the landing box.
 // The chat itself. `compact` is the dock panel; `bar` is the landing search bar (R3 B):
 // one 56 px pill in which each example types itself out, holds two seconds and fades.
-export default function AssistantPanel({ compact = false, autoFocus = false, bar = false }) {
+export default function AssistantPanel({ compact = false, autoFocus = false, bar = false, glass = false }) {
   const { messages, busy, send } = useAssistant()
   const [text, setText] = useState('')
   const rotateExamples = bar
@@ -101,7 +101,7 @@ export default function AssistantPanel({ compact = false, autoFocus = false, bar
         <form onSubmit={submit} onMouseEnter={() => { hoverRef.current = true }} onMouseLeave={() => { hoverRef.current = false }} data-testid="ask-bar">
           <div className={cn('hcdp-ask h-14 rounded-full shadow-lg', busy && 'hcdp-ask-busy')} data-testid="ask-field" data-busy={busy ? 'true' : 'false'}>
             <span aria-hidden="true" className="hcdp-ask-ring" />
-            <div className="hcdp-ask-field relative flex h-full items-center pl-6 pr-2">
+            <div className={cn('hcdp-ask-field relative flex h-full items-center pl-6 pr-2', glass && 'hcdp-ask-glass')}>
             <input ref={inputRef} type="text" value={text} onChange={(e) => setText(e.target.value.slice(0, 500))} autoComplete="off" enterKeyHint="search"
               onKeyDown={(e) => { if (e.key === 'Enter') submit(e); else if (e.key === 'Tab' && !e.shiftKey && ghostQuery) { e.preventDefault(); setText(ghostQuery) } }}
               onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}

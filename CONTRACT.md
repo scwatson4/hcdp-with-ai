@@ -152,7 +152,10 @@ GET  /api/export/options                   the products with their files, extent
 POST /api/export/instant  {dataset, period, start, end, extents:[slugs], files:[ids], station_files:[fills], email?}
                                            → HCDP POST /genzip/instant/content, the zip streamed back
                                              (Content-Disposition attachment; ≤ 150 files — hcdp_v2's IN_SITE_EXPORT_MAX — else 413;
-                                             EXPORT_MAX_BYTES budget, 500 MB by default; per-IP limit, 6/min 40/h)
+                                             EXPORT_MAX_BYTES budget, 500 MB by default; per-IP limit, 6/min 40/h;
+                                             HCDP refuses a genzip request without an email — it logs the requestor — so
+                                             the visitor's is forwarded when typed, else EXPORT_LOG_EMAIL, by default
+                                             anonymous@hcdp-with-ai.invalid; a refusal's 502 quotes HCDP's own words)
 POST /api/export/email    {…the same, email required}
                                            → HCDP POST /genzip/email, 202 {ok, email, files, message}
                                              (the address is validated here and never stored; per-IP limit, 2/min 10/h)

@@ -19,6 +19,11 @@ The payload (ExportDataHandler.getExportPackageGroupDetails + ExportContainer.ge
 (hcdp_v2 appends one file tag per selected file, so two station files give "station_data" twice, with both
 fills in fileParams.fill — reproduced as is.) hcdp_v2 downloads in the browser up to IN_SITE_EXPORT_MAX = 150
 files (periods × Σ over groups of (Σ property values × files)); beyond that the package is emailed.
+
+Every genzip route answers 400 without an `email` (hcdp_api packageGen.ts: `!Array.isArray(data) || !email`); on
+/genzip/instant/content it is "the requestor's email address for logging", and hcdp_v2's form requires the field for
+that reason. The payload therefore always carries one: the visitor's when typed, else the site's logging identity
+(app.py's EXPORT_LOG_EMAIL; ANONYMOUS_EMAIL by default, a reserved never-deliverable name).
 """
 from __future__ import annotations
 
@@ -30,6 +35,9 @@ EMAIL_MAX_FILES = 50_000         # our own ceiling for an emailed package
 MAX_YEARS = {"day": 40, "month": 120}
 EXTENT_CODES = {"statewide": "statewide", "hawaii": "bi", "maui": "mn", "molokai": "mn", "lanai": "mn", "oahu": "oa", "kauai": "ka"}
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+# What HCDP logs a direct download under when the visitor typed no address: ".invalid" is the TLD reserved for names
+# that can never be a mailbox (RFC 2606), so nothing is ever sent there.
+ANONYMOUS_EMAIL = "anonymous@hcdp-with-ai.invalid"
 
 FILE_TYPES = {
     "tif": {"label": "GeoTIFF", "ext": ".tif", "description": "A georeferenced raster: the gridded map, readable in QGIS, ArcGIS, rasterio, GDAL."},
@@ -187,12 +195,11 @@ def package_group(req: dict) -> dict:
             "dates": {"start": req["start"], "end": req["end"], "unit": req["period"], "interval": 1}}
 
 
-def payload(req: dict) -> dict:
-    """The body for /genzip/instant/content and /genzip/email: {email?, data: [packageGroupDetails]}."""
-    out: dict = {"data": [package_group(req)]}
-    if req.get("email"):
-        out["email"] = req["email"]
-    return out
+def payload(req: dict, log_email: str = ANONYMOUS_EMAIL) -> dict:
+    """The body for /genzip/instant/content and /genzip/email: {email, data: [packageGroupDetails]}. HCDP refuses a
+    request without an email, a direct download included (it logs the requestor), so a visitor who typed none is
+    logged as `log_email`; /genzip/email always gets the visitor's own address (app.py insists on it)."""
+    return {"email": req.get("email") or log_email or ANONYMOUS_EMAIL, "data": [package_group(req)]}
 
 
 def zip_filename(req: dict) -> str:

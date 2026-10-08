@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import app as appmod  # noqa: E402
-from export import EXTENT_CODES, INSTANT_MAX_FILES, ExportError, estimate_files, options, package_group, payload, periods_between, validate, valid_email  # noqa: E402
+from export import ANONYMOUS_EMAIL, EXTENT_CODES, INSTANT_MAX_FILES, ExportError, estimate_files, options, package_group, payload, periods_between, validate, valid_email  # noqa: E402
 
 BASE = appmod.HCDP_API_BASE
 RAIN = {"dataset": "rainfall", "period": "month", "start": "2026-01", "end": "2026-08", "extents": ["statewide", "oahu"], "files": ["data_map"], "station_files": ["partial"]}
@@ -39,10 +39,15 @@ def test_payload_is_hcdp_v2s_package_group_details_to_the_letter():
         "dates": {"start": "2026-01", "end": "2026-08", "unit": "month", "interval": 1},
     }
     assert payload(req) == {"email": "ikaika@example.edu", "data": [package_group(req)]}
+    assert payload(req, "ops@example.edu")["email"] == "ikaika@example.edu"               # the visitor's address wins
     # two station files: one tag per file, both fills in the params (hcdp_v2's quirk, kept)
     daily = validate({"dataset": "rainfall", "period": "day", "start": "2026-09-01", "end": "2026-09-07", "station_files": ["partial", "raw"]})
     assert package_group(daily)["fileData"] == [{"fileParams": {"extent": ["statewide"], "units": ["mm"], "fill": ["partial", "raw"]}, "files": ["station_data", "station_data"]}]
-    assert daily["files"] == 7 * 2 and "email" not in payload(daily)
+    # HCDP answers 400 to any genzip request without an email (packageGen.ts), a direct download included — it logs the
+    # requestor — so a visitor who typed none is logged as the site's address, else as the reserved never-deliverable name
+    assert daily["files"] == 7 * 2 and payload(daily)["email"] == ANONYMOUS_EMAIL == "anonymous@hcdp-with-ai.invalid"
+    assert payload(daily, "ops@example.edu")["email"] == "ops@example.edu" and payload(daily, "")["email"] == ANONYMOUS_EMAIL
+    assert valid_email(ANONYMOUS_EMAIL)
     temp = validate({"dataset": "temperature-max", "period": "day", "start": "2026-09-01", "end": "2026-09-01", "extents": ["hawaii", "maui", "kauai"], "files": ["se"]})
     assert package_group(temp)["params"] == {"location": "hawaii", "datatype": "temperature", "aggregation": "max", "period": "day"}
     assert package_group(temp)["fileData"][0] == {"fileParams": {"extent": ["bi", "mn", "ka"], "units": ["c"]}, "files": ["se", "metadata"]}
@@ -97,7 +102,7 @@ def test_options_endpoint(client):
 
 
 @respx.mock
-def test_instant_download_streams_the_zip_with_the_token_kept_server_side(client):
+def test_instant_download_streams_the_zip_with_the_token_kept_server_side(client, monkeypatch):
     seen = {}
 
     def handler(request):
@@ -119,9 +124,15 @@ def test_instant_download_streams_the_zip_with_the_token_kept_server_side(client
         "params": {"location": "hawaii", "datatype": "rainfall", "production": "new", "period": "month"},
         "dates": {"start": "2026-01", "end": "2026-08", "unit": "month", "interval": 1}}]}
     assert route.call_count == 1
-    # without an email the key is absent (HCDP logs it when given)
-    client.post("/api/export/instant", json=RAIN)
-    assert "email" not in seen["body"]
+    # without an address HCDP would answer 400 ("the requestor's email address for logging"): the site's logging
+    # identity goes instead — EXPORT_LOG_EMAIL when the operator set one, else the reserved never-deliverable name
+    assert client.post("/api/export/instant", json=RAIN).status_code == 200
+    assert seen["body"]["email"] == appmod.EXPORT_LOG_EMAIL and valid_email(appmod.EXPORT_LOG_EMAIL)
+    monkeypatch.setattr(appmod, "EXPORT_LOG_EMAIL", "ops@example.edu")
+    assert client.post("/api/export/instant", json=RAIN).status_code == 200
+    assert seen["body"]["email"] == "ops@example.edu"
+    assert client.post("/api/export/instant", json={**RAIN, "email": "ikaika@example.edu"}).status_code == 200
+    assert seen["body"]["email"] == "ikaika@example.edu" and route.call_count == 4
 
 
 @respx.mock
@@ -135,9 +146,28 @@ def test_instant_download_refuses_bad_requests_before_touching_hcdp_and_relays_h
     assert big.status_code == 413 and "emailed" in big.json()["detail"]
     assert route.call_count == 0
     r = client.post("/api/export/instant", json=RAIN)
-    assert r.status_code == 502 and "HCDP returned 500" in r.json()["detail"]
+    assert r.status_code == 502 and r.json()["detail"] == "HCDP returned 500 for this package"
     respx.post(f"{BASE}/genzip/instant/content").mock(side_effect=httpx.ConnectError("down"))
     assert client.post("/api/export/instant", json=RAIN).status_code == 502
+
+
+@respx.mock
+def test_hcdp_refusals_are_relayed_in_hcdps_own_words(client):
+    """HCDP's 400s name the fields they want (packageGen.ts) — the one clue when a package is refused — so the 502 quotes
+    them: one line, at most 300 characters, never an HTML error page."""
+    said = "Request body should include the following fields: \n        data: An array of file data objects describing a set of files to zip. \n        email: The requestor's email address for logging"
+    respx.post(f"{BASE}/genzip/instant/content").mock(return_value=httpx.Response(400, text=said))
+    r = client.post("/api/export/instant", json=RAIN)
+    assert r.status_code == 502
+    assert r.json()["detail"] == ("HCDP returned 400 for this package: Request body should include the following fields: "
+                                  "data: An array of file data objects describing a set of files to zip. email: The requestor's email address for logging")
+    respx.post(f"{BASE}/genzip/instant/content").mock(return_value=httpx.Response(500, text="x" * 1000))
+    assert client.post("/api/export/instant", json=RAIN).json()["detail"] == "HCDP returned 500 for this package: " + "x" * 300
+    respx.post(f"{BASE}/genzip/instant/content").mock(return_value=httpx.Response(502, text="<html><body>Bad gateway</body></html>"))
+    assert client.post("/api/export/instant", json=RAIN).json()["detail"] == "HCDP returned 502 for this package"
+    respx.post(f"{BASE}/genzip/email").mock(return_value=httpx.Response(400, text="Request body should include the following fields: data, email"))
+    r = client.post("/api/export/email", json={**RAIN, "email": "ikaika@example.edu"})
+    assert r.status_code == 502 and r.json()["detail"] == "HCDP returned 400 for this package: Request body should include the following fields: data, email"
 
 
 @respx.mock

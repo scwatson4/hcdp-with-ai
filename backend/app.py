@@ -44,8 +44,8 @@ from starlette.concurrency import run_in_threadpool
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT.parent / ".env")  # local development; containers get the env from compose
 
-from export import (EMAIL_MAX_FILES, INSTANT_MAX_FILES, ExportError, options as export_options, payload as export_payload,  # noqa: E402
-                    validate as export_validate, zip_filename)
+from export import (ANONYMOUS_EMAIL, EMAIL_MAX_FILES, INSTANT_MAX_FILES, ExportError, options as export_options, payload as export_payload,  # noqa: E402
+                    valid_email as export_valid_email, validate as export_validate, zip_filename)
 from llm import NavigatorLLM  # noqa: E402
 from navigator import (DATASETS, EXTENTS, HAWAII_BOX, STATEWIDE_ONLY, STATION_DATASETS, Navigator, canonical_viewer_path,  # noqa: E402
                        describe_view, load_catalog, parse_viewer_path)
@@ -69,6 +69,11 @@ DEFAULT_RAMP = {k: default_ramp(v["api"]["datatype"]) for k, v in DATASETS.items
 # An instant export is streamed through this process: stop at this many bytes (HCDP zips 150 files at most anyway).
 EXPORT_MAX_BYTES = int(os.environ.get("EXPORT_MAX_BYTES", str(500 * 1024 * 1024)))
 EXPORT_TIMEOUT = float(os.environ.get("EXPORT_TIMEOUT", "300"))
+# HCDP logs every genzip request under an email address, a direct download included (its packageGen.ts answers 400
+# without one). A visitor who typed none is logged as this address: the operator's, else a reserved never-deliverable name.
+EXPORT_LOG_EMAIL = os.environ.get("EXPORT_LOG_EMAIL", "").strip()
+if not export_valid_email(EXPORT_LOG_EMAIL):
+    EXPORT_LOG_EMAIL = ANONYMOUS_EMAIL
 
 app = FastAPI(title="HCDP with AI — navigator", docs_url=None, redoc_url=None)
 app.state.llm = NavigatorLLM()
@@ -671,6 +676,21 @@ def _export_request(body: ExportBody) -> dict:
         raise HTTPException(400, str(e)) from None
 
 
+def _hcdp_said(r: httpx.Response) -> str:
+    """HCDP's own words for a refused genzip request (its 400s name the fields it wants — the one clue there is), one
+    line of at most 300 characters; an HTML error page or an unreadable body gives nothing."""
+    try:
+        text = " ".join(r.text.split())
+    except Exception:  # noqa: BLE001
+        return ""
+    return "" if not text or text.startswith("<") else text[:300]
+
+
+def _hcdp_refused(r: httpx.Response) -> HTTPException:
+    said = _hcdp_said(r)
+    return HTTPException(502, f"HCDP returned {r.status_code} for this package" + (f": {said}" if said else ""))
+
+
 @app.post("/api/export/instant")
 async def api_export_instant(body: ExportBody, request: Request):
     """HCDP /genzip/instant/content, streamed back as a zip download. Capped at hcdp_v2's 150 files (413 above: have it
@@ -682,14 +702,14 @@ async def api_export_instant(body: ExportBody, request: Request):
         raise HTTPException(413, f"about {req['files']:,} files: HCDP zips at most {INSTANT_MAX_FILES} for a direct download — have the package emailed instead")
     client = _hcdp_client(EXPORT_TIMEOUT)
     try:
-        resp = await client.send(client.build_request("POST", "/genzip/instant/content", json=export_payload(req)), stream=True)
+        resp = await client.send(client.build_request("POST", "/genzip/instant/content", json=export_payload(req, EXPORT_LOG_EMAIL)), stream=True)
     except httpx.HTTPError as e:
         await client.aclose()
         raise HTTPException(502, f"HCDP did not answer ({type(e).__name__})") from None
     if resp.status_code != 200:
         await resp.aread()
         await client.aclose()
-        raise HTTPException(502, f"HCDP returned {resp.status_code} for this package")
+        raise _hcdp_refused(resp)
     length = resp.headers.get("content-length")
     if length and length.isdigit() and int(length) > EXPORT_MAX_BYTES:
         await resp.aclose()
@@ -726,11 +746,11 @@ async def api_export_email(body: ExportBody, request: Request):
         raise HTTPException(413, f"about {req['files']:,} files is more than one package can hold ({EMAIL_MAX_FILES:,}); narrow the dates or the files")
     try:
         async with _hcdp_client(60) as client:
-            r = await client.post("/genzip/email", json=export_payload(req))
+            r = await client.post("/genzip/email", json=export_payload(req, EXPORT_LOG_EMAIL))
     except httpx.HTTPError as e:
         raise HTTPException(502, f"HCDP did not answer ({type(e).__name__})") from None
     if r.status_code not in (200, 202):
-        raise HTTPException(502, f"HCDP returned {r.status_code} for this package")
+        raise _hcdp_refused(r)
     return JSONResponse({"ok": True, "email": req["email"], "files": req["files"],
                          "message": f"HCDP is packaging about {req['files']:,} files and will email a download link to {req['email']}. Large packages can take a while; if nothing arrives within a few hours, check the address and try again or write to hcdp@hawaii.edu."},
                         status_code=202, headers={"Cache-Control": "no-store"})

@@ -56,7 +56,7 @@ the URL, register the query keys / route pattern in `backend/navigator.py` (`PAG
 ```
 /                         landing: tools + "What are you looking for?"
 /about  /about/team  /about/history  /about/acknowledgements  /about/how-to-cite
-/data                     Access Data (the native viewer; the original portal stays embedded for Export only)
+/data                     Access Data (the native viewer and the native Export form; the original app is linked for the rest)
 /data/api  /data/tutorials
 /mesonet                  Hawaiʻi Mesonet
 /climate-summary          Monthly Climate Summary
@@ -141,6 +141,27 @@ POST /api/shorten {path}  →  {id, url}                     deterministic short
 ```
 Station datasets: rainfall, temperature-mean/max/min, humidity (`fill=partial` is HCDP's quality-controlled series,
 `fill=raw` the unfilled one; gridded maps always use partial).
+
+Numbers the site computes itself (the time-series panel's count, min, max, mean and standard deviation of the
+points in view) carry a provenance tag in the UI — "computed from HCDP station data" for a station, "computed from
+HCDP gridded data" for a grid cell — so no computed figure reads as an HCDP product.
+
+## Export endpoints (the native Export form on /data; `backend/export.py` mirrors hcdp_v2's export recipes)
+```
+GET  /api/export/options                   the products with their files, extents and station fills, and the limits
+POST /api/export/instant  {dataset, period, start, end, extents:[slugs], files:[ids], station_files:[fills], email?}
+                                           → HCDP POST /genzip/instant/content, the zip streamed back
+                                             (Content-Disposition attachment; ≤ 150 files — hcdp_v2's IN_SITE_EXPORT_MAX — else 413;
+                                             EXPORT_MAX_BYTES budget, 500 MB by default; per-IP limit, 6/min 40/h)
+POST /api/export/email    {…the same, email required}
+                                           → HCDP POST /genzip/email, 202 {ok, email, files, message}
+                                             (the address is validated here and never stored; per-IP limit, 2/min 10/h)
+```
+Products: rainfall (new) by month and day, legacy rainfall by month (statewide only), temperature max/min/mean by
+month and day. Grid files: `data_map`, `se`, `anom`, `anom_se` (rainfall), `metadata` (every map pulls it in);
+station fills: `partial`, and `raw` for daily rainfall. The body HCDP receives is hcdp_v2's exactly:
+`{email?, data: [{fileData: [{fileParams: {extent: [codes], units: [unit], fill?: [fills]}, files: [tags]}], params: {location, datatype, …, period},
+dates: {start, end, unit, interval: 1}}]}`. The HCDP token stays server-side; the frontend never calls HCDP.
 
 ## The navigator's action protocol (backend → assistant)
 `POST /api/navigate` body: `{ "message": str, "history": [{"role","content"}] (last 8, memory only),

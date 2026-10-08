@@ -6,7 +6,9 @@ import { ThemeProvider } from './ThemeProvider'
 import { TooltipProvider } from './ui/tooltip'
 import { AI_INTERFACE } from '../site/handoff'
 
-const renderHeader = (entry = '/') => render(<ThemeProvider><TooltipProvider><MemoryRouter initialEntries={[entry]}><SiteHeader /></MemoryRouter></TooltipProvider></ThemeProvider>)
+import { AssistantProvider } from '../assistant/AssistantProvider'
+
+const renderHeader = (entry = '/') => render(<ThemeProvider><TooltipProvider><MemoryRouter initialEntries={[entry]}><AssistantProvider><SiteHeader /></AssistantProvider></MemoryRouter></TooltipProvider></ThemeProvider>)
 
 describe('SiteHeader', () => {
   it('shows the portal’s menu row without an AI Data Analysis Tool entry (item 12)', () => {

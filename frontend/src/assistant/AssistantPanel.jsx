@@ -151,10 +151,10 @@ export function Conversation({ compact = false, hideUser = false, className }) {
 /** The landing page's assistant: the hero bar and, once there is something to say, the answer card
  *  under it (the AI's bubbles only — the question is in the bar). */
 export default function AssistantPanel({ glass = false }) {
-  const { messages, busy } = useAssistant()
+  const { messages, busy, epoch } = useAssistant()
   return (
     <div className="flex flex-col" data-testid="assistant-panel">
-      <AskBar glass={glass} />
+      <AskBar key={epoch} glass={glass} />
       {(messages.length > 1 || busy) && (
         <div className="mt-3 rounded-xl border border-border bg-card/90 p-2 shadow-lg backdrop-blur" data-testid="landing-answers">
           <Conversation hideUser />

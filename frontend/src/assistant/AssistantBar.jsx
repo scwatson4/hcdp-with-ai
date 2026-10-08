@@ -16,7 +16,7 @@ import { cn } from '../lib/utils'
 // Not on the landing page (there the hero bar is the assistant) — except invisibly during the
 // ride-up, so the travelling bar has a rectangle to arrive at.
 export default function AssistantBar() {
-  const { mode, setMode, minimize, reset, travel, strip, holdStrip, releaseStrip, hideStrip } = useAssistant()
+  const { mode, setMode, minimize, reset, travel, strip, epoch, holdStrip, releaseStrip, hideStrip } = useAssistant()
   const { pathname } = useLocation()
   const onLanding = pathname === '/'
   const measuring = onLanding && travel.phase === 'travel'
@@ -41,7 +41,7 @@ export default function AssistantBar() {
     <div ref={rootRef} data-testid="assistant-bar" aria-hidden={measuring || undefined}
       className={cn('border-b border-border bg-canvas/95 backdrop-blur', measuring ? 'invisible absolute inset-x-0 top-full' : 'relative')}>
       <div className="mx-auto flex h-14 w-full max-w-[720px] items-center px-4">
-        <div className="w-full"><AskBar docked /></div>
+        <div className="w-full"><AskBar key={epoch} docked /></div>
       </div>
       {strip && !open && !measuring && (
         <div role="status" data-testid="reply-strip" onMouseEnter={holdStrip} onMouseLeave={releaseStrip} onFocus={holdStrip} onBlur={releaseStrip}

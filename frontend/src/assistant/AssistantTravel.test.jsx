@@ -5,6 +5,9 @@ import { MemoryRouter, Routes, Route, Outlet, useLocation } from 'react-router-d
 import { AssistantProvider, HOLD_MS, TRAVEL_MS, STRIP_MS } from './AssistantProvider'
 import AssistantBar from './AssistantBar'
 import Landing from '../pages/Landing'
+import SiteHeader from '../components/SiteHeader'
+import { ThemeProvider } from '../components/ThemeProvider'
+import { TooltipProvider } from '../components/ui/tooltip'
 
 // R1 picks A + D (2026-10-08): answer first, then the bar rides up and docks under the header.
 const VIEW = '/viewer/rainfall/day/2026-09-07/kauai'
@@ -14,8 +17,9 @@ const infoReply = () => ({ ok: true, status: 200, json: () => Promise.resolve({ 
 const backdrops = () => ({ ok: true, status: 200, json: () => Promise.resolve({ items: [] }) })
 
 function Probe() { const { pathname } = useLocation(); return <div data-testid="probe">{pathname}</div> }
-function Shell() { return <><div data-testid="sticky-header"><AssistantBar /></div><Probe /><Outlet /></> }
+function Shell() { return <><div data-testid="sticky-header"><SiteHeader /><AssistantBar /></div><Probe /><Outlet /></> }
 const renderApp = (entry = '/') => render(
+  <ThemeProvider><TooltipProvider>
   <MemoryRouter initialEntries={[entry]}>
     <AssistantProvider>
       <Routes>
@@ -25,7 +29,8 @@ const renderApp = (entry = '/') => render(
         </Route>
       </Routes>
     </AssistantProvider>
-  </MemoryRouter>,
+  </MemoryRouter>
+  </TooltipProvider></ThemeProvider>,
 )
 const tick = async (ms) => { await act(async () => { await vi.advanceTimersByTimeAsync(ms) }) }
 const ask = async (q) => {
@@ -173,6 +178,29 @@ describe('the docked bar (inner pages)', () => {
     expect(screen.queryByTestId('reply-strip')).toBeNull()
     expect(screen.getByTestId('assistant-dropdown')).toBeInTheDocument()
     expect(screen.getAllByTestId('user-bubble')).toHaveLength(2)
+  })
+
+  it('the HCDP logo always resets the landing page: home, the welcome state, the empty bar with its examples (item 13)', async () => {
+    reply = infoReply
+    renderApp('/data')
+    await ask('what is HCDP')
+    expect(screen.getByTestId('assistant-dropdown')).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('logo-home'))
+    expect(screen.getByTestId('probe').textContent).toBe('/')
+    expect(screen.queryByTestId('assistant-bar')).toBeNull()
+    expect(screen.queryByTestId('landing-answers')).toBeNull()
+    expect(screen.queryByTestId('assistant-bubble')).toBeNull()
+    const input = screen.getByTestId('assistant-input')
+    expect(input).toHaveValue('')
+    expect(screen.getByTestId('composer-ghost')).toBeInTheDocument()
+    // and from the landing page itself, with a conversation and the question still in the bar
+    await ask('what is HCDP again')
+    expect(screen.getByTestId('landing-answers')).toBeInTheDocument()
+    expect(screen.getByTestId('assistant-input')).toHaveValue('what is HCDP again')
+    fireEvent.click(screen.getByTestId('logo-home'))
+    expect(screen.queryByTestId('landing-answers')).toBeNull()
+    expect(screen.getByTestId('assistant-input')).toHaveValue('')
+    expect(screen.getByTestId('composer-ghost')).toBeInTheDocument()
   })
 
   it('arriving on the landing page brings the conversation back into the hero bar and hides the docked bar', async () => {

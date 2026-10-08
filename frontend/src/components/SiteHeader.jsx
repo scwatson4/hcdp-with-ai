@@ -6,6 +6,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { NAV } from '../site/nav'
 import { cn } from '../lib/utils'
 import { OriginalVersionLink, ShareView } from './OriginalLink'
+import { useAssistant } from '../assistant/AssistantProvider'
 
 // The portal's header: the logo centred on its own row — with "Share this view" at the row's
 // far left and "Original HCDP version" at its far right (item 11), vertically centred with the
@@ -29,13 +30,14 @@ const NAV_ITEM = 'font-nav text-[12.5px] font-semibold uppercase tracking-[0.06e
 
 export default function SiteHeader() {
   const navigate = useNavigate()
+  const { reset } = useAssistant()   // item 13: the logo always resets the landing page
   const [mobile, setMobile] = useState(false)
   return (
     <header className="border-b border-border bg-canvas/95 backdrop-blur">
       <div className="hcdp-band" aria-hidden="true" />
       <div className="mx-auto grid w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 pb-1 pt-3" data-testid="logo-row">
         <div className="flex min-w-0 items-center justify-start"><ShareView /></div>
-        <Link to="/" aria-label="Hawaiʻi Climate Data Portal home" className="block">
+        <Link to="/" aria-label="Hawaiʻi Climate Data Portal home" className="block" onClick={() => { setMobile(false); reset() }} data-testid="logo-home">
           <img src="/hcdp_logo.png" alt="HCDP — Hawaiʻi Climate Data Portal" width="1120" height="150" decoding="async" fetchPriority="high" className="h-7 w-auto sm:h-[52px]" />
         </Link>
         <div className="flex min-w-0 items-center justify-end gap-1">

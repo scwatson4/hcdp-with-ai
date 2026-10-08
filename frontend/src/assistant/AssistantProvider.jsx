@@ -43,6 +43,7 @@ export function AssistantProvider({ children }) {
   const [busy, setBusy] = useState(false)
   const [travel, setTravel] = useState({ phase: 'idle', path: null })   // 'idle' | 'hold' | 'travel'
   const [strip, setStrip] = useState(null)   // { id, reply, alternatives, path }
+  const [epoch, setEpoch] = useState(0)      // bumped by reset(): the bars remount empty (item 13)
   const historyRef = useRef([])
   const seq = useRef(0)
   const nextId = () => { seq.current += 1; return seq.current }
@@ -148,7 +149,7 @@ export function AssistantProvider({ children }) {
   const reset = useCallback(() => {
     historyRef.current = []
     clearHandoffTimer(); setHandoff(null); clearTravel(); setTravel({ phase: 'idle', path: null }); hideStrip()
-    setMessages([WELCOME]); setMode(location.pathname === '/' ? 'inline' : 'dock')
+    setMessages([WELCOME]); setMode(location.pathname === '/' ? 'inline' : 'dock'); setEpoch((n) => n + 1)
   }, [location.pathname, clearTravel, hideStrip])
 
   // Arriving on the landing page brings the conversation back into the hero bar; on an inner page the
@@ -186,9 +187,9 @@ export function AssistantProvider({ children }) {
   }, [mode, open])
 
   const value = useMemo(() => ({
-    messages, mode, busy, travelling, travel, strip, send, open, minimize, setMode, reset,
+    messages, mode, busy, travelling, travel, strip, epoch, send, open, minimize, setMode, reset,
     handoff, stayHere, settleHandoff, holdStrip, releaseStrip, hideStrip,
-  }), [messages, mode, busy, travelling, travel, strip, send, open, minimize, reset, handoff, stayHere, settleHandoff, holdStrip, releaseStrip, hideStrip])
+  }), [messages, mode, busy, travelling, travel, strip, epoch, send, open, minimize, reset, handoff, stayHere, settleHandoff, holdStrip, releaseStrip, hideStrip])
   return (
     <Ctx.Provider value={value}>
       {children}

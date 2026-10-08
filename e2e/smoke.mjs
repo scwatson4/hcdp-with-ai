@@ -11,7 +11,7 @@ const check = (name, ok, extra = '') => { results.push({ name, ok, extra }); con
 
 const browser = await chromium.launch()
 try {
-  for (const [label, viewport] of [['desktop', { width: 1280, height: 800 }], ['phone', { width: 390, height: 844 }]]) {
+  for (const [label, viewport] of [['desktop', { width: 1280, height: 800 }], ['desktop-1440', { width: 1440, height: 900 }], ['phone', { width: 390, height: 844 }]]) {
     const page = await browser.newPage({ viewport })
     const errors = []
     // errors thrown inside embedded third-party frames (the Mesonet dashboard's Leaflet plugin) are not ours
@@ -49,6 +49,17 @@ try {
     // Deep link direct load
     await page.goto(BASE + '/viewer/rainfall/day/2026-09-07/kauai', { waitUntil: 'networkidle' })
     check(`${label}: deep link resolves`, (await page.locator('body').innerText()).includes('Kaua'))
+    // Item 17: the whole map — compass, legend, scale bar, zoom control, title card — is on screen unscrolled.
+    await page.waitForSelector('.leaflet-container', { timeout: 30000 }).catch(() => {})
+    await page.waitForTimeout(1500)
+    const furniture = await page.evaluate(() => {
+      const box = (sel) => { const el = document.querySelector(sel); if (!el) return null; const b = el.getBoundingClientRect(); return { top: b.top, bottom: b.bottom, left: b.left, right: b.right } }
+      const inside = (b) => Boolean(b) && b.top >= 0 && b.left >= 0 && b.bottom <= window.innerHeight && b.right <= window.innerWidth
+      const pieces = { zoom: '.leaflet-control-zoom', compass: '[data-testid="compass-rose"]', legend: '[data-testid="legend"]', scale: '.leaflet-control-scale', title: '[data-testid="viewer-title-card"]', pane: '[data-testid="map-pane"]' }
+      return { scrollY: window.scrollY, missing: Object.entries(pieces).filter(([, sel]) => !box(sel)).map(([k]) => k), outside: Object.entries(pieces).filter(([, sel]) => box(sel) && !inside(box(sel))).map(([k]) => k) }
+    })
+    check(`${label}: whole map visible unscrolled (compass, legend, scale bar, zoom, title)`, furniture.scrollY === 0 && furniture.missing.length === 0 && furniture.outside.length === 0, `missing [${furniture.missing}] outside [${furniture.outside}]`)
+    await page.screenshot({ path: `${OUT}/viewer-whole-map-${label}.png` })
     await page.goto(BASE + '/extreme-events', { waitUntil: 'networkidle' })
     check(`${label}: extreme events page`, await page.locator('h1').first().isVisible())
     check(`${label}: original-version bar`, (await page.locator('[data-testid="original-link"]').count()) === 1 && (await page.locator('[data-testid="share-view"]').count()) === 1)

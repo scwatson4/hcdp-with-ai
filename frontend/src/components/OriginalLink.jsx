@@ -22,7 +22,9 @@ export function shareHref(pathname, search, hash) {
   return window.location.origin + c + (extra ? (c.includes('?') ? '&' : '?') + extra : '') + (hash || '')
 }
 
-const CONTROL = 'inline-flex items-center gap-1 rounded px-1 py-0.5 text-[11.5px] text-subtle hover:text-foreground [@media(pointer:coarse)]:min-h-11'
+// On coarse pointers the tap area grows to 44 px with padding that a matching negative margin takes back
+// out of the layout, so the phone's logo row stays 52 px tall (item 17: the sticky block must stay small).
+const CONTROL = 'inline-flex items-center gap-1 rounded px-1 py-0.5 text-[11.5px] text-subtle hover:text-foreground [@media(pointer:coarse)]:-my-4 [@media(pointer:coarse)]:py-4'
 
 export function ShareView({ className }) {
   const { pathname, search, hash } = useLocation()

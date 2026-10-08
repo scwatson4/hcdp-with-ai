@@ -11,11 +11,42 @@ inner page as the way to keep navigating (see "The assistant's states" below).
 It is NOT the analysis chatbot (that lives at the AI interface, `AI_INTERFACE_URL`). This site has
 no sign-in, saves no conversation history (memory only, per tab), and has no visualisation panel.
 
+## The hand-off link (shared with the AI interface, 2026-10-08)
+Every link into the AI data analysis tool has one shape, built by `frontend/src/site/handoff.js`
+(`handoffUrl({question, viewerPath})`) and mirrored by `backend/navigator.py` (`Navigator.handoff_url`):
+```
+${AI_INTERFACE}/?ask=<question>&ctx=viewer:<canonical website viewer path>&from=website
+```
+- `ask` — the question text as typed, URL-encoded, at most 500 characters; omitted when there is none.
+- `ctx` — present only when the visitor was on a viewer page: `viewer:` plus the canonical viewer path
+  **without origin or query** (e.g. `ctx=viewer:/viewer/rainfall/day/2026-09-07/kauai`). The question is
+  never reworded to describe the view — the ctx carries it.
+- `from=website` — always.
+`AI_INTERFACE` is `VITE_AI_INTERFACE_URL` in the frontend and `AI_INTERFACE_URL` (`ai_interface_url`) in the
+backend. Keep the two builders in step.
+
+## The doors to the AI data analysis tool (T1 picks A + D, 2026-10-08)
+Three, all labelled exactly "AI Data Analysis Tool", all external (new tab, and they say so), all outlined in
+the logo's spectrum (`.hcdp-rainbow-border`, 1.5 px) rather than a solid portal colour; the label and the link
+(`handoffUrl({})`, i.e. `?from=website`) live in `AI_TOOL` in `frontend/src/site/nav.js`:
+1. the sixth button of the landing page's sidebar (white, dark type, under the portal's five);
+2. a tile on Climate Tools, caption "ask questions of the data", with its own picture (the AI interface's sign-in
+   page, `public/tiles/ai-data-analysis.jpg`, 800 × 533, the navy shade), after the portal's nine live tiles and
+   before its coming-soon one — `/tools/ai-data-analysis` is a valid tool slug;
+3. "Analyze this map with AI" in the viewer's rail, above Share (and in the phone sheet's Dataset tab), whose
+   link asks "Analyze the <dataset> map for <date> (<island>)" with the view as `ctx`, recomputed on every change.
+There is no entry in the header menu (item 12).
+
 ## The assistant's states (R1 picks A + D, 2026-10-08)
-- **inline** — on the landing page the assistant is the bar in the hero (56 px, frosted glass over the map
-  carousel, the logo's spectrum as a soft 1.5 px ring that goes full with focus and runs a comet while busy).
-  Answers show in a card under the bar: the AI's bubbles only — the question stays in the bar and is never
-  echoed. There is no heading over the map (an sr-only h1 names the portal).
+- **inline** — on the landing page the assistant is the bar in the hero (56 px; L2 A/C + L3 A: the field is
+  frosted glass over the map carousel — the canvas at 86 % with a 12 px backdrop blur, measured to keep the
+  ghost example at ≥ 4.5:1 over the darkest carousel map — and the wrapper wears the logo's spectrum as a
+  1.5 px ring: `--hcdp-rainbow-soft` at rest, the full `--hcdp-rainbow` with focus (plus the 4 px halo), and
+  while the assistant is busy a comet — a short arc of the spectrum circling the border, a conic-gradient
+  square rotating 360° per 1.1 s with transform only; reduced motion shows a static full ring instead). There
+  is no white glow behind the bar and no heading over the map (an sr-only h1 names the portal); the bar sits
+  at about 45 % of the hero's height. Answers show in a card under the bar: the AI's bubbles only — the
+  question stays in the bar and is never echoed.
 - **answer first, then travel** — a navigation from the landing page does not jump: the reply shows under the
   bar for 700 ms (`HOLD_MS`); then the hero lifts away (−26 px + fade, 400 ms) while the bar rides up to the
   header row (a shared-element move, transform only, 450 ms ease-in, `TravelProxy.jsx`), and the page
@@ -70,14 +101,14 @@ Run the frontend tests with `cd frontend && npx vitest run`, the backend tests w
 ## The URL principle
 Every state on this site has its own shareable URL — a map, a station, a month, a storm, a tool, even a
 question to the assistant — because HCDP's own pages cannot do that. Every page shows an **"Original HCDP
-version"** link in the bar under the header (`frontend/src/site/original.js` maps our URLs to theirs; many of
-ours map to one of theirs) and a **"Share this view"** copier. Adding anything new means: put its state in
+version"** link at the far right of the header's logo row (`frontend/src/site/original.js` maps our URLs to
+theirs; many of ours map to one of theirs) and a **"Share this view"** copier at its far left (item 11). Adding anything new means: put its state in
 the URL, register the query keys / route pattern in `backend/navigator.py` (`PAGE_QUERY_KEYS`,
 `ROUTE_PATTERNS`), add it to the catalog so the navigator can produce it, and map it in `original.js`.
 
 ```
 /extreme-events/{lowell|lala|nolo|kona-low-1|kona-low-2}         one storm
-/tools/{slug}                                                     one tool tile (slug = image name)
+/tools/{slug}                                                     one tool tile (slug = image name; also ai-data-analysis)
 /mesonet?viewer=live|app|nolo&station={id}&view=dashboard|graphing|station-map|station-table|wind-map
 /climate-summary?year=YYYY&month=M                                one month in the summary app
 /?ask={url-encoded question}                                      asks the assistant on arrival
@@ -209,7 +240,7 @@ Response:
   "actions": [
     { "type": "navigate", "path": "/viewer/rainfall/day/2026-09-07/kauai" },
     { "type": "open", "url": "https://www.hawaii.edu/climate-data-portal/hurricane-lowell/" },
-    { "type": "handoff", "url": "https://<ai-interface>/?ask=..." }
+    { "type": "handoff", "url": "https://<ai-interface>/?ask=...&ctx=viewer:/viewer/...&from=website" }
   ],
   "alternatives": [ { "title": "...", "url": "...", "why": "..." } ],
   "minimize": true
@@ -217,7 +248,9 @@ Response:
 ```
 Rules: at most one `navigate` action; `open` is for external HCDP pages/tools; `handoff` only when the
 request is data analysis (numbers, comparisons, computations, charts) — the assistant links to the AI
-interface and does not attempt analysis itself. `alternatives` are always welcome (2–4). `minimize`
+interface and does not attempt analysis itself; its url is always built server-side in the hand-off shape
+above, and an analysis `reply` is always the fixed sentence "This is better answered by our AI data analysis
+tool. Try it out here" (the frontend renders "here" as the link and counts down five seconds). `alternatives` are always welcome (2–4). `minimize`
 is true whenever a navigation happened. `info` answers a question about HCDP without navigating.
 `clarify` asks one short question.
 

@@ -5,6 +5,7 @@ import { MemoryRouter, Routes, Route, useLocation, useNavigationType } from 'rea
 import ViewerPage from './ViewerPage'
 import { clearRasterCache } from './map/rasterCache'
 import { clearDateRanges } from './map/dateRanges'
+import { clearStationCache } from './map/stationData'
 import { resetUrlWrites } from './urlWrites'
 
 // ── Leaflet, georaster and the GeoRasterLayer, mocked ───────────────────────
@@ -98,8 +99,32 @@ if (!global.ResizeObserver) global.ResizeObserver = class { observe() {} unobser
 const DAY_RANGE = ['1990-01-01T10:00:00.000Z', '2026-09-23T10:00:00.000Z']
 const MONTH_RANGE = ['1990-01-01T10:00:00.000Z', '2026-08-01T10:00:00.000Z']
 
+// Station values for one day, and the station list (CONTRACT.md shapes).
+const STATION_VALUES = {
+  stations: [
+    { skn: '1020.1', name: 'Hilo Airport', island: 'Hawaiʻi', lat: 19.72, lng: -155.05, value: 12.3 },
+    { skn: '800.2', name: 'Kahului', island: 'Maui', lat: 20.9, lng: -156.43, value: null },
+  ],
+  units: 'mm', count: 2,
+}
+const CLIMATE_STATIONS = {
+  stations: [
+    { skn: '1020.1', name: 'Hilo Airport', island: 'Hawaiʻi', lat: 19.72, lng: -155.05, elevation_m: 11, network: 'NWS', observer: null },
+    { skn: '800.2', name: 'Kahului', island: 'Maui', lat: 20.9, lng: -156.43, elevation_m: 15, network: 'NWS', observer: null },
+    { skn: '1075.0', name: 'Waimea', island: 'Hawaiʻi', lat: 20.02, lng: -155.67, elevation_m: 814, network: 'HaleNet', observer: null },
+  ],
+}
+
 let rasterMode = 'data' // 'data' | 'empty' | 404 | 500 | 'network' | 'hang'
+let stationsMode = 'data' // 'data' | 404 | 'hang'
 let hung = []
+let hungStations = []
+function hang(url, init, list) {
+  return new Promise((resolve, reject) => {
+    list.push({ url: String(url), signal: init.signal, resolve })
+    init.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
+  })
+}
 function installFetch() {
   global.fetch = vi.fn(async (url, init = {}) => {
     const u = new URL(url, 'http://localhost')
@@ -107,22 +132,24 @@ function installFetch() {
       const body = u.searchParams.get('period') === 'month' ? MONTH_RANGE : DAY_RANGE
       return { ok: true, status: 200, json: async () => body }
     }
+    if (u.pathname === '/api/station-values') {
+      if (stationsMode === 404) return { ok: false, status: 404, json: async () => ({ detail: 'no station values for that date' }) }
+      if (stationsMode === 'hang') return hang(url, init, hungStations)
+      return { ok: true, status: 200, json: async () => STATION_VALUES }
+    }
+    if (u.pathname === '/api/climate-stations') return { ok: true, status: 200, json: async () => CLIMATE_STATIONS }
     if (u.pathname === '/api/raster') {
       if (rasterMode === 'network') throw new TypeError('Failed to fetch')
       if (rasterMode === 404) return { ok: false, status: 404, json: async () => ({ detail: 'no map for that date' }) }
       if (rasterMode === 500) return { ok: false, status: 502, json: async () => ({ detail: 'HCDP API returned 500' }) }
-      if (rasterMode === 'hang') {
-        return new Promise((resolve, reject) => {
-          hung.push({ url: String(url), signal: init.signal, resolve })
-          init.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
-        })
-      }
+      if (rasterMode === 'hang') return hang(url, init, hung)
       return { ok: true, status: 200, arrayBuffer: async () => new ArrayBuffer(rasterMode === 'empty' ? 8 : 16) }
     }
     return { ok: false, status: 404, json: async () => ({}) }
   })
 }
 const rasterCalls = () => global.fetch.mock.calls.filter(([u]) => String(u).startsWith('/api/raster'))
+const callsTo = (path) => global.fetch.mock.calls.map(([u]) => String(u)).filter((u) => u.startsWith(path))
 
 // ── rendering at a URL ──────────────────────────────────────────────────────
 let visited = [] // every location the router has been at, in order
@@ -147,9 +174,12 @@ const navType = () => screen.getByTestId('location').dataset.type
 
 beforeEach(() => {
   rasterMode = 'data'
+  stationsMode = 'data'
   hung = []
+  hungStations = []
   visited = []
   resetUrlWrites()
+  clearStationCache()
   fake.handlers.clear()
   fake.layers.length = 0
   fake.instances.length = 0
@@ -588,6 +618,73 @@ describe('raster loading', () => {
     await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai'))
     expect(screen.queryByTestId('map-loading')).toBeNull()
     expect(rasterCalls()).toHaveLength(2)
+  })
+})
+
+// ── station markers ─────────────────────────────────────────────────────────
+describe('?layers=stations', () => {
+  it('draws one marker per station in the view colours, with a tooltip, and a click selects it (push)', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?layers=stations')
+    await waitFor(() => expect(screen.getAllByTestId('station-marker')).toHaveLength(2))
+    expect(callsTo('/api/station-values')).toEqual(['/api/station-values?dataset=rainfall&period=day&date=2026-09-07'])
+    const [hilo, kahului] = screen.getAllByTestId('station-marker')
+    expect(hilo.dataset.center).toBe('19.72,-155.05')
+    expect(hilo.dataset.pane).toBe('climate-data')
+    expect(hilo.dataset.stroke).toBe('#000')
+    expect(hilo.dataset.weight).toBe('1')
+    expect(hilo.dataset.fill).toMatch(/^rgb\(/) // the ramp colour of 12.3 mm on 0–20
+    expect(hilo.dataset.radius).toBe('6') // zoom 10
+    expect(within(hilo).getByTestId('marker-tooltip')).toHaveTextContent('Hilo Airport · 12.3 mm')
+    expect(kahului.dataset.fill).toBe('#9ca3af')
+    expect(within(kahului).getByTestId('marker-tooltip')).toHaveTextContent('Kahului · no value')
+    expect(screen.queryByTestId('selection-mark')).toBeNull()
+    fireEvent.click(hilo)
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?layers=stations&station=1020.1'))
+    expect(navType()).toBe('PUSH')
+    expect(screen.getByTestId('selection-mark').dataset.center).toBe('19.72,-155.05')
+    // Clicking the selected station again changes nothing.
+    fireEvent.click(screen.getAllByTestId('station-marker')[0])
+    await settle()
+    expect(visited.filter((p) => p.endsWith('station=1020.1'))).toHaveLength(1)
+  })
+
+  it('shrinks the markers when zoomed out', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/statewide?layers=stations&lat=20.6&lng=-157.4&z=7')
+    await waitFor(() => expect(screen.getAllByTestId('station-marker')).toHaveLength(2))
+    expect(screen.getAllByTestId('station-marker')[0].dataset.radius).toBe('3')
+  })
+
+  it('marks a station named in the address even when the layer is off, from the station list', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?station=1075.0')
+    await waitFor(() => expect(screen.getByTestId('selection-mark').dataset.center).toBe('20.02,-155.67'))
+    expect(callsTo('/api/climate-stations')).toHaveLength(1)
+    expect(callsTo('/api/station-values')).toHaveLength(0)
+    expect(screen.queryByTestId('station-marker')).toBeNull()
+  })
+
+  it('says quietly when there are no station values for the date', async () => {
+    stationsMode = 404
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?layers=stations')
+    expect(await screen.findByTestId('stations-none')).toHaveTextContent('no station values for this date')
+    expect(screen.queryByTestId('station-marker')).toBeNull()
+  })
+
+  it('shows a stations pill while loading and cancels the request when the date changes', async () => {
+    stationsMode = 'hang'
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?layers=stations')
+    expect(await screen.findByTestId('stations-loading')).toHaveTextContent('stations…')
+    await waitFor(() => expect(hungStations).toHaveLength(1))
+    fireEvent.click(screen.getByRole('button', { name: 'Previous day' }))
+    await waitFor(() => expect(hungStations).toHaveLength(2))
+    expect(hungStations[0].signal.aborted).toBe(true)
+    expect(hungStations[1].url).toContain('date=2026-09-06')
+  })
+
+  it('asks nothing for a dataset without stations', async () => {
+    renderAt('/viewer/spi-3/month/2026-08/statewide?layers=stations')
+    await settle()
+    expect(callsTo('/api/station-values')).toHaveLength(0)
+    expect(screen.queryByTestId('stations-loading')).toBeNull()
   })
 })
 

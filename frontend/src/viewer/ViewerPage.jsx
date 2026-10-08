@@ -10,8 +10,10 @@
 
 import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { DATASETS, DEFAULT_BASEMAP, DEFAULT_OPACITY, LAYER_KEYS, canonicalize, describeViewer, foreignQuery, formatViewerPath, parseViewerPath } from './urlGrammar'
+import { Loader2 } from 'lucide-react'
+import { DATASETS, DEFAULT_BASEMAP, DEFAULT_OPACITY, LAYER_KEYS, canonicalize, describeViewer, foreignQuery, formatViewerPath, hasStations, parseViewerPath } from './urlGrammar'
 import { scheduleUrlWrite } from './urlWrites'
+import { CLIMATE_STATIONS_URL, findStation, stationValuesUrl, stationsOf, useJson } from './map/stationData'
 import { NAMED_RAMPS, makeColorFn, rampPosition, valueAtLatLng } from './map/ramps'
 import {
   clampDate, compareDateFor, dateForPeriod, defaultRampFor, domainFor, formatValue, hasExtremeScale,
@@ -20,7 +22,7 @@ import {
 import { useRaster } from './map/rasterCache'
 import { getDateRange, getDateRangeSoon, useDateRange } from './map/dateRanges'
 import { Controls, CompareControl, LayerControls, ShareActions } from './map/Controls'
-import { Compass, Legend, TitleCard, ValueReadout } from './map/MapFurniture'
+import { Compass, CornerStack, Legend, MapPill, TitleCard, ValueReadout } from './map/MapFurniture'
 import { GrammarError, MapStatus } from './map/ErrorStates'
 import Launcher from './map/Launcher'
 
@@ -163,6 +165,26 @@ function Viewer({ v }) {
   const mapOpacity = (opacityDraft ?? opacityPct) / 100
   const layers = v.opts.layers || []
 
+  // ── stations and the selection ──────────────────────────────────────────
+  const stationsOn = layers.includes('stations') && hasStations(v.dataset)
+  const stationValues = useJson(stationsOn ? stationValuesUrl(v) : null)
+  const compareStationValues = useJson(stationsOn && compareDate ? stationValuesUrl({ ...v, date: compareDate }) : null)
+  const skn = v.opts.station || null
+  // A selected station is placed from the day's values when they are on
+  // screen, else from the station list (which also has the elevation).
+  const stationMeta = useJson(skn ? CLIMATE_STATIONS_URL : null)
+  const selectedStation = skn ? (findStation(stationMeta.data, skn) || findStation(stationValues.data, skn)) : null
+  const pin = v.opts.pin || null
+  const selected = useMemo(() => {
+    if (skn) return selectedStation ? { kind: 'station', lat: selectedStation.lat, lng: selectedStation.lng } : null
+    return pin ? { kind: 'pin', lat: pin.lat, lng: pin.lng } : null
+  }, [skn, selectedStation?.lat, selectedStation?.lng, pin?.lat, pin?.lng]) // eslint-disable-line react-hooks/exhaustive-deps
+  // A station is a choice: push (Back returns to the map without it).
+  const onSelectStation = useCallback((s) => {
+    if (String(latest.current.opts.station || '') === String(s.skn)) return
+    go({ opts: { station: String(s.skn), pin: undefined } })
+  }, [go])
+
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const shareUrl = origin + formatViewerPath(v)
 
@@ -173,10 +195,11 @@ function Viewer({ v }) {
   const pane = (date, r, fn, extra) => (
     <MapPane
       v={v} date={date} raster={r} colorFn={fn} ramp={ramp} domain={domain} dateRange={dateRange}
-      opacity={mapOpacity} layers={layers}
+      opacity={mapOpacity} layers={layers} selected={selected} onSelectStation={onSelectStation}
       syncBus={compareDate ? busRef.current : null} {...extra}
     />
   )
+  const stationProps = (sv) => (stationsOn ? { stations: sv.status === 'ready' ? stationsOf(sv.data) : null, stationStatus: sv.status } : {})
 
   return (
     <div className="mx-auto w-full max-w-[1440px] px-4 pb-8 pt-4" data-testid="viewer">
@@ -202,15 +225,15 @@ function Viewer({ v }) {
           {compareDate ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" data-testid="compare-view">
               <div className="h-[48vh] min-h-[300px] sm:h-[min(72vh,640px)] lg:h-[calc(100dvh-8.5rem)] lg:min-h-[480px]">
-                {pane(v.date, raster, colorFn, { onViewChange, leader: true, showLegend: false })}
+                {pane(v.date, raster, colorFn, { onViewChange, leader: true, showLegend: false, ...stationProps(stationValues) })}
               </div>
               <div className="h-[48vh] min-h-[300px] sm:h-[min(72vh,640px)] lg:h-[calc(100dvh-8.5rem)] lg:min-h-[480px]">
-                {pane(compareDate, compareRaster, compareColorFn, { showCompass: false })}
+                {pane(compareDate, compareRaster, compareColorFn, { showCompass: false, ...stationProps(compareStationValues) })}
               </div>
             </div>
           ) : (
             <div className="h-[68vh] min-h-[360px] sm:h-[min(72vh,640px)] lg:h-[calc(100dvh-8.5rem)] lg:min-h-[480px]">
-              {pane(v.date, raster, colorFn, { onViewChange })}
+              {pane(v.date, raster, colorFn, { onViewChange, ...stationProps(stationValues) })}
             </div>
           )}
         </section>
@@ -221,7 +244,11 @@ function Viewer({ v }) {
 
 /** One map with its furniture. Hover state lives here so moving the
  *  pointer never re-renders the controls. */
-const MapPane = memo(function MapPane({ v, date, raster, colorFn, ramp, domain, dateRange, opacity = DEFAULT_OPACITY / 100, layers = [], onViewChange = null, syncBus = null, leader = false, showLegend = true, showCompass = true }) {
+const MapPane = memo(function MapPane({
+  v, date, raster, colorFn, ramp, domain, dateRange, opacity = DEFAULT_OPACITY / 100, layers = [],
+  stations = null, stationStatus = null, selected = null, onSelectStation = null,
+  onViewChange = null, syncBus = null, leader = false, showLegend = true, showCompass = true,
+}) {
   const [hover, setHover] = useState(null)
   const [pick, setPick] = useState(null)
   // A new map (date, dataset, place) forgets the old pointer position.
@@ -241,10 +268,19 @@ const MapPane = memo(function MapPane({ v, date, raster, colorFn, ramp, domain, 
           extent={v.extent} view={v.opts.view || null} onViewChange={onViewChange}
           georaster={ready ? raster.georaster : null} colorFn={colorFn}
           basemap={v.opts.basemap || DEFAULT_BASEMAP} opacity={opacity} layers={layers}
+          stations={stations} selected={selected} onSelectStation={onSelectStation}
+          formatValue={(val) => formatValue(val, v.dataset, v.opts)}
           onHover={setHover} onPick={setPick} syncBus={syncBus} leader={leader}
         />
       </Suspense>
       <TitleCard title={title} unitsLine={unitsLineFor(v)} sourceLine={sourceLineFor(v)} />
+      <CornerStack>
+        {stationStatus === 'loading' && (
+          <MapPill testid="stations-loading"><Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> stations…</MapPill>
+        )}
+        {stationStatus === 'notfound' && <MapPill quiet testid="stations-none">no station values for this date</MapPill>}
+        {stationStatus === 'error' && <MapPill quiet testid="stations-error">station values did not load</MapPill>}
+      </CornerStack>
       {showLegend && <Legend header={legend.header} labels={legend.labels} ramp={ramp} tick={tick} />}
       {showCompass && <Compass />}
       <ValueReadout text={readout} />

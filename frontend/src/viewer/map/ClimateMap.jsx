@@ -7,7 +7,8 @@
 // drawn by the page on top of this component (they do not need Leaflet).
 
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
-import { GeoJSON, MapContainer, TileLayer, ScaleControl, useMap, useMapEvents } from 'react-leaflet'
+import { CircleMarker, GeoJSON, MapContainer, TileLayer, ScaleControl, Tooltip, useMap, useMapEvents } from 'react-leaflet'
+import { DomEvent } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { EXTENT_BOUNDS, extentView } from './viewerModel'
 import { BASEMAPS, DEFAULT_BASEMAP, basemapFor } from './basemaps'
@@ -17,8 +18,13 @@ import { ISLAND_GEOJSON } from '../../data/hawaiiIslands'
 export const BASEMAP = BASEMAPS[DEFAULT_BASEMAP]
 
 const DATA_PANE = 'climate-data'
-// Island outlines: a thin dark line, no fill, under the pointer-transparent.
+// Island outlines: a thin dark line, no fill, transparent to the pointer.
 const OUTLINE_STYLE = { color: '#111', weight: 1, opacity: 0.85, fill: false }
+// A station without a value that day keeps a neutral grey fill.
+const NO_VALUE_FILL = '#9ca3af'
+
+/** Marker radius: 6 px from zoom 10 up, shrinking to 3 px zoomed out. */
+export const markerRadius = (zoom) => (zoom >= 10 ? 6 : Math.max(3, 6 - (10 - zoom)))
 const round4 = (n) => Number(n.toFixed(4))
 const keyOf = (v) => (v ? `${v.lat.toFixed(4)},${v.lng.toFixed(4)},${Math.round(v.z)}` : '')
 
@@ -184,6 +190,46 @@ function GeoRasterLeafletLayer({ georaster, colorFn, opacity }) {
   return null
 }
 
+/** One circle per station with a value that day: filled with the view's
+ *  colour for its value (the grid's ramp and domain), a black hairline, a
+ *  tooltip "Name · value". A click selects the station and stops there (no
+ *  pin under it); hover still reaches the map, so the raster readout works
+ *  through the markers. */
+function StationMarkers({ stations, colorFn, format, onSelect }) {
+  const map = useMap()
+  const [zoom, setZoom] = useState(() => (typeof map?.getZoom === 'function' ? map.getZoom() : 9))
+  useMapEvents({ zoomend() { setZoom(map.getZoom()) } })
+  const radius = markerRadius(zoom)
+  return stations.map((s) => {
+    const fill = s.value == null ? null : colorFn?.([s.value])
+    return (
+      <CircleMarker
+        key={s.skn} center={[s.lat, s.lng]} radius={radius} pane={DATA_PANE}
+        pathOptions={{ color: '#000', weight: 1, opacity: 1, fillColor: fill || NO_VALUE_FILL, fillOpacity: 1 }}
+        eventHandlers={{ click: (e) => { if (e.originalEvent) DomEvent.stopPropagation(e.originalEvent); onSelect?.(s) } }}
+        data-testid="station-marker"
+      >
+        <Tooltip direction="top" offset={[0, -radius]}>{`${s.name || `Station ${s.skn}`} · ${format(s.value) || 'no value'}`}</Tooltip>
+      </CircleMarker>
+    )
+  })
+}
+
+/** The selected station or grid cell: a ring with a white halo (and a dot
+ *  for a grid cell), transparent to the pointer. */
+function SelectionMark({ at }) {
+  const center = [at.lat, at.lng]
+  return (
+    <>
+      <CircleMarker center={center} radius={11} pane={DATA_PANE} interactive={false} pathOptions={{ color: '#fff', weight: 5, opacity: 0.9, fill: false }} />
+      <CircleMarker center={center} radius={11} pane={DATA_PANE} interactive={false} pathOptions={{ color: '#111', weight: 2, opacity: 1, fill: false }} data-testid="selection-mark" />
+      {at.kind === 'pin' && (
+        <CircleMarker center={center} radius={3} pane={DATA_PANE} interactive={false} pathOptions={{ color: '#fff', weight: 1, fillColor: '#111', fillOpacity: 1 }} />
+      )}
+    </>
+  )
+}
+
 /** Hover (rAF-throttled) and tap/click positions for the value readout. */
 function PointerProbe({ onHover, onPick }) {
   const raf = useRef(0)
@@ -202,6 +248,7 @@ function PointerProbe({ onHover, onPick }) {
 function ClimateMap({
   extent, view = null, onViewChange = null, georaster = null, colorFn = null,
   basemap = DEFAULT_BASEMAP, opacity = 0.75, layers = [],
+  stations = null, selected = null, onSelectStation = null, formatValue = String,
   onHover = null, onPick = null, syncBus = null, leader = false,
 }) {
   // MapContainer reads center/zoom once; ViewSync owns the view after that.
@@ -226,6 +273,10 @@ function ClimateMap({
         {layers.includes('outline') && (
           <GeoJSON data={ISLAND_GEOJSON} pane={DATA_PANE} interactive={false} style={OUTLINE_STYLE} data-testid="island-outlines" />
         )}
+        {stations && stations.length > 0 && (
+          <StationMarkers stations={stations} colorFn={colorFn} format={formatValue} onSelect={onSelectStation} />
+        )}
+        {selected && <SelectionMark at={selected} />}
       </DataPane>
       {/* The portal's scale control (bottom-left, metric + imperial) with
           the AI interface's shorter bar. */}

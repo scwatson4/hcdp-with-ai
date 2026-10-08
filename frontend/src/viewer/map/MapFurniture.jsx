@@ -4,7 +4,33 @@
 // compass rose bottom-left above Leaflet's scale bar.
 
 import compassUrl from './nautical.svg'
+import { cn } from '../../lib/utils'
 import { rampGradient } from './ramps'
+
+/** The stack under Leaflet's zoom control (top-left): badges and small notes. */
+export function CornerStack({ children }) {
+  return (
+    <div className="pointer-events-none absolute left-2 top-[80px] z-[1000] flex max-w-[60%] flex-col items-start gap-1" data-testid="corner-stack">
+      {children}
+    </div>
+  )
+}
+
+/** A small pill like MapStatus's loading pill; `quiet` for a passing note. */
+export function MapPill({ children, quiet = false, testid, role = 'status', interactive = false }) {
+  return (
+    <div
+      role={role} data-testid={testid}
+      className={cn(
+        'flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] shadow-sm',
+        quiet ? 'bg-card/80 text-subtle' : 'bg-card/95 text-foreground',
+        interactive && 'pointer-events-auto',
+      )}
+    >
+      {children}
+    </div>
+  )
+}
 
 /** Title card: what the map shows, its units and where the data comes from. */
 export function TitleCard({ title, unitsLine, sourceLine, extra = null }) {

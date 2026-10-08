@@ -42,7 +42,8 @@ no sign-in, saves no conversation history (memory only, per tab), and has no vis
 
 ## Stack and layout
 - `frontend/` — React 18 + Vite + Tailwind. Same design system as the AI interface: tokens in
-  `src/styles/globals.css`, primitives in `src/components/ui/*`, the HCDP mark in `HeaderLogo.jsx`. The site is
+  `src/styles/globals.css`, primitives in `src/components/ui/*`. The assistant is labelled with the words "Ask AI"
+  only — never the HCDP mark glyph (item 15). The site is
   always light (`ThemeProvider` applies the light theme and clears any remembered one; there is no toggle, and
   the dark-mode CSS stays unused). Fonts are the portal's: the system stack (`-apple-system, Segoe UI, Roboto,
   Helvetica Neue, Arial`) for body and headings, Raleway 600 for the menus (`font-nav`), Roboto in the map furniture.

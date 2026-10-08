@@ -152,6 +152,9 @@ describe('the docked bar (inner pages)', () => {
     expect(screen.queryByTestId('assistant-dropdown')).toBeNull()   // nothing to show yet
     await ask('what is HCDP')
     const dropdown = screen.getByTestId('assistant-dropdown')   // a reply with nowhere to go opens it
+    expect(dropdown).toHaveAccessibleName('Ask AI')
+    expect(within(dropdown).getByText('Ask AI')).toBeInTheDocument()   // the words only — no HCDP mark glyph (item 15)
+    expect(dropdown.querySelector('img')).toBeNull()
     expect(within(dropdown).getByTestId('user-bubble')).toHaveTextContent('what is HCDP')
     expect(within(dropdown).getByTestId('assistant-bubble')).toHaveTextContent('HCDP is the Hawaiʻi Climate Data Portal.')
     expect(input).toHaveValue('')

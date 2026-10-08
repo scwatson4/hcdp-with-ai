@@ -26,11 +26,30 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.useRealTimers() })
 
 describe('the ask field', () => {
-  it('wears the spectrum border through its class alone (soft at rest, full with focus — see globals.css)', () => {
+  it('is a wrapper with the ring element (the border) and a borderless field inside', () => {
     renderBar()
-    const field = screen.getByTestId('ask-field')
-    expect(field.className).toContain('hcdp-ask')
-    expect(field.className).not.toMatch(/border-border|bg-canvas/)
+    const wrap = screen.getByTestId('ask-field')
+    expect(wrap.className).toContain('hcdp-ask')
+    expect(wrap.className).not.toMatch(/border-border|bg-canvas/)
+    expect(wrap.querySelector('.hcdp-ask-ring')).toHaveAttribute('aria-hidden', 'true')
+    const field = wrap.querySelector('.hcdp-ask-field')
+    expect(field).toContainElement(screen.getByTestId('assistant-input'))
+    expect(field.className).not.toMatch(/border/)
+  })
+
+  it('wears the busy class (the comet) from send until the reply arrives', async () => {
+    let resolve
+    fetch.mockImplementation(() => new Promise((r) => { resolve = r }))
+    renderBar()
+    const wrap = screen.getByTestId('ask-field')
+    expect(wrap.className).not.toContain('hcdp-ask-busy')
+    expect(wrap).toHaveAttribute('data-busy', 'false')
+    await ask()
+    expect(wrap.className).toContain('hcdp-ask-busy')
+    expect(wrap).toHaveAttribute('data-busy', 'true')
+    await act(async () => { resolve(analysis()); await vi.advanceTimersByTimeAsync(10) })
+    expect(wrap.className).not.toContain('hcdp-ask-busy')
+    expect(wrap).toHaveAttribute('data-busy', 'false')
   })
 })
 

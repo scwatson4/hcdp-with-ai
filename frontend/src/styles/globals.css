@@ -849,18 +849,48 @@
   background-origin: border-box;
   background-clip: padding-box, border-box;
 }
-/* L2 pick A (2026-10-08): every ask field (the landing bar, the dock's field) wears the logo's spectrum as
-   a quiet 1.5 px border at rest (--hcdp-rainbow-soft, 55 %) and the full band while it has focus, with the
-   4 px halo. The class owns the border and the fill, so focusing never nudges the layout. */
-.hcdp-ask {
+/* L2 picks A + C (2026-10-08): the ask field's ring (the landing bar and the dock's field).
+   The wrapper (.hcdp-ask) is the border now: 1.5 px of padding and no border of its own; the field inside
+   (.hcdp-ask-field) has none either. A ring element (.hcdp-ask-ring) paints the spectrum: the soft band (55 %)
+   at rest, the full band while the field has focus (with the 4 px halo on the wrapper). It is masked to its own
+   1.5 px border — not a plain backdrop under the field — so a translucent field shows the map through it, not
+   the ring. While the assistant is busy (.hcdp-ask-busy, from send until the reply) a comet replaces the static
+   band: a short arc of the spectrum circling the border, drawn by an oversized conic-gradient square (its
+   ::before) rotating 360° per 1.1 s with transform only, over a quiet neutral ring. Reduced motion: no comet, a
+   static full ring while busy. */
+.hcdp-ask { position: relative; padding: 1.5px; }
+.hcdp-ask:focus-within { box-shadow: 0 0 0 4px hsl(var(--accent) / 0.12); }
+.hcdp-ask-field { border-radius: inherit; background: hsl(var(--canvas)); }
+.hcdp-ask-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
   border: 1.5px solid transparent;
-  background-image: linear-gradient(hsl(var(--canvas)), hsl(var(--canvas))), var(--hcdp-rainbow-soft);
-  background-origin: border-box;
-  background-clip: padding-box, border-box;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--hcdp-rainbow-soft);
+  -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
 }
-.hcdp-ask:focus-within {
-  background-image: linear-gradient(hsl(var(--canvas)), hsl(var(--canvas))), var(--hcdp-rainbow);
-  box-shadow: 0 0 0 4px hsl(var(--accent) / 0.12);
+.hcdp-ask:focus-within .hcdp-ask-ring { background: var(--hcdp-rainbow); }
+.hcdp-ask-busy .hcdp-ask-ring { background: hsl(var(--border) / 0.7); }
+.hcdp-ask-busy .hcdp-ask-ring::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 200%;
+  aspect-ratio: 1 / 1;
+  translate: -50% -50%;
+  background: conic-gradient(from 0deg, transparent 0 62%, #303078 62%, #3f8f8b 75%, #e8b84b 88%, #c9503c 97%, transparent 100%);
+  animation: hcdp-comet 1.1s linear infinite;
+}
+@keyframes hcdp-comet { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .hcdp-ask-busy .hcdp-ask-ring::before { content: none; animation: none; }
+  .hcdp-ask-busy .hcdp-ask-ring { background: var(--hcdp-rainbow); }
 }
 /* Goo close: the panel squashes and pulls into the lower-right corner like a blob,
    then the pill pops back. Reduced motion → a plain fade. */

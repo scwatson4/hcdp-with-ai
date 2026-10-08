@@ -99,7 +99,9 @@ export default function AssistantPanel({ compact = false, autoFocus = false, bar
     <div className={cn('flex flex-col', compact ? 'h-full' : '')} data-testid="assistant-panel">
       {bar && (
         <form onSubmit={submit} onMouseEnter={() => { hoverRef.current = true }} onMouseLeave={() => { hoverRef.current = false }} data-testid="ask-bar">
-          <div className="hcdp-ask relative flex h-14 items-center rounded-full pl-6 pr-2 shadow-lg" data-testid="ask-field">
+          <div className={cn('hcdp-ask h-14 rounded-full shadow-lg', busy && 'hcdp-ask-busy')} data-testid="ask-field" data-busy={busy ? 'true' : 'false'}>
+            <span aria-hidden="true" className="hcdp-ask-ring" />
+            <div className="hcdp-ask-field relative flex h-full items-center pl-6 pr-2">
             <input ref={inputRef} type="text" value={text} onChange={(e) => setText(e.target.value.slice(0, 500))} autoComplete="off" enterKeyHint="search"
               onKeyDown={(e) => { if (e.key === 'Enter') submit(e); else if (e.key === 'Tab' && !e.shiftKey && ghostQuery) { e.preventDefault(); setText(ghostQuery) } }}
               onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
@@ -117,6 +119,7 @@ export default function AssistantPanel({ compact = false, autoFocus = false, bar
             )}
             {ghostQuery && focused && <kbd className="mr-2 hidden shrink-0 rounded-md border border-border bg-surface px-1.5 py-px font-mono text-[11px] text-foreground sm:inline-block" data-testid="ask-tab-hint">Tab ↹</kbd>}
             <button type="submit" disabled={!text.trim() || busy} aria-label="Send" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground disabled:opacity-40"><ArrowUp className="h-4 w-4" /></button>
+            </div>
           </div>
         </form>
       )}
@@ -148,7 +151,9 @@ export default function AssistantPanel({ compact = false, autoFocus = false, bar
       )}
       {!bar && (
       <form onSubmit={submit} className={cn('flex items-end gap-2 p-2', (compact || !rotateExamples || messages.length > 1) && 'border-t border-border')}>
-        <div className="hcdp-ask relative flex flex-1 rounded-md" data-testid="ask-field">
+        <div className={cn('hcdp-ask flex flex-1 rounded-md', busy && 'hcdp-ask-busy')} data-testid="ask-field" data-busy={busy ? 'true' : 'false'}>
+        <span aria-hidden="true" className="hcdp-ask-ring" />
+        <div className="hcdp-ask-field relative flex flex-1">
         <textarea ref={inputRef} value={text} onChange={(e) => setText(e.target.value.slice(0, 500))} rows={compact ? 1 : 2}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) submit(e); else if (e.key === 'Tab' && !e.shiftKey && ghostQuery) { e.preventDefault(); setText(ghostQuery) } }}
           aria-describedby={ghostQuery ? 'ask-ghost-hint' : undefined}
@@ -164,6 +169,7 @@ export default function AssistantPanel({ compact = false, autoFocus = false, bar
             </div>
           </>
         )}
+        </div>
         </div>
         <button type="submit" disabled={!text.trim() || busy} aria-label="Send" className="grid h-9 w-9 place-items-center rounded-full bg-accent text-accent-foreground disabled:opacity-40"><ArrowUp className="h-4 w-4" /></button>
       </form>

@@ -16,6 +16,8 @@ from zoneinfo import ZoneInfo
 from pathlib import Path
 from urllib.parse import quote, urlparse
 
+from ramps_data import NAMED_RAMPS  # the viewer's colour ramps (generated from ramps.js); only the names are used here
+
 DATA_DIR = Path(__file__).resolve().parent / "data"
 CATALOG_PATH = DATA_DIR / "catalog.json"
 
@@ -79,8 +81,12 @@ PAGE_QUERY_KEYS = {"/": {"ask"}, "/mesonet": {"viewer", "station", "view"}, "/cl
 STATIONS_PATH = DATA_DIR / "mesonet_stations.json"
 INTENTS = {"navigate", "analysis", "info", "clarify"}
 # The query layer, in the one order urlGrammar.formatViewerPath writes it ("stations" is the first grammar's spelling of layers=stations).
-VIEWER_QUERY_KEYS = ["ramp", "scale", "units", "basemap", "opacity", "layers", "station", "pin", "ts", "tsp", "compare", "lat", "lng", "z"]
+VIEWER_QUERY_KEYS = ["ramp", "scale", "range", "log", "units", "basemap", "opacity", "layers", "station", "pin", "ts", "tsp", "compare", "lat", "lng", "z"]
 VIEWER_LEGACY_KEYS = {"stations"}
+RAMP_NAMES = set(NAMED_RAMPS)
+# range=lo..hi: two numbers in the dataset's native units, at most two decimals (urlGrammar.parseLegendRange).
+_LEGEND_NUM = r"-?\d{1,7}(?:\.\d{1,2})?"
+_LEGEND_RANGE_RE = re.compile(rf"^({_LEGEND_NUM})\.\.({_LEGEND_NUM})$")
 BASEMAP_KEYS = ["satellite", "street", "imagery", "topo", "relief", "light"]
 DEFAULT_BASEMAP, DEFAULT_OPACITY = "satellite", 75
 LAYER_KEYS = ["stations", "outline"]
@@ -155,6 +161,31 @@ def _in_box(lat: float, lng: float) -> bool:
     return s <= lat <= n and w <= lng <= e
 
 
+def parse_ramp(text: str) -> tuple[str, bool] | None:
+    """'viridis' or 'viridis-r' → (ramp, reversed) for a ramp ramps.js knows, else None (urlGrammar.parseRamp)."""
+    t = (text or "").lower()
+    reverse = t.endswith("-r")
+    ramp = t[:-2] if reverse else t
+    return (ramp, reverse) if ramp in RAMP_NAMES else None
+
+
+def parse_legend_range(text: str) -> tuple[float, float] | None:
+    """'lo..hi' → (min, max), swapped ends put in order; equal ends or anything else → None (urlGrammar.parseLegendRange)."""
+    m = _LEGEND_RANGE_RE.match(text or "")
+    if not m:
+        return None
+    lo, hi = float(m.group(1)), float(m.group(2))
+    if lo == hi:
+        return None
+    return (lo, hi) if lo < hi else (hi, lo)
+
+
+def format_legend_number(x: float) -> str:
+    """JS String(Number(n.toFixed(2))): at most two decimals, no trailing zeros, never '-0'."""
+    s = f"{round(float(x), 2):.2f}".rstrip("0").rstrip(".")
+    return "0" if s in ("-0", "") else s
+
+
 def parse_viewer_options(query: str, period: str) -> dict | None:
     """The query layer as the viewer reads it (urlGrammar.parseViewerOptions): unknown keys or bad values → None.
     Values come back typed; formatting them again (format_viewer_options) gives the canonical spelling."""
@@ -166,11 +197,25 @@ def parse_viewer_options(query: str, period: str) -> dict | None:
             return None
     q = {k: unquote(v) for k, v in pairs}
     if q.get("ramp"):
-        opts["ramp"] = q["ramp"]
+        ramp = parse_ramp(q["ramp"])
+        if ramp is None:
+            return None
+        opts["ramp"] = ramp[0]
+        if ramp[1]:
+            opts["reverse"] = True
     if q.get("scale"):
         if q["scale"] != "extreme":
             return None
         opts["scale"] = "extreme"
+    if q.get("range"):
+        rng = parse_legend_range(q["range"])
+        if rng is None:
+            return None
+        opts["range"] = rng
+    if q.get("log"):
+        if q["log"] != "1":
+            return None
+        opts["log"] = True
     if q.get("units"):
         if q["units"].lower() not in UNIT_KEYS:
             return None
@@ -238,10 +283,15 @@ def parse_viewer_options(query: str, period: str) -> dict | None:
 def format_viewer_options(opts: dict, period: str) -> str:
     """Python twin of urlGrammar.formatViewerPath's query part: one order, defaults omitted, readable commas."""
     parts = []
-    if opts.get("ramp"):
-        parts.append(f"ramp={opts['ramp']}")
+    if opts.get("ramp") in RAMP_NAMES:
+        parts.append(f"ramp={opts['ramp']}{'-r' if opts.get('reverse') else ''}")
     if opts.get("scale"):
         parts.append("scale=extreme")
+    if opts.get("range"):
+        lo, hi = opts["range"]
+        parts.append(f"range={format_legend_number(lo)}..{format_legend_number(hi)}")
+    if opts.get("log"):
+        parts.append("log=1")
     if opts.get("units") and opts["units"] not in ("mm", "c"):
         parts.append(f"units={opts['units']}")
     if opts.get("basemap") and opts["basemap"] != DEFAULT_BASEMAP:

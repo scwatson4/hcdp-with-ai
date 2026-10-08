@@ -13,6 +13,8 @@
 // datasets, periods and places, so a hand-typed link still resolves — and
 // canonicalize() rewrites it to the one true spelling.
 
+import { NAMED_RAMPS } from './map/ramps'
+
 export const DATASETS = {
   rainfall: { label: 'Rainfall', periods: ['month', 'day'], units: 'mm', api: { datatype: 'rainfall', production: 'new' }, stations: { datatype: 'rainfall', production: 'new' } },
   'rainfall-legacy': { label: 'Rainfall (legacy, 1920–2012)', periods: ['month'], units: 'mm', api: { datatype: 'rainfall', production: 'legacy' } },
@@ -68,7 +70,8 @@ export const EXTENTS = {
 // ── the query layer: what the map shows ─────────────────────────────────────
 // One fixed order; defaults are omitted. The backend's navigator.py validates
 // the same keys and values.
-export const QUERY_KEYS = ['ramp', 'scale', 'units', 'basemap', 'opacity', 'layers', 'station', 'pin', 'ts', 'tsp', 'compare', 'lat', 'lng', 'z']
+export const QUERY_KEYS = ['ramp', 'scale', 'range', 'log', 'units', 'basemap', 'opacity', 'layers', 'station', 'pin', 'ts', 'tsp', 'compare', 'lat', 'lng', 'z']
+export const RAMP_NAMES = Object.keys(NAMED_RAMPS)
 export const BASEMAP_KEYS = ['satellite', 'street', 'imagery', 'topo', 'relief', 'light']
 export const DEFAULT_BASEMAP = 'satellite'
 export const LAYER_KEYS = ['stations', 'outline']   // reserved for later: boundaries, ahupuaa, moku
@@ -119,6 +122,38 @@ export const canonicalExtent = (s) => { const t = lower(s); return EXTENTS[t] ? 
 
 const inBox = (lat, lng) => Number.isFinite(lat) && Number.isFinite(lng) && lat >= HAWAII_BOX.south && lat <= HAWAII_BOX.north && lng >= HAWAII_BOX.west && lng <= HAWAII_BOX.east
 
+// ── the colour scale's modifiers ────────────────────────────────────────────
+// ramp=viridis-r   the ramp run the other way (the suffix travels on the ramp key)
+// range=lo..hi     the legend locked to lo..hi in the dataset's native units (mm,
+//                  °C, …): at most two decimals, lo < hi; absent = the portal's scale
+// log=1            pseudo-log scaling of the colours: sign(v)·ln(1+|v|)
+
+/** "viridis" or "viridis-r" → { ramp, reverse } for a ramp ramps.js knows, else null. */
+export function parseRamp(text) {
+  const t = String(text || '').toLowerCase()
+  const reverse = t.endsWith('-r')
+  const ramp = reverse ? t.slice(0, -2) : t
+  return RAMP_NAMES.includes(ramp) ? { ramp, reverse } : null
+}
+export const formatRamp = (ramp, reverse = false) => (RAMP_NAMES.includes(ramp) ? `${ramp}${reverse ? '-r' : ''}` : null)
+
+const RANGE_NUM = '-?\\d{1,7}(?:\\.\\d{1,2})?'
+const LEGEND_RANGE_RE = new RegExp(`^(${RANGE_NUM})\\.\\.(${RANGE_NUM})$`)
+
+/** "lo..hi" (two numbers, up to two decimals) → { min, max }; swapped ends are
+ *  put in order, equal ends and anything else are null. */
+export function parseLegendRange(text) {
+  const m = LEGEND_RANGE_RE.exec(String(text || ''))
+  if (!m) return null
+  let min = Number(m[1]), max = Number(m[2])
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min === max) return null
+  if (min > max) [min, max] = [max, min]
+  return { min, max }
+}
+/** A legend bound as the URL spells it: at most two decimals, no trailing zeros ("12.50" → "12.5", "20.00" → "20"). */
+export const formatLegendNumber = (n) => String(Number(Number(n).toFixed(2)))
+export const formatLegendRange = (r) => (r && Number.isFinite(r.min) && Number.isFinite(r.max) && r.min < r.max ? `${formatLegendNumber(r.min)}..${formatLegendNumber(r.max)}` : null)
+
 /** A time-series range "YYYY-MM-DD..YYYY-MM-DD" or "YYYY-MM..YYYY-MM" (both ends real, start ≤ end). */
 export function parseRange(text) {
   const m = /^(\d{4}-\d{2}(?:-\d{2})?)\.\.(\d{4}-\d{2}(?:-\d{2})?)$/.exec(String(text || ''))
@@ -132,7 +167,12 @@ export const formatRange = (r) => (r && r.start && r.end ? `${r.start}..${r.end}
 export function parseViewerOptions(search = '', period = 'day') {
   const q = new URLSearchParams(search)
   const opts = {}
-  for (const k of ['ramp', 'scale']) if (q.get(k)) opts[k] = q.get(k)
+  const ramp = parseRamp(q.get('ramp'))
+  if (ramp) { opts.ramp = ramp.ramp; if (ramp.reverse) opts.reverse = true }
+  if (q.get('scale') === 'extreme') opts.scale = 'extreme'
+  const range = parseLegendRange(q.get('range'))
+  if (range) opts.range = range
+  if (q.get('log') === '1') opts.log = true
   if (q.get('units') && UNIT_KEYS.includes(q.get('units').toLowerCase())) opts.units = q.get('units').toLowerCase()
   if (q.get('basemap') && BASEMAP_KEYS.includes(q.get('basemap').toLowerCase())) opts.basemap = q.get('basemap').toLowerCase()
   if (q.get('opacity') != null && /^\d{1,3}$/.test(q.get('opacity')) && Number(q.get('opacity')) <= 100) opts.opacity = Number(q.get('opacity'))
@@ -191,8 +231,12 @@ class PlainQuery {
 /** The one spelling of a view: fixed key order, defaults omitted. */
 export function formatViewerPath({ dataset, period, date, extent, opts = {} }) {
   const q = new PlainQuery()
-  if (opts.ramp) q.set('ramp', opts.ramp)
-  if (opts.scale) q.set('scale', opts.scale)
+  const ramp = opts.ramp ? formatRamp(opts.ramp, opts.reverse) : null
+  if (ramp) q.set('ramp', ramp)
+  if (opts.scale === 'extreme') q.set('scale', 'extreme')
+  const range = formatLegendRange(opts.range)
+  if (range) q.set('range', range)
+  if (opts.log) q.set('log', '1')
   if (opts.units && opts.units !== 'mm' && opts.units !== 'c') q.set('units', opts.units)
   if (opts.basemap && opts.basemap !== DEFAULT_BASEMAP && BASEMAP_KEYS.includes(opts.basemap)) q.set('basemap', opts.basemap)
   if (opts.opacity != null && Number.isFinite(Number(opts.opacity)) && Math.round(opts.opacity) !== DEFAULT_OPACITY) q.set('opacity', String(Math.max(0, Math.min(100, Math.round(opts.opacity)))))

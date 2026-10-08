@@ -6,7 +6,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from navigator import Navigator, canonical_viewer_path, describe_view, parse_viewer_path, valid_internal_path, SEED_CATALOG  # noqa: E402
+from navigator import (Navigator, SEED_CATALOG, VIEWER_QUERY_KEYS, canonical_viewer_path, describe_view, format_legend_number,  # noqa: E402
+                       parse_legend_range, parse_ramp, parse_viewer_path, valid_internal_path)
+
+GRAMMAR_JS = Path(__file__).resolve().parents[2] / "frontend" / "src" / "viewer" / "urlGrammar.js"
 
 
 class FakeLLM:
@@ -54,6 +57,30 @@ def test_viewer_path_grammar():
     assert not valid_internal_path("/tools/evapotranspiration-atlas") and not valid_internal_path("/extreme-events/iniki")   # only real slugs
     assert not valid_internal_path("/admin")
     assert not valid_internal_path("https://www.hawaii.edu/")
+
+
+def test_colour_scale_modifiers_round_trip_like_the_frontend():
+    # ramp=name-r (reversed), range=lo..hi (locked legend, native units, ≤ 2 decimals), log=1 — written right after scale
+    v = parse_viewer_path("/viewer/rainfall/day/2026-09-07/kauai?log=1&units=in&range=0..100&scale=extreme&ramp=viridis-r")
+    assert v["opts"] == {"ramp": "viridis", "reverse": True, "scale": "extreme", "range": (0.0, 100.0), "log": True, "units": "in"}
+    assert v["canonical"] == "/viewer/rainfall/day/2026-09-07/kauai?ramp=viridis-r&scale=extreme&range=0..100&log=1&units=in"
+    assert canonical_viewer_path("/viewer/temperature-max/month/2026-08/oahu?range=35.00..-10.50&units=f") == "/viewer/temperature-max/month/2026-08/oahu?range=-10.5..35&units=f"
+    assert canonical_viewer_path("/viewer/rainfall/month/2026-08/maui?ramp=viridis_r-r") == "/viewer/rainfall/month/2026-08/maui?ramp=viridis_r-r"
+    assert canonical_viewer_path("/viewer/rainfall/month/2026-08/maui?ramp=turbo&range=0.25..1") == "/viewer/rainfall/month/2026-08/maui?ramp=turbo&range=0.25..1"
+    assert parse_ramp("turbo-r") == ("turbo", True) and parse_ramp("viridis_r") == ("viridis_r", False) and parse_ramp("rainbow") is None and parse_ramp("rainbow-r") is None
+    assert parse_legend_range("20..0") == (0.0, 20.0) and parse_legend_range("0..0") is None and parse_legend_range("0..1.234") is None and parse_legend_range("1e3..2e3") is None
+    assert format_legend_number(12.50) == "12.5" and format_legend_number(20.0) == "20" and format_legend_number(-0.0) == "0" and format_legend_number(-10.5) == "-10.5"
+    # the python side is strict: a value the grammar would drop makes the whole address invalid for the navigator
+    for bad in ("ramp=rainbow", "ramp=rainbow-r", "range=0..0", "range=abc", "range=0..1.234", "log=2", "log=true", "scale=huge"):
+        assert parse_viewer_path(f"/viewer/rainfall/day/2026-09-07/kauai?{bad}") is None, bad
+
+
+@pytest.mark.skipif(not GRAMMAR_JS.exists(), reason="frontend sources not present")
+def test_query_keys_are_in_step_with_the_frontend_grammar():
+    import re
+    js = GRAMMAR_JS.read_text(encoding="utf-8")
+    keys = re.findall(r"'([a-z]+)'", re.search(r"export const QUERY_KEYS = \[(.*?)\]", js).group(1))
+    assert keys == VIEWER_QUERY_KEYS
 
 
 def test_system_prompt_carries_dates_catalog_and_context():

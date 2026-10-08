@@ -87,8 +87,10 @@ written in ONE fixed order with defaults omitted, so one view has exactly one sp
 
 | key | values | default (omitted) | history | meaning |
 |---|---|---|---|---|
-| `ramp` | a name from `viewer/map/ramps.js` NAMED_RAMPS | the dataset's portal default | replace | colour ramp |
+| `ramp` | a name from `viewer/map/ramps.js` NAMED_RAMPS, with the suffix `-r` to run it the other way (`viridis-r`) | the dataset's portal default, not reversed | replace | colour ramp (and its direction) |
 | `scale` | `extreme` | portal scale | replace | the 0–250 mm daily-rainfall scale |
+| `range` | `lo..hi` — two numbers in the dataset's native units (mm, °C, …), up to 2 decimals, lo < hi (swapped ends are put in order) | auto: the portal's scale (or `scale=extreme`'s) | replace | the legend locked to lo..hi; wins over `scale` |
+| `log` | `1` | linear | replace | pseudo-log colour scaling, sign(v)·ln(1+\|v\|), between the legend's ends |
 | `units` | `in` · `f` (`mm` · `c` are defaults) | metric | replace | display units (data never converted) |
 | `basemap` | `satellite` · `street` · `imagery` · `topo` · `relief` · `light` | `satellite` | replace | base map |
 | `opacity` | integer 0–100 | 75 | replace | data layer opacity |
@@ -101,7 +103,7 @@ written in ONE fixed order with defaults omitted, so one view has exactly one sp
 | `lat`,`lng`,`z` | 4 decimals, integer zoom 5–20 | the extent's own view | replace | the camera |
 
 History: dataset, period, date, extent, station and pin **push** an entry (Back undoes a choice); everything
-else **replaces** (Back never retraces a pan or a colour flip). The camera is written with `replaceState`
+else **replaces** (Back never retraces a pan or a colour flip — nor a reversed ramp, a locked range or a log scale). The camera is written with `replaceState`
 400 ms after a gesture ends, and every writer runs through one page-wide limiter of at most one history write
 per 300 ms (Mobile Safari throws after 100 `replaceState` calls in 30 s).
 

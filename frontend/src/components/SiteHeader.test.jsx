@@ -9,22 +9,14 @@ import { AI_INTERFACE } from '../site/handoff'
 const renderHeader = (entry = '/') => render(<ThemeProvider><TooltipProvider><MemoryRouter initialEntries={[entry]}><SiteHeader /></MemoryRouter></TooltipProvider></ThemeProvider>)
 
 describe('SiteHeader', () => {
-  it('ends the menu row with the AI Data Analysis Tool pill: external, rainbow-outlined, says it opens a new tab', () => {
+  it('shows the portal’s menu row without an AI Data Analysis Tool entry (item 12)', () => {
     renderHeader()
     const nav = screen.getByRole('navigation', { name: 'Site' })
-    const items = within(nav).getAllByRole('link').concat(within(nav).getAllByRole('button'))
-    const pill = screen.getByTestId('nav-ai-tool')
-    expect(pill).toHaveTextContent('AI Data Analysis Tool')
-    expect(pill).toHaveAttribute('href', `${AI_INTERFACE}/?from=website`)
-    expect(pill).toHaveAttribute('target', '_blank')
-    expect(pill).toHaveAttribute('rel', 'noopener noreferrer')
-    expect(pill.className).toContain('hcdp-rainbow-border')
-    expect(pill.className).toContain('rounded-full')
-    expect(pill.className).toContain('font-nav')
-    expect(pill).toHaveAccessibleName(/AI Data Analysis Tool.*opens in a new tab/)
-    // last in DOM order among the row's items
-    expect(nav.lastElementChild).toBe(pill)
-    expect(items.length).toBeGreaterThan(5)
+    const labels = [...nav.children].map((el) => el.textContent.trim())
+    expect(labels).toEqual(['Home', 'About', 'Data Portal', 'Cultural Resources', 'Library', 'Research', 'Climate Tools'])
+    expect(screen.queryByTestId('nav-ai-tool')).toBeNull()
+    expect(within(nav).queryByText(/AI Data Analysis Tool|AI Analysis Tool/)).toBeNull()
+    expect(within(nav).queryByRole('link', { name: new RegExp(AI_INTERFACE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) })).toBeNull()
   })
 
   it('carries "Share this view" at the far left of the logo row and "Original HCDP version" at the far right', () => {
@@ -64,14 +56,12 @@ describe('SiteHeader', () => {
     expect(localStorage.getItem('hcdp-theme')).toBeNull()
   })
 
-  it('offers the same door in the phone menu', () => {
+  it('keeps the phone menu to the portal’s entries too', () => {
     renderHeader()
     fireEvent.click(screen.getByRole('button', { name: 'Menu' }))
     const mobile = screen.getByTestId('mobile-nav')
-    const pill = within(mobile).getByTestId('mobile-nav-ai-tool')
-    expect(pill).toHaveTextContent('AI Data Analysis Tool')
-    expect(pill).toHaveAttribute('href', `${AI_INTERFACE}/?from=website`)
-    expect(pill).toHaveAttribute('target', '_blank')
-    expect(pill.className).toContain('hcdp-rainbow-border')
+    expect(within(mobile).queryByTestId('mobile-nav-ai-tool')).toBeNull()
+    expect(within(mobile).queryByText(/AI Data Analysis Tool/)).toBeNull()
+    expect(within(mobile).getByText('Climate Tools')).toBeInTheDocument()
   })
 })

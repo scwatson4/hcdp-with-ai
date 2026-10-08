@@ -26,9 +26,6 @@ function MenuItem({ item }) {
 }
 
 const NAV_ITEM = 'font-nav text-[12.5px] font-semibold uppercase tracking-[0.06em] text-foreground/80 hover:text-foreground'
-// The AI data analysis tool, last in the row: the same letterforms in a pill outlined with the
-// logo's spectrum (the two-background 1.5 px border), external like the portal's own links.
-const AI_PILL = 'hcdp-rainbow-border inline-flex items-center gap-1 whitespace-nowrap rounded-full px-3 py-1 text-foreground hover:shadow-sm'
 
 export default function SiteHeader() {
   const navigate = useNavigate()
@@ -46,9 +43,7 @@ export default function SiteHeader() {
           <Button variant="ghost" size="sm" className="h-8 w-8 p-0 md:hidden" aria-label="Menu" aria-expanded={mobile} onClick={() => setMobile((v) => !v)}><Menu className="h-4 w-4" /></Button>
         </div>
       </div>
-      {/* Below xl (1280 px) the row is tight (12 px gaps) and the AI pill wears its shorter label, so the eight items keep one
-          line from 1024 px up; at 768 px the portal's own seven items already wrapped before the pill existed (measured 2026-10-08). */}
-      <nav className="hidden items-center justify-center gap-x-3 px-4 pb-2 md:flex xl:gap-x-5" aria-label="Site">
+      <nav className="hidden items-center justify-center gap-x-5 px-4 pb-2 md:flex" aria-label="Site">
         {NAV.map((n) => n.items ? (
           <DropdownMenu key={n.label}>
             <DropdownMenuTrigger asChild>
@@ -56,10 +51,6 @@ export default function SiteHeader() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="font-nav font-semibold">{n.items.map((it) => <MenuItem key={it.label} item={it} />)}</DropdownMenuContent>
           </DropdownMenu>
-        ) : n.ai ? (
-          <a key={n.label} href={n.external} target="_blank" rel="noopener noreferrer" className={cn(NAV_ITEM, AI_PILL)} data-testid="nav-ai-tool">
-            <span className="xl:hidden">{n.short}</span><span className="hidden xl:inline">{n.label}</span> <ExternalLink className="h-3 w-3" aria-hidden="true" /><span className="sr-only">(opens in a new tab)</span>
-          </a>
         ) : n.external ? (
           <a key={n.label} href={n.external} target="_blank" rel="noopener noreferrer" className={cn(NAV_ITEM, 'rounded px-1 py-1')}>{n.label}</a>
         ) : (
@@ -71,7 +62,6 @@ export default function SiteHeader() {
           {NAV.map((n) => (
             <div key={n.label} className="py-1">
               {n.items ? <div className="font-nav text-xs font-semibold uppercase tracking-wide text-subtle">{n.label}</div>
-                : n.ai ? <a className={cn('font-nav text-sm font-semibold', AI_PILL, 'mt-1 min-h-11')} href={n.external} target="_blank" rel="noopener noreferrer" data-testid="mobile-nav-ai-tool">{n.label} <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /><span className="sr-only">(opens in a new tab)</span></a>
                 : n.external ? <a className="font-nav text-sm font-semibold" href={n.external} target="_blank" rel="noopener noreferrer">{n.label} ↗</a>
                 : <button type="button" className="font-nav text-sm font-semibold" onClick={() => { setMobile(false); navigate(n.to) }}>{n.label}</button>}
               {n.items && <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">{n.items.map((it) => it.external ? <a key={it.label} className="text-sm" href={it.external} target="_blank" rel="noopener noreferrer">{it.label} ↗</a> : <Link key={it.label} className="text-sm" to={it.to} onClick={() => setMobile(false)}>{it.label}</Link>)}</div>}

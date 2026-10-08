@@ -4,10 +4,11 @@ import { handoffUrl } from './handoff'
 
 export const HCDP = 'https://www.hawaii.edu/climate-data-portal'
 
-// The door to the AI data analysis tool (the separate HCDP AI interface): the same
-// label everywhere, always external, outlined in the logo's spectrum rather than a
-// solid portal colour (T1 picks A + D, 2026-10-08).
-export const AI_TOOL = { label: 'AI Data Analysis Tool', short: 'AI Analysis Tool', href: handoffUrl({}) }
+// The door to the AI data analysis tool (the separate HCDP AI interface): the same label on
+// the landing sidebar's sixth button, the Climate Tools tile and the viewer's rail button —
+// always external, outlined in the logo's spectrum rather than a solid portal colour (T1 picks
+// A + D, 2026-10-08). Not in the header menu (item 12).
+export const AI_TOOL = { label: 'AI Data Analysis Tool', href: handoffUrl({}) }
 
 export const NAV = [
   { label: 'Home', to: '/' },
@@ -35,8 +36,6 @@ export const NAV = [
     { label: 'Presentations', external: `${HCDP}/presentations/` },
   ] },
   { label: 'Climate Tools', to: '/tools' },
-  // Last in the row, as a rainbow-outlined pill (an external link, like the portal's own).
-  { label: AI_TOOL.label, short: AI_TOOL.short, external: AI_TOOL.href, ai: true },
 ]
 
 // The landing page's tool cards, in the portal's own order and words.

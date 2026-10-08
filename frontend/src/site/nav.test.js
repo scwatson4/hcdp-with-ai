@@ -18,9 +18,8 @@ describe('the AI data analysis tool door', () => {
     expect(SIDEBAR.buttons.slice(0, 5).map((b) => b.label)).toEqual(['Access Data', 'Hawaiʻi Mesonet', 'Climate Summary', 'Pacific Portal', 'Extreme Events'])
   })
 
-  it('ends the portal menu row, as an external AI entry with a shorter label for narrow rows', () => {
-    const last = NAV[NAV.length - 1]
-    expect(last).toMatchObject({ label: 'AI Data Analysis Tool', short: 'AI Analysis Tool', external: AI_TOOL.href, ai: true })
-    expect(NAV.slice(0, -1).map((n) => n.label)).toEqual(['Home', 'About', 'Data Portal', 'Cultural Resources', 'Library', 'Research', 'Climate Tools'])
+  it('is not in the header menu (item 12): the row is the portal’s own seven entries', () => {
+    expect(NAV.map((n) => n.label)).toEqual(['Home', 'About', 'Data Portal', 'Cultural Resources', 'Library', 'Research', 'Climate Tools'])
+    expect(NAV.some((n) => n.ai || /AI Data Analysis/.test(n.label))).toBe(false)
   })
 })

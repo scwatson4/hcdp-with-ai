@@ -315,10 +315,12 @@ function Viewer({ v }) {
       />
     </Suspense>
   )
+  // Item 16: the units and the source/citation are text beside the map, not on its title card.
   const addressNote = (
-    <p className="text-xs text-subtle">
-      The address bar always describes this map. <Link to="/viewer" className="underline underline-offset-4 hover:text-foreground">How viewer addresses work</Link>
-    </p>
+    <div className="space-y-1 text-xs text-subtle" data-testid="map-note">
+      <p><span data-testid="viewer-units">{unitsLineFor(v)}</span> · <span data-testid="viewer-source">Source: {sourceLineFor(v)}</span></p>
+      <p>The address bar always describes this map. <Link to="/viewer" className="underline underline-offset-4 hover:text-foreground">How viewer addresses work</Link></p>
+    </div>
   )
 
   // Map heights: the viewport minus the sticky block (header + the docked ask bar's 3.5 rem row, R1 D) and
@@ -482,7 +484,7 @@ const MapPane = memo(function MapPane({
           onHover={setHover} onPick={setPick} syncBus={syncBus} leader={leader}
         />
       </Suspense>
-      <TitleCard title={title} unitsLine={unitsLineFor(v)} sourceLine={sourceLineFor(v)} caution={isIgnition(v) ? IGNITION_CAUTION : null} />
+      <TitleCard title={title} caution={isIgnition(v) ? IGNITION_CAUTION : null} />
       <CornerStack>
         {isExperimental(v) && <ExperimentalBadge />}
         {stationStatus === 'loading' && (

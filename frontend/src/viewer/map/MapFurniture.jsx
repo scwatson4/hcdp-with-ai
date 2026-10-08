@@ -53,16 +53,14 @@ export function MapPill({ children, quiet = false, testid, role = 'status', inte
   )
 }
 
-/** Title card: what the map shows, its units and where the data comes from;
+/** Title card: ONLY the title — dataset, date, place (item 16, 2026-10-08); the units and the
+ *  source/citation live in the rail's note under the map settings, not on the map;
  *  `caution` adds a one-line note in a second card under it. */
-export function TitleCard({ title, unitsLine, sourceLine, extra = null, caution = null }) {
+export function TitleCard({ title, extra = null, caution = null }) {
   return (
     <div className="pointer-events-none absolute right-2 top-2 z-[1000] flex max-w-[72%] flex-col items-end gap-1" data-testid="viewer-title-card">
       <div className="hcdp-title-card">
         <div className="hcdp-title-card__label" data-testid="viewer-title">{title}</div>
-        <hr />
-        <p className="m-0 text-[0.93em] font-medium leading-tight" data-testid="viewer-units">{unitsLine}</p>
-        <div className="hcdp-title-card__extra" data-testid="viewer-source">Source: {sourceLine}</div>
         {extra && <div className="hcdp-title-card__extra">{extra}</div>}
       </div>
       {caution && (

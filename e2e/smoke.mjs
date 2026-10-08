@@ -31,15 +31,20 @@ try {
     await page.waitForSelector('[data-testid="assistant-busy"]', { state: 'attached', timeout: 5000 }).catch(() => {})
     const answered = await page.waitForFunction(() => !document.querySelector('[data-testid="assistant-busy"]'), null, { timeout: 90000 }).then(() => true).catch(() => false)
     const ms = Date.now() - t0
+    // R1 A + D: the reply shows first (700 ms), then the bar rides up (450 ms) and the page changes.
+    await page.waitForURL(/\/viewer\//, { timeout: 5000 }).catch(() => {})
     const path = new URL(page.url()).pathname
-    const docked = (await page.locator('[data-testid="assistant-dock"], [data-testid="assistant-dock-panel"]').count()) > 0
+    const docked = (await page.locator('[data-testid="assistant-bar"] [data-testid="assistant-input"]').count()) > 0
     check(`${label}: navigator answered`, answered, `${ms} ms, now at ${path}`)
-    check(`${label}: navigated to the viewer and minimized`, path.startsWith('/viewer/') && docked, path)
+    check(`${label}: navigated to the viewer with the bar docked under the header`, path.startsWith('/viewer/') && docked, path)
+    check(`${label}: the reply strip repeats the answer under the docked bar`, (await page.locator('[data-testid="reply-strip"]').count()) === 1)
     await page.screenshot({ path: `${OUT}/after-navigate-${label}.png`, fullPage: false })
     if (docked) {
-      await page.locator('[data-testid="assistant-dock"]').click().catch(() => {})
-      check(`${label}: dock expands to a panel`, await page.locator('[data-testid="assistant-dock-panel"]').isVisible())
-      await page.screenshot({ path: `${OUT}/dock-panel-${label}.png` })
+      await page.locator('[data-testid="assistant-bar"] [data-testid="assistant-input"]').focus()
+      check(`${label}: focusing the docked bar opens the conversation dropdown`, await page.locator('[data-testid="assistant-dropdown"]').isVisible())
+      await page.screenshot({ path: `${OUT}/dropdown-${label}.png` })
+      await page.keyboard.press('Escape')
+      check(`${label}: Esc closes the dropdown`, (await page.locator('[data-testid="assistant-dropdown"]').count()) === 0)
     }
     // Deep link direct load
     await page.goto(BASE + '/viewer/rainfall/day/2026-09-07/kauai', { waitUntil: 'networkidle' })

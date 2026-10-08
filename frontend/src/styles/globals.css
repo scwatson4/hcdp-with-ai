@@ -839,7 +839,7 @@
 }
 
 
-/* ── HCDP with AI: rainbow accents used sparingly, and the dock's goo close ── */
+/* ── HCDP with AI: rainbow accents used sparingly ── */
 /* The header's hairline: the logo's spectrum, quiet (it is the one permanent instance). */
 .hcdp-band { height: 3px; background: var(--hcdp-rainbow); opacity: 0.8; }
 /* A 1.5 px rainbow border drawn with two backgrounds (card fill over the spectrum). */
@@ -906,27 +906,26 @@
   .hcdp-ask-busy .hcdp-ask-ring::before { content: none; animation: none; }
   .hcdp-ask-busy .hcdp-ask-ring { background: var(--hcdp-rainbow); }
 }
-/* Goo close: the panel squashes and pulls into the lower-right corner like a blob,
-   then the pill pops back. Reduced motion → a plain fade. */
-@keyframes hcdp-goo-close {
-  0%   { transform: scale(1, 1) translate(0, 0); border-radius: 12px; opacity: 1; }
-  35%  { transform: scale(1.05, 0.84); border-radius: 22px 22px 30px 30px; opacity: 1; }
-  70%  { transform: scale(0.42, 0.55); border-radius: 50% 50% 55% 45%; opacity: 0.9; }
-  100% { transform: scale(0.08, 0.08); border-radius: 50%; opacity: 0; }
+/* R1 picks A + D (2026-10-08): answer first, then the bar rides up. While the provider is in its
+   'travel' phase the hero (map + bar) lifts away — translateY(−26 px) and a fade, 400 ms — and a
+   proxy drawn like the bar rides from the hero bar's rectangle to the docked bar's under the header
+   (transform only, 450 ms, ease-in; TravelProxy.jsx sets the transform). Reduced motion: a cut. */
+.hcdp-hero-lift { transition: transform 400ms ease-in, opacity 400ms ease-in; transform: translateY(-26px); opacity: 0; pointer-events: none; }
+.hcdp-travel-proxy {
+  position: fixed;
+  z-index: 60;
+  pointer-events: none;
+  border-radius: 9999px;
+  transform-origin: top left;
+  will-change: transform;
+  box-shadow: var(--shadow-lg);
+  border: 1.5px solid transparent;
+  background-image: linear-gradient(hsl(var(--canvas)), hsl(var(--canvas))), var(--hcdp-rainbow-soft);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
 }
-@keyframes hcdp-pill-pop {
-  0%   { transform: scale(0.4); opacity: 0; }
-  60%  { transform: scale(1.12); opacity: 1; }
-  80%  { transform: scale(0.96); }
-  100% { transform: scale(1); }
-}
-.hcdp-goo-close { animation: hcdp-goo-close 480ms cubic-bezier(.55,.05,.35,1) forwards; transform-origin: 100% 100%; pointer-events: none; }
-.hcdp-goo-wrap { filter: url(#hcdp-goo); }
-.hcdp-pill-pop { animation: hcdp-pill-pop 420ms cubic-bezier(.34,1.56,.64,1) both; transform-origin: 100% 100%; }
 @media (prefers-reduced-motion: reduce) {
-  .hcdp-goo-close { animation: none; opacity: 0; transition: opacity 200ms; }
-  .hcdp-goo-wrap { filter: none; }
-  .hcdp-pill-pop { animation: none; }
+  .hcdp-hero-lift { transition: none; transform: none; opacity: 1; }
 }
 
 /* ── R3 B: the typewriter ghost's caret; R4 B: the hero's stacked map fade ── */

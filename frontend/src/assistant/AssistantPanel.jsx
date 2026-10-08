@@ -47,25 +47,27 @@ function HandoffReply({ m }) {
   )
 }
 
-// The chat itself. `compact` is the dock panel; otherwise the landing box.
-// The chat itself. `compact` is the dock panel; `bar` is the landing search bar (R3 B):
-// one 56 px pill in which each example types itself out, holds two seconds and fades.
-export default function AssistantPanel({ compact = false, autoFocus = false, bar = false, glass = false }) {
-  const { messages, busy, send } = useAssistant()
+/**
+ * The ask field (R3 B + L2 A/C + L3 A + R1 D): one pill — 56 px in the landing hero (frosted glass over the
+ * map), 44 px when docked under the header — wearing the spectrum ring. While there is no conversation yet
+ * the typewriter ghost types each example out (28 ms a letter, holds 2 s, longer while the pointer rests,
+ * fades 350 ms, next); Tab drops the example into the field; any typed character silences it; the keycap
+ * shows only while the field has focus; reduced motion shows one still example. Once a conversation exists
+ * the docked bar says "Ask for another page or map…" and focusing it opens the dropdown. On the landing
+ * page the question stays in the bar after sending — the answer card does not echo it.
+ */
+export function AskBar({ docked = false, glass = false }) {
+  const { messages, busy, travelling, send, setMode } = useAssistant()
   const [text, setText] = useState('')
-  const rotateExamples = bar
-  // The typewriter ghost: while the bar is empty and idle, the current example types itself
-  // out at 28 ms a letter, holds 2 s (longer while the pointer rests on the bar), fades out
-  // over 350 ms and the next one begins. Tab drops the whole example into the field; any typed
-  // character silences it; the keycap shows only while the field has focus (that is when Tab
-  // does what it says); reduced motion shows one still example.
-  const ghostActive = bar && !text && !busy && messages.length <= 1
+  const hasConversation = messages.length > 1
+  const ghostActive = !text && !busy && !travelling && !hasConversation
   const reduceMotion = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
   const [typed, setTyped] = useState(reduceMotion ? EXAMPLES[0] : '')
   const [ghostShown, setGhostShown] = useState(true)
   const [focused, setFocused] = useState(false)
   const idxRef = useRef(0)
   const hoverRef = useRef(false)
+  const inputRef = useRef(null)
   useEffect(() => {
     if (!ghostActive || reduceMotion) return undefined
     let cancelled = false; let timer = null; let wake = null
@@ -87,92 +89,76 @@ export default function AssistantPanel({ compact = false, autoFocus = false, bar
     return () => { cancelled = true; if (timer) clearTimeout(timer); if (wake) wake() }
   }, [ghostActive, reduceMotion])
   const ghostQuery = ghostActive ? EXAMPLES[idxRef.current % EXAMPLES.length] : null
-  const endRef = useRef(null)
-  const inputRef = useRef(null)
+  const submit = (e) => { e?.preventDefault(); const t = text; if (docked) setText(''); send(t) }
+  const placeholder = ghostQuery ? '' : docked && hasConversation ? 'Ask for another page or map…' : 'What are you looking for?'
+  return (
+    <form onSubmit={submit} onMouseEnter={() => { hoverRef.current = true }} onMouseLeave={() => { hoverRef.current = false }} data-testid={docked ? 'docked-ask-bar' : 'ask-bar'}>
+      <div className={cn('hcdp-ask rounded-full', docked ? 'h-11' : 'h-14 shadow-lg', busy && 'hcdp-ask-busy')} data-testid="ask-field" data-busy={busy ? 'true' : 'false'}>
+        <span aria-hidden="true" className="hcdp-ask-ring" />
+        <div className={cn('hcdp-ask-field relative flex h-full items-center', docked ? 'pl-4 pr-1' : 'pl-6 pr-2', glass && 'hcdp-ask-glass')}>
+          <input ref={inputRef} type="text" value={text} onChange={(e) => setText(e.target.value.slice(0, 500))} autoComplete="off" enterKeyHint="search"
+            onKeyDown={(e) => { if (e.key === 'Enter') submit(e); else if (e.key === 'Tab' && !e.shiftKey && ghostQuery) { e.preventDefault(); setText(ghostQuery) } }}
+            onFocus={() => { setFocused(true); if (docked && hasConversation) setMode('panel') }} onBlur={() => setFocused(false)}
+            aria-describedby={ghostQuery ? 'ask-ghost-hint' : undefined}
+            placeholder={placeholder}
+            aria-label="Ask AI" data-testid="assistant-input"
+            className={cn('h-full min-w-0 flex-1 bg-transparent text-[16px] text-foreground placeholder:text-subtle focus-visible:outline-none', !docked && 'sm:text-[18px]')} />
+          {ghostQuery && (
+            <>
+              <span id="ask-ghost-hint" className="sr-only">Press Tab to insert the suggested example question.</span>
+              <div aria-hidden="true" data-testid="composer-ghost" className={cn('pointer-events-none absolute top-1/2 -translate-y-1/2 truncate text-[16px] text-subtle transition-opacity duration-300 motion-reduce:transition-none', docked ? 'left-4 right-12 sm:right-28' : 'left-6 right-14 sm:right-32 sm:text-[18px]')} style={{ opacity: ghostShown ? 1 : 0 }}>
+                {typed}<span className={cn('ml-px inline-block h-[1.1em] w-px translate-y-[3px] bg-subtle align-baseline', reduceMotion || typed.length >= ghostQuery.length ? 'opacity-0' : 'hcdp-caret')} />
+              </div>
+            </>
+          )}
+          {ghostQuery && focused && <kbd className="mr-2 hidden shrink-0 rounded-md border border-border bg-surface px-1.5 py-px font-mono text-[11px] text-foreground sm:inline-block" data-testid="ask-tab-hint">Tab ↹</kbd>}
+          <button type="submit" disabled={!text.trim() || busy || travelling} aria-label="Send" className={cn('grid shrink-0 place-items-center rounded-full bg-accent text-accent-foreground disabled:opacity-40', docked ? 'h-9 w-9' : 'h-10 w-10')}><ArrowUp className="h-4 w-4" /></button>
+        </div>
+      </div>
+    </form>
+  )
+}
+
+/**
+ * The conversation: questions and plain answers (`hideUser` leaves the questions out — on the landing
+ * page the question is already in the bar). `compact` is the docked bar's dropdown.
+ */
+export function Conversation({ compact = false, hideUser = false, className }) {
+  const { messages, busy } = useAssistant()
   const listRef = useRef(null)
   const firstRender = useRef(true)
   useEffect(() => { if (firstRender.current) { firstRender.current = false; return } const el = listRef.current; if (el) el.scrollTop = el.scrollHeight }, [messages, busy])
-  useEffect(() => { if (autoFocus) inputRef.current?.focus() }, [autoFocus])
-  const submit = (e) => { e?.preventDefault(); const t = text; setText(''); send(t) }
-  const showExamples = messages.length <= 1 && !compact && !bar
   return (
-    <div className={cn('flex flex-col', compact ? 'h-full' : '')} data-testid="assistant-panel">
-      {bar && (
-        <form onSubmit={submit} onMouseEnter={() => { hoverRef.current = true }} onMouseLeave={() => { hoverRef.current = false }} data-testid="ask-bar">
-          <div className={cn('hcdp-ask h-14 rounded-full shadow-lg', busy && 'hcdp-ask-busy')} data-testid="ask-field" data-busy={busy ? 'true' : 'false'}>
-            <span aria-hidden="true" className="hcdp-ask-ring" />
-            <div className={cn('hcdp-ask-field relative flex h-full items-center pl-6 pr-2', glass && 'hcdp-ask-glass')}>
-            <input ref={inputRef} type="text" value={text} onChange={(e) => setText(e.target.value.slice(0, 500))} autoComplete="off" enterKeyHint="search"
-              onKeyDown={(e) => { if (e.key === 'Enter') submit(e); else if (e.key === 'Tab' && !e.shiftKey && ghostQuery) { e.preventDefault(); setText(ghostQuery) } }}
-              onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-              aria-describedby={ghostQuery ? 'ask-ghost-hint' : undefined}
-              placeholder={ghostQuery ? '' : 'What are you looking for?'}
-              aria-label="Ask AI" data-testid="assistant-input"
-              className="h-full min-w-0 flex-1 bg-transparent text-[16px] text-foreground placeholder:text-subtle focus-visible:outline-none sm:text-[18px]" />
-            {ghostQuery && (
-              <>
-                <span id="ask-ghost-hint" className="sr-only">Press Tab to insert the suggested example question.</span>
-                <div aria-hidden="true" data-testid="composer-ghost" className="pointer-events-none absolute left-6 right-14 top-1/2 -translate-y-1/2 truncate text-[16px] text-subtle transition-opacity duration-300 motion-reduce:transition-none sm:right-32 sm:text-[18px]" style={{ opacity: ghostShown ? 1 : 0 }}>
-                  {typed}<span className={cn('ml-px inline-block h-[1.1em] w-px translate-y-[3px] bg-subtle align-baseline', reduceMotion || typed.length >= ghostQuery.length ? 'opacity-0' : 'hcdp-caret')} />
-                </div>
-              </>
-            )}
-            {ghostQuery && focused && <kbd className="mr-2 hidden shrink-0 rounded-md border border-border bg-surface px-1.5 py-px font-mono text-[11px] text-foreground sm:inline-block" data-testid="ask-tab-hint">Tab ↹</kbd>}
-            <button type="submit" disabled={!text.trim() || busy} aria-label="Send" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground disabled:opacity-40"><ArrowUp className="h-4 w-4" /></button>
-            </div>
+    <div ref={listRef} className={cn('space-y-3 overflow-y-auto', compact ? 'px-1 py-1.5 text-[13px]' : 'max-h-[42vh] px-1 py-2', className)} aria-live="polite" data-testid="conversation">
+      {messages.map((m, i) => (i === 0 || (hideUser && m.role === 'user') ? null : (
+        <div key={m.id ?? i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')} data-testid={m.role === 'user' ? 'user-bubble' : 'assistant-bubble'}>
+          <div className={cn('max-w-[92%] rounded-lg px-3 py-2 text-sm leading-relaxed', m.role === 'user' ? 'bg-accent text-accent-foreground' : 'bg-surface border border-border')}>
+            {m.intent === 'analysis' ? <HandoffReply m={m} /> : m.content}
+            {m.role === 'user' && <button type="button" title="Copy a link that asks this" aria-label="Copy a link that asks this" onClick={(ev) => { const href = `${window.location.origin}/?ask=${encodeURIComponent(m.content)}`; const b = ev.currentTarget; navigator.clipboard?.writeText(href).then(() => { b.dataset.copied = '1'; setTimeout(() => { delete b.dataset.copied }, 1500) }).catch(() => window.prompt('Copy this link', href)) }} className="group ml-1 inline-grid h-6 w-6 place-items-center rounded align-middle text-accent-foreground/70 hover:bg-white/10 hover:text-accent-foreground data-[copied]:text-accent-foreground"><Link2 className="h-3.5 w-3.5 group-data-[copied]:hidden" aria-hidden="true" /><span className="hidden text-[10px] group-data-[copied]:inline">Copied</span></button>}
+            {m.actions?.filter((a) => a.type === 'open').map((a, j) => (
+              <div key={j} className="mt-2"><a className="inline-flex items-center gap-1 rounded-md border border-border bg-canvas px-2.5 py-1 text-xs font-medium hover:border-foreground" href={a.url} target="_blank" rel="noopener noreferrer">{a.blocked ? 'Your browser blocked the new tab — open it here' : 'Opened in a new tab — open again'} <ExternalLink className="h-3 w-3" aria-hidden="true" /></a></div>
+            ))}
+            {m.alternatives?.length > 0 && !compact && <div className="mt-2 space-y-1">{m.alternatives.map((a, j) => <Alternative key={j} a={a} />)}</div>}
+            {m.alternatives?.length > 0 && compact && <div className="mt-1.5 text-xs text-subtle">Also: {m.alternatives.slice(0, 3).map((a, j) => <span key={j}>{j > 0 && ' · '}{a.url?.startsWith('/') ? <Link to={a.url} className="underline underline-offset-2 hover:text-foreground">{a.title}</Link> : <a href={a.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">{a.title}</a>}</span>)}</div>}
           </div>
-        </form>
-      )}
-      {(!bar || messages.length > 1 || busy) && (
-      <div className={cn(bar && 'mt-3 rounded-xl border border-border bg-card/90 p-2 shadow-lg backdrop-blur')} data-testid={bar ? 'landing-answers' : undefined}>
-      <div ref={listRef} className={cn('flex-1 space-y-3 overflow-y-auto', compact ? 'px-3 py-2.5 text-[13px]' : 'max-h-[42vh] px-1 py-2')} aria-live="polite">
-        {messages.map((m, i) => (i === 0 && (compact || rotateExamples) ? null : (
-          <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
-            <div className={cn('max-w-[92%] rounded-lg px-3 py-2 text-sm leading-relaxed', m.role === 'user' ? 'bg-accent text-accent-foreground' : 'bg-surface border border-border')}>
-              {m.intent === 'analysis' ? <HandoffReply m={m} /> : m.content}
-              {m.role === 'user' && <button type="button" title="Copy a link that asks this" aria-label="Copy a link that asks this" onClick={(ev) => { const href = `${window.location.origin}/?ask=${encodeURIComponent(m.content)}`; const b = ev.currentTarget; navigator.clipboard?.writeText(href).then(() => { b.dataset.copied = '1'; setTimeout(() => { delete b.dataset.copied }, 1500) }).catch(() => window.prompt('Copy this link', href)) }} className="group ml-1 inline-grid h-6 w-6 place-items-center rounded align-middle text-accent-foreground/70 hover:bg-white/10 hover:text-accent-foreground data-[copied]:text-accent-foreground"><Link2 className="h-3.5 w-3.5 group-data-[copied]:hidden" aria-hidden="true" /><span className="hidden text-[10px] group-data-[copied]:inline">Copied</span></button>}
-              {m.actions?.filter((a) => a.type === 'open').map((a, j) => (
-                <div key={j} className="mt-2"><a className="inline-flex items-center gap-1 rounded-md border border-border bg-canvas px-2.5 py-1 text-xs font-medium hover:border-foreground" href={a.url} target="_blank" rel="noopener noreferrer">{a.blocked ? 'Your browser blocked the new tab — open it here' : 'Opened in a new tab — open again'} <ExternalLink className="h-3 w-3" aria-hidden="true" /></a></div>
-              ))}
-              {m.alternatives?.length > 0 && !compact && <div className="mt-2 space-y-1">{m.alternatives.map((a, j) => <Alternative key={j} a={a} />)}</div>}
-              {m.alternatives?.length > 0 && compact && <div className="mt-1.5 text-xs text-subtle">Also: {m.alternatives.slice(0, 3).map((a, j) => <span key={j}>{j > 0 && ' · '}{a.url?.startsWith('/') ? <Link to={a.url} className="underline underline-offset-2 hover:text-foreground">{a.title}</Link> : <a href={a.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">{a.title}</a>}</span>)}</div>}
-            </div>
-          </div>
-        )))}
-        {busy && <div className="text-xs text-subtle" data-testid="assistant-busy">Looking…</div>}
-        <div ref={endRef} />
-      </div>
-      </div>
-      )}
-      {showExamples && (
-        <div className="flex flex-wrap gap-1.5 px-1 pb-2" data-testid="assistant-examples">
-          {EXAMPLES.map((ex) => <button key={ex} type="button" onClick={() => send(ex)} className="rounded-full border border-border bg-surface px-2.5 py-1 text-xs text-subtle hover:border-foreground hover:text-foreground">{ex}</button>)}
         </div>
-      )}
-      {!bar && (
-      <form onSubmit={submit} className={cn('flex items-end gap-2 p-2', (compact || !rotateExamples || messages.length > 1) && 'border-t border-border')}>
-        <div className={cn('hcdp-ask flex flex-1 rounded-md', busy && 'hcdp-ask-busy')} data-testid="ask-field" data-busy={busy ? 'true' : 'false'}>
-        <span aria-hidden="true" className="hcdp-ask-ring" />
-        <div className="hcdp-ask-field relative flex flex-1">
-        <textarea ref={inputRef} value={text} onChange={(e) => setText(e.target.value.slice(0, 500))} rows={compact ? 1 : 2}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) submit(e); else if (e.key === 'Tab' && !e.shiftKey && ghostQuery) { e.preventDefault(); setText(ghostQuery) } }}
-          aria-describedby={ghostQuery ? 'ask-ghost-hint' : undefined}
-          placeholder={compact ? 'Ask for another page or map…' : 'What are you looking for?'}
-          aria-label="Ask AI" data-testid="assistant-input"
-          className={cn('min-h-[38px] flex-1 resize-none rounded-md bg-transparent px-3 py-2 text-[16px] sm:text-sm focus-visible:outline-none', ghostQuery ? 'placeholder:text-transparent' : 'placeholder:text-subtle')} />
-        {ghostQuery && (
-          <>
-            <span id="ask-ghost-hint" className="sr-only">Press Tab to insert the suggested example question.</span>
-            <div aria-hidden="true" data-testid="composer-ghost" className={cn('pointer-events-none absolute left-3 right-3 top-2 flex items-center gap-2 overflow-hidden text-[16px] leading-6 text-subtle transition-opacity duration-300 motion-reduce:transition-none sm:text-sm', ghostShown ? 'opacity-100' : 'opacity-0')}>
-              <kbd className="shrink-0 rounded-md border border-border bg-surface px-1.5 py-px font-mono text-[10.5px] text-foreground">Tab</kbd>
-              <span className="truncate">Try: “{ghostQuery}”</span>
-            </div>
-          </>
-        )}
+      )))}
+      {busy && <div className="text-xs text-subtle" data-testid="assistant-busy">Looking…</div>}
+    </div>
+  )
+}
+
+/** The landing page's assistant: the hero bar and, once there is something to say, the answer card
+ *  under it (the AI's bubbles only — the question is in the bar). */
+export default function AssistantPanel({ glass = false }) {
+  const { messages, busy } = useAssistant()
+  return (
+    <div className="flex flex-col" data-testid="assistant-panel">
+      <AskBar glass={glass} />
+      {(messages.length > 1 || busy) && (
+        <div className="mt-3 rounded-xl border border-border bg-card/90 p-2 shadow-lg backdrop-blur" data-testid="landing-answers">
+          <Conversation hideUser />
         </div>
-        </div>
-        <button type="submit" disabled={!text.trim() || busy} aria-label="Send" className="grid h-9 w-9 place-items-center rounded-full bg-accent text-accent-foreground disabled:opacity-40"><ArrowUp className="h-4 w-4" /></button>
-      </form>
       )}
     </div>
   )

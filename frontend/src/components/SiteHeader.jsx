@@ -9,7 +9,8 @@ import { cn } from '../lib/utils'
 
 // The portal's header: the logo centred on its own row, the menu centred under it in
 // Raleway small caps (tightened: 20 px gaps, 12.5 px type). The theme toggle sits at
-// the right edge of the logo row; the assistant is the bottom-right "Ask AI" pill.
+// the right edge of the logo row. App.jsx keeps the header sticky together with the
+// docked ask bar that sits under it on inner pages (R1 D).
 function MenuItem({ item }) {
   if (item.external) {
     return (
@@ -32,7 +33,7 @@ export default function SiteHeader() {
   const navigate = useNavigate()
   const [mobile, setMobile] = useState(false)
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-canvas/95 backdrop-blur">
+    <header className="border-b border-border bg-canvas/95 backdrop-blur">
       <div className="hcdp-band" aria-hidden="true" />
       <div className="relative mx-auto flex w-full max-w-6xl items-center justify-start px-4 pb-1 pt-3 sm:justify-center">
         <Link to="/" aria-label="Hawaiʻi Climate Data Portal home" className="block">

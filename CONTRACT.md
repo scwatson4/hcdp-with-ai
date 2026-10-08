@@ -5,11 +5,40 @@ A prototype of the Hawaiʻi Climate Data Portal website with an AI **navigator**
 The visitor lands on a page that lists HCDP's tools and asks "What are you looking for?".
 The navigator answers by **taking the visitor to the right place**: an internal page, a deep link
 into the climate viewer, an external HCDP tool, or (for data analysis) the separate HCDP AI
-interface. Once it has navigated, the assistant **minimizes to a dock in the lower-right** and keeps
-helping on the new page.
+interface. Once it has navigated, the ask bar **docks under the header** and stays there on every
+inner page as the way to keep navigating (see "The assistant's states" below).
 
 It is NOT the analysis chatbot (that lives at the AI interface, `AI_INTERFACE_URL`). This site has
 no sign-in, saves no conversation history (memory only, per tab), and has no visualisation panel.
+
+## The assistant's states (R1 picks A + D, 2026-10-08)
+- **inline** — on the landing page the assistant is the bar in the hero (56 px, frosted glass over the map
+  carousel, the logo's spectrum as a soft 1.5 px ring that goes full with focus and runs a comet while busy).
+  Answers show in a card under the bar: the AI's bubbles only — the question stays in the bar and is never
+  echoed. There is no heading over the map (an sr-only h1 names the portal).
+- **answer first, then travel** — a navigation from the landing page does not jump: the reply shows under the
+  bar for 700 ms (`HOLD_MS`); then the hero lifts away (−26 px + fade, 400 ms) while the bar rides up to the
+  header row (a shared-element move, transform only, 450 ms ease-in, `TravelProxy.jsx`), and the page
+  changes. Reduced motion: a cut after the hold, same end state.
+- **dock** — on every inner page the bar is docked directly under the header as a full-width row (44 px
+  field, max 720 px, centred; the sticky block is header + bar and nothing more; `AssistantBar.jsx`). The same
+  conversation lives there; the typewriter ghost stops once a conversation exists and the placeholder reads
+  "Ask for another page or map…". After a navigation a one-line **reply strip** under the bar repeats the
+  reply with "Also: a · b" for five seconds (hover/focus holds it; clicking it opens the dropdown).
+- **panel** — the docked bar's dropdown: the conversation (questions and plain answers, about twenty lines,
+  scrolling), opened by focusing the bar once a conversation exists, by clicking the strip, or by a reply
+  that has nowhere to go; closed by Esc, a click outside, or the next navigation.
+- There is no bottom-right pill or dock any more. Arriving on the landing page brings the conversation back
+  into the hero bar. `/` focuses the bar anywhere.
+- **The hand-off** (T2 pick B): an analysis reply reads exactly "This is better answered by our AI data
+  analysis tool. Try it out here" with "here" the link, then "Opens in a new tab · your question comes with
+  you · sign in there with a code or an HCDP API key", then "Opening in 5 s · Stay here": after five seconds
+  the AI interface opens in a new tab by itself (a refused tab shows "Your browser blocked the new tab — open
+  it here"); "Stay here" cancels. Only the newest analysis reply counts down, once.
+- **The way back** (T4 pick A): opened with `?from=ai`, the site shows one line under the header — "You came
+  from the AI data analysis tool · Return · ✕"; Return is history.back() when the referrer is the AI interface
+  (else a visit to it), ✕ dismisses, nothing is stored, the strip goes on the next route change and the `from`
+  key is stripped from the address.
 
 ## Stack and layout
 - `frontend/` — React 18 + Vite + Tailwind. Same design system as the AI interface: tokens in

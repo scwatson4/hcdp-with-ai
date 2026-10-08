@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom'
 import { Map, RadioTower, CalendarDays, Globe2, CloudLightning, Wrench, ArrowRight, ExternalLink, Instagram, Mail } from 'lucide-react'
 import { TOOL_CARDS, SIDEBAR } from '../site/nav'
 import AssistantPanel from '../assistant/AssistantPanel'
+import { useAssistant } from '../assistant/AssistantProvider'
+import { cn } from '../lib/utils'
 import { Card } from '../components/ui/card'
 import MapBackdrop, { OCEAN, useIsDark } from '../components/MapBackdrop'
 
@@ -50,20 +52,21 @@ export function Sidebar() {
 export default function Landing() {
   const dark = useIsDark()
   const ocean = `#${dark ? OCEAN.dark : OCEAN.light}`
+  const { travel } = useAssistant()   // R1 D: while the bar rides up to the header the hero lifts away
   return (
     <div className="mx-auto w-full max-w-[1440px]">
       <div className="grid lg:grid-cols-[minmax(0,85fr)_minmax(210px,15fr)] lg:items-start">
         {/* L1 pick B (2026-10-08): no heading over the map — the page's name is an sr-only h1 and the bar
             carries the question itself. The hero is a 45fr / auto / 55fr grid, so the bar's row sits at about
             45 % of the hero's height; a tall answers card still grows the hero as before. */}
-        <section className="relative isolate grid min-h-[62vh] grid-rows-[45fr_auto_55fr] overflow-hidden lg:min-h-[70vh]" data-testid="landing-hero" style={{ background: ocean }}>
+        <section className={cn('relative isolate grid min-h-[62vh] grid-rows-[45fr_auto_55fr] overflow-hidden lg:min-h-[70vh]', travel.phase === 'travel' && 'hcdp-hero-lift')} data-testid="landing-hero" data-travel={travel.phase} style={{ background: ocean }}>
           <MapBackdrop />
           {/* L3 pick A: no glow behind the bar any more — the bar's field is frosted glass (hcdp-ask-glass), so the
               islands stay visible around and through it. */}
           <div className="relative z-10 row-start-2 mx-auto w-full max-w-3xl px-4 py-6">
             <h1 className="sr-only">Hawaiʻi Climate Data Portal</h1>
             <div data-testid="landing-assistant">
-              <AssistantPanel bar glass />
+              <AssistantPanel glass />
             </div>
           </div>
         </section>

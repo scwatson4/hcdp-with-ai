@@ -1,27 +1,30 @@
-// The Leaflet map of the climate viewer: the HCDP portal's basemap, one
-// GeoTIFF drawn in the browser with georaster-layer-for-leaflet, Leaflet's
-// scale bar, and the two-way sync between the map view and the URL
-// (?lat=&lng=&z=). Loaded lazily by ViewerPage so pages without a map never
-// download Leaflet. Title card, legend and compass are drawn by the page on
-// top of this component (they do not need Leaflet).
+// The Leaflet map of the climate viewer: one of the HCDP portal's base maps
+// (?basemap=), one GeoTIFF drawn in the browser with
+// georaster-layer-for-leaflet at the URL's opacity, the island outlines
+// (?layers=outline), Leaflet's scale bar, and the two-way sync between the
+// map view and the URL (?lat=&lng=&z=). Loaded lazily by ViewerPage so pages
+// without a map never download Leaflet. Title card, legend and compass are
+// drawn by the page on top of this component (they do not need Leaflet).
 
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
-import { MapContainer, TileLayer, ScaleControl, useMap, useMapEvents } from 'react-leaflet'
+import { CircleMarker, GeoJSON, MapContainer, TileLayer, ScaleControl, Tooltip, useMap, useMapEvents } from 'react-leaflet'
+import { DomEvent } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { EXTENT_BOUNDS, extentView } from './viewerModel'
+import { BASEMAPS, DEFAULT_BASEMAP, basemapFor } from './basemaps'
+import { ISLAND_GEOJSON } from '../../data/hawaiiIslands'
 
-// The HCDP portal's default basemap, as the AI interface draws it
-// (HawaiiMap.jsx TILE_LAYERS.hybrid): Google's hybrid imagery with Google's
-// own labels — the deep-blue ocean and the island and town names people
-// know from the portal. `basemap-photo` keeps the dark theme from
-// inverting the imagery (see globals.css).
-export const BASEMAP = {
-  url: 'https://www.google.com/maps/vt?lyrs=y@189&gl=en&x={x}&y={y}&z={z}',
-  maxZoom: 20,
-  attribution: 'Map data &copy; Google',
-}
+// The portal's default basemap (Google's hybrid imagery), kept under its old name.
+export const BASEMAP = BASEMAPS[DEFAULT_BASEMAP]
 
 const DATA_PANE = 'climate-data'
+// Island outlines: a thin dark line, no fill, transparent to the pointer.
+const OUTLINE_STYLE = { color: '#111', weight: 1, opacity: 0.85, fill: false }
+// A station without a value that day keeps a neutral grey fill.
+const NO_VALUE_FILL = '#9ca3af'
+
+/** Marker radius: 6 px from zoom 10 up, shrinking to 3 px zoomed out. */
+export const markerRadius = (zoom) => (zoom >= 10 ? 6 : Math.max(3, 6 - (10 - zoom)))
 const round4 = (n) => Number(n.toFixed(4))
 const keyOf = (v) => (v ? `${v.lat.toFixed(4)},${v.lng.toFixed(4)},${Math.round(v.z)}` : '')
 
@@ -187,8 +190,52 @@ function GeoRasterLeafletLayer({ georaster, colorFn, opacity }) {
   return null
 }
 
-/** Hover (rAF-throttled) and tap/click positions for the value readout. */
-function PointerProbe({ onHover, onPick }) {
+/** One circle per station with a value that day: filled with the view's
+ *  colour for its value (the grid's ramp and domain), a black hairline, a
+ *  tooltip "Name · value". A click selects the station and stops there (no
+ *  pin under it); hover still reaches the map, so the raster readout works
+ *  through the markers. */
+function StationMarkers({ stations, colorFn, format, onSelect }) {
+  const map = useMap()
+  const [zoom, setZoom] = useState(() => (typeof map?.getZoom === 'function' ? map.getZoom() : 9))
+  useMapEvents({ zoomend() { setZoom(map.getZoom()) } })
+  const radius = markerRadius(zoom)
+  return stations.map((s) => {
+    const fill = s.value == null ? null : colorFn?.([s.value])
+    return (
+      <CircleMarker
+        key={s.skn} center={[s.lat, s.lng]} radius={radius} pane={DATA_PANE}
+        pathOptions={{ color: '#000', weight: 1, opacity: 1, fillColor: fill || NO_VALUE_FILL, fillOpacity: 1 }}
+        // Given the Leaflet event, stopPropagation marks its DOM event
+        // _stopped, which is what keeps the map's own click (a pin) from firing.
+        eventHandlers={{ click: (e) => { DomEvent.stopPropagation(e); onSelect?.(s) } }}
+        data-testid="station-marker"
+      >
+        <Tooltip direction="top" offset={[0, -radius]}>{`${s.name || `Station ${s.skn}`} · ${format(s.value) || 'no value'}`}</Tooltip>
+      </CircleMarker>
+    )
+  })
+}
+
+/** The selected station or grid cell: a ring with a white halo (and a dot
+ *  for a grid cell), transparent to the pointer. */
+function SelectionMark({ at }) {
+  const center = [at.lat, at.lng]
+  return (
+    <>
+      <CircleMarker center={center} radius={11} pane={DATA_PANE} interactive={false} pathOptions={{ color: '#fff', weight: 5, opacity: 0.9, fill: false }} />
+      <CircleMarker center={center} radius={11} pane={DATA_PANE} interactive={false} pathOptions={{ color: '#111', weight: 2, opacity: 1, fill: false }} data-testid="selection-mark" />
+      {at.kind === 'pin' && (
+        <CircleMarker center={center} radius={3} pane={DATA_PANE} interactive={false} pathOptions={{ color: '#fff', weight: 1, fillColor: '#111', fillOpacity: 1 }} />
+      )}
+    </>
+  )
+}
+
+/** Hover (rAF-throttled) and tap/click positions for the value readout; a
+ *  click on the map (not on a marker — those stop their click) also selects
+ *  the grid cell under it. */
+function PointerProbe({ onHover, onPick, onSelectPoint }) {
   const raf = useRef(0)
   useMapEvents({
     mousemove(e) {
@@ -197,14 +244,65 @@ function PointerProbe({ onHover, onPick }) {
       raf.current = requestAnimationFrame(() => onHover?.({ lat, lng }))
     },
     mouseout() { cancelAnimationFrame(raf.current); onHover?.(null) },
-    click(e) { onPick?.({ lat: e.latlng.lat, lng: e.latlng.lng }) },
+    click(e) {
+      const at = { lat: e.latlng.lat, lng: e.latlng.lng }
+      onPick?.(at)
+      onSelectPoint?.(at)
+    },
   })
   return null
 }
 
-function ClimateMap({ extent, view = null, onViewChange = null, georaster = null, colorFn = null, opacity = 0.75, onHover = null, onPick = null, syncBus = null, leader = false }) {
+/** A long press on touch (450 ms without moving) selects the cell under
+ *  the finger, as a click does with a pointer. Pointer events on the map's
+ *  container, so Leaflet's own handlers are untouched. */
+function LongPress({ onSelectPoint, ms = 450 }) {
+  const map = useMap()
+  const cb = useRef(onSelectPoint)
+  cb.current = onSelectPoint
+  useEffect(() => {
+    const el = typeof map?.getContainer === 'function' ? map.getContainer() : null
+    if (!el) return undefined
+    let timer = null
+    let start = null
+    const cancel = () => { clearTimeout(timer); timer = null; start = null }
+    const down = (e) => {
+      if (e.pointerType !== 'touch' || e.isPrimary === false) return
+      cancel()
+      start = { x: e.clientX, y: e.clientY }
+      timer = setTimeout(() => {
+        timer = null
+        const rect = el.getBoundingClientRect()
+        const p = map.containerPointToLatLng([start.x - rect.left, start.y - rect.top])
+        start = null
+        if (p) cb.current?.({ lat: p.lat, lng: p.lng })
+      }, ms)
+    }
+    const move = (e) => { if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) cancel() }
+    el.addEventListener('pointerdown', down)
+    el.addEventListener('pointermove', move)
+    el.addEventListener('pointerup', cancel)
+    el.addEventListener('pointercancel', cancel)
+    return () => {
+      cancel()
+      el.removeEventListener('pointerdown', down)
+      el.removeEventListener('pointermove', move)
+      el.removeEventListener('pointerup', cancel)
+      el.removeEventListener('pointercancel', cancel)
+    }
+  }, [map, ms])
+  return null
+}
+
+function ClimateMap({
+  extent, view = null, onViewChange = null, georaster = null, colorFn = null,
+  basemap = DEFAULT_BASEMAP, opacity = 0.75, layers = [],
+  stations = null, selected = null, onSelectStation = null, onSelectPoint = null, formatValue = String,
+  onHover = null, onPick = null, syncBus = null, leader = false,
+}) {
   // MapContainer reads center/zoom once; ViewSync owns the view after that.
   const initial = useMemo(() => viewFromUrl(view, extent, null), []) // eslint-disable-line react-hooks/exhaustive-deps
+  const base = basemapFor(basemap)
   return (
     <MapContainer
       center={[initial.lat, initial.lng]}
@@ -214,16 +312,28 @@ function ClimateMap({ extent, view = null, onViewChange = null, georaster = null
       className="h-full w-full"
     >
       <AutoResize />
-      <TileLayer url={BASEMAP.url} maxZoom={BASEMAP.maxZoom} attribution={BASEMAP.attribution} className="basemap-photo" />
+      {/* Keyed by name: a TileLayer only follows url changes, not maxZoom or class. */}
+      <TileLayer
+        key={basemap} url={base.url} maxZoom={base.maxZoom} maxNativeZoom={base.maxNativeZoom}
+        attribution={base.attribution} className={base.photo ? 'basemap-photo' : undefined}
+      />
       <DataPane>
         <GeoRasterLeafletLayer georaster={georaster} colorFn={colorFn} opacity={opacity} />
+        {layers.includes('outline') && (
+          <GeoJSON data={ISLAND_GEOJSON} pane={DATA_PANE} interactive={false} style={OUTLINE_STYLE} data-testid="island-outlines" />
+        )}
+        {stations && stations.length > 0 && (
+          <StationMarkers stations={stations} colorFn={colorFn} format={formatValue} onSelect={onSelectStation} />
+        )}
+        {selected && <SelectionMark at={selected} />}
       </DataPane>
       {/* The portal's scale control (bottom-left, metric + imperial) with
           the AI interface's shorter bar. */}
       <ScaleControl position="bottomleft" imperial metric maxWidth={120} />
       {onViewChange && <ViewSync extent={extent} view={view} onViewChange={onViewChange} />}
       {syncBus && <PeerSync bus={syncBus} leader={leader} />}
-      <PointerProbe onHover={onHover} onPick={onPick} />
+      <PointerProbe onHover={onHover} onPick={onPick} onSelectPoint={onSelectPoint} />
+      {onSelectPoint && <LongPress onSelectPoint={onSelectPoint} />}
     </MapContainer>
   )
 }

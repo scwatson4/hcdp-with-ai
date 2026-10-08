@@ -1,9 +1,12 @@
+import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react'
 import { MemoryRouter, Routes, Route, useLocation, useNavigationType } from 'react-router-dom'
 import ViewerPage from './ViewerPage'
 import { clearRasterCache } from './map/rasterCache'
 import { clearDateRanges } from './map/dateRanges'
+import { clearStationCache } from './map/stationData'
+import { resetUrlWrites } from './urlWrites'
 
 // ── Leaflet, georaster and the GeoRasterLayer, mocked ───────────────────────
 // jsdom cannot run Leaflet; the mocks keep one fake map whose view and event
@@ -24,11 +27,13 @@ const fake = vi.hoisted(() => {
     getPane() { return null },
     createPane() { return { style: {} } },
     addLayer() {}, removeLayer: vi.fn(), invalidateSize() {},
-    getContainer() { return null },
+    getContainer() { return fake.container },
+    // A 1° per 100 px fake projection from the container's top-left corner.
+    containerPointToLatLng([x, y]) { return { lat: 22.5 - y / 100, lng: -160 + x / 100 } },
     on() {}, off() {},
     fire(name, e = {}) { for (const h of [...handlers]) h[name]?.(e) },
   }
-  return { map, handlers, layers: [], instances: [], mapProps: [] }
+  return { map, handlers, layers: [], instances: [], mapProps: [], charts: [], container: null }
 })
 
 vi.mock('react-leaflet', async () => {
@@ -44,8 +49,19 @@ vi.mock('react-leaflet', async () => {
       }
       return <div data-testid="leaflet-map" data-center={center.join(',')} data-zoom={zoom}>{children}</div>
     },
-    TileLayer: ({ url }) => <div data-testid="tile-layer" data-url={url} />,
+    TileLayer: ({ url, className }) => <div data-testid="tile-layer" data-url={url} className={className} />,
     ScaleControl: () => <div data-testid="scale-control" />,
+    GeoJSON: (props) => <div data-testid={props['data-testid'] || 'geojson'} data-pane={props.pane} />,
+    CircleMarker: ({ center, radius, pathOptions, pane, eventHandlers, children, ...rest }) => (
+      <div
+        data-testid={rest['data-testid'] || 'circle-marker'} data-center={center.join(',')} data-radius={radius}
+        data-fill={pathOptions?.fillColor} data-stroke={pathOptions?.color} data-weight={pathOptions?.weight} data-pane={pane}
+        onClick={(e) => eventHandlers?.click?.({ latlng: { lat: center[0], lng: center[1] }, originalEvent: e.nativeEvent })}
+      >
+        {children}
+      </div>
+    ),
+    Tooltip: ({ children }) => <span data-testid="marker-tooltip">{children}</span>,
     useMap: () => fake.map,
     useMapEvents: (h) => {
       React.useEffect(() => {
@@ -71,10 +87,24 @@ vi.mock('georaster', () => ({
 
 vi.mock('georaster-layer-for-leaflet', () => ({
   default: class {
-    constructor(opts) { this.opts = opts; this.ownCache = false; fake.layers.push(opts); fake.instances.push(this) }
+    constructor(opts) { this.opts = opts; this.opacity = opts.opacity; this.ownCache = false; fake.layers.push(opts); fake.instances.push(this) }
     clearCache() { this.ownCache = true }
     addTo() { return this }
-    setOpacity() {}
+    setOpacity(o) { this.opacity = o }
+  },
+}))
+
+// Radix's slider measures its thumb with a ResizeObserver; jsdom has none.
+if (!global.ResizeObserver) global.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} }
+
+// uPlot draws on a canvas jsdom does not have: keep what it was given.
+vi.mock('uplot', () => ({
+  default: class {
+    constructor(opts, data, el) { this.opts = opts; this.data = data; this.root = document.createElement('div'); this.root.className = 'uplot'; el?.appendChild(this.root); fake.charts.push(this) }
+    setData(d) { this.data = d }
+    setSize() {}
+    destroy() { this.destroyed = true; this.root.remove() }
+    static tzDate(d) { return d }
   },
 }))
 
@@ -82,8 +112,42 @@ vi.mock('georaster-layer-for-leaflet', () => ({
 const DAY_RANGE = ['1990-01-01T10:00:00.000Z', '2026-09-23T10:00:00.000Z']
 const MONTH_RANGE = ['1990-01-01T10:00:00.000Z', '2026-08-01T10:00:00.000Z']
 
+// Station values for one day, and the station list (CONTRACT.md shapes).
+const STATION_VALUES = {
+  stations: [
+    { skn: '1020.1', name: 'Hilo Airport', island: 'Hawaiʻi', lat: 19.72, lng: -155.05, value: 12.3 },
+    { skn: '800.2', name: 'Kahului', island: 'Maui', lat: 20.9, lng: -156.43, value: null },
+  ],
+  units: 'mm', count: 2,
+}
+const CLIMATE_STATIONS = {
+  stations: [
+    { skn: '1020.1', name: 'Hilo Airport', island: 'Hawaiʻi', lat: 19.72, lng: -155.05, elevation_m: 11, network: 'NWS', observer: null },
+    { skn: '800.2', name: 'Kahului', island: 'Maui', lat: 20.9, lng: -156.43, elevation_m: 15, network: 'NWS', observer: null },
+    { skn: '1075.0', name: 'Waimea', island: 'Hawaiʻi', lat: 20.02, lng: -155.67, elevation_m: 814, network: 'HaleNet', observer: null },
+  ],
+}
+
+// A short record: a gap on the 2nd, as the API sends it.
+const RECORD = (u) => ({
+  points: [['2026-09-01', 7.72], ['2026-09-02', null], ['2026-09-03', 1.5]],
+  units: 'mm', dataset: u.searchParams.get('dataset'), period: u.searchParams.get('period'),
+  location: u.searchParams.get('station') ? { skn: u.searchParams.get('station') } : { lat: u.searchParams.get('lat'), lng: u.searchParams.get('lng') },
+})
+
 let rasterMode = 'data' // 'data' | 'empty' | 404 | 500 | 'network' | 'hang'
+let stationsMode = 'data' // 'data' | 404 | 'hang'
+let seriesMode = 'data' // 'data' | 404 | 500 | 'hang'
+let shortenMode = 'data' // 'data' | 500
 let hung = []
+let hungStations = []
+let hungSeries = []
+function hang(url, init, list) {
+  return new Promise((resolve, reject) => {
+    list.push({ url: String(url), signal: init.signal, resolve })
+    init.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
+  })
+}
 function installFetch() {
   global.fetch = vi.fn(async (url, init = {}) => {
     const u = new URL(url, 'http://localhost')
@@ -91,27 +155,42 @@ function installFetch() {
       const body = u.searchParams.get('period') === 'month' ? MONTH_RANGE : DAY_RANGE
       return { ok: true, status: 200, json: async () => body }
     }
+    if (u.pathname === '/api/station-values') {
+      if (stationsMode === 404) return { ok: false, status: 404, json: async () => ({ detail: 'no station values for that date' }) }
+      if (stationsMode === 'hang') return hang(url, init, hungStations)
+      return { ok: true, status: 200, json: async () => STATION_VALUES }
+    }
+    if (u.pathname === '/api/climate-stations') return { ok: true, status: 200, json: async () => CLIMATE_STATIONS }
+    if (u.pathname === '/api/shorten') {
+      if (shortenMode === 500) return { ok: false, status: 502, json: async () => ({ detail: 'down' }) }
+      const { path } = JSON.parse(init.body)
+      return { ok: true, status: 200, json: async () => ({ id: 'k7Qz2', url: `http://localhost/s/k7Qz2`, path }) }
+    }
+    if (u.pathname === '/api/timeseries') {
+      if (seriesMode === 404) return { ok: false, status: 404, json: async () => ({ detail: 'no record' }) }
+      if (seriesMode === 500) return { ok: false, status: 502, json: async () => ({ detail: 'HCDP API returned 500' }) }
+      if (seriesMode === 'hang') return hang(url, init, hungSeries)
+      return { ok: true, status: 200, json: async () => RECORD(u) }
+    }
     if (u.pathname === '/api/raster') {
       if (rasterMode === 'network') throw new TypeError('Failed to fetch')
       if (rasterMode === 404) return { ok: false, status: 404, json: async () => ({ detail: 'no map for that date' }) }
       if (rasterMode === 500) return { ok: false, status: 502, json: async () => ({ detail: 'HCDP API returned 500' }) }
-      if (rasterMode === 'hang') {
-        return new Promise((resolve, reject) => {
-          hung.push({ url: String(url), signal: init.signal, resolve })
-          init.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
-        })
-      }
+      if (rasterMode === 'hang') return hang(url, init, hung)
       return { ok: true, status: 200, arrayBuffer: async () => new ArrayBuffer(rasterMode === 'empty' ? 8 : 16) }
     }
     return { ok: false, status: 404, json: async () => ({}) }
   })
 }
 const rasterCalls = () => global.fetch.mock.calls.filter(([u]) => String(u).startsWith('/api/raster'))
+const callsTo = (path) => global.fetch.mock.calls.map(([u]) => String(u)).filter((u) => u.startsWith(path))
 
 // ── rendering at a URL ──────────────────────────────────────────────────────
+let visited = [] // every location the router has been at, in order
 function Probe() {
   const loc = useLocation()
   const type = useNavigationType()
+  React.useEffect(() => { visited.push(loc.pathname + loc.search + loc.hash) }, [loc.key]) // eslint-disable-line react-hooks/exhaustive-deps
   return <output data-testid="location" data-type={type}>{loc.pathname + loc.search}</output>
 }
 function renderAt(path) {
@@ -127,13 +206,30 @@ function renderAt(path) {
 const loc = () => screen.getByTestId('location').textContent
 const navType = () => screen.getByTestId('location').dataset.type
 
+// The viewport: wide by default; narrowScreen(true) answers the viewer's
+// (max-width: 767px) query as a phone would.
+function narrowScreen(on) {
+  window.matchMedia = (q) => ({ matches: on && /max-width:\s*767px/.test(q), media: q, onchange: null, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent() { return false } })
+}
+
 beforeEach(() => {
+  narrowScreen(false)
   rasterMode = 'data'
+  stationsMode = 'data'
+  seriesMode = 'data'
+  shortenMode = 'data'
   hung = []
+  hungStations = []
+  hungSeries = []
+  visited = []
+  resetUrlWrites()
+  clearStationCache()
   fake.handlers.clear()
   fake.layers.length = 0
   fake.instances.length = 0
   fake.mapProps.length = 0
+  fake.charts.length = 0
+  fake.container = document.createElement('div')
   clearRasterCache()
   clearDateRanges()
   installFetch()
@@ -171,6 +267,38 @@ describe('/viewer with no parameters', () => {
     renderAt('/viewer/')
     expect(screen.getByTestId('viewer-launcher')).toBeInTheDocument()
     await settle()
+  })
+})
+
+// ── canonical spelling on load ──────────────────────────────────────────────
+describe('an address spelled another way is rewritten to its canonical form', () => {
+  it('resolves aliases, month names and ?stations=1, orders the keys, and replaces (once)', async () => {
+    renderAt('/viewer/rain/daily/october/21/2025/big-island?stations=1&z=9&lat=19.6&lng=-155.5')
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2025-10-21/hawaii?layers=stations&lat=19.6000&lng=-155.5000&z=9'))
+    expect(navType()).toBe('REPLACE')
+    await settle()
+    // The alias address, then the canonical one — and nothing after it.
+    expect(visited).toEqual([
+      '/viewer/rain/daily/october/21/2025/big-island?stations=1&z=9&lat=19.6&lng=-155.5',
+      '/viewer/rainfall/day/2025-10-21/hawaii?layers=stations&lat=19.6000&lng=-155.5000&z=9',
+    ])
+    // The same map was asked for once, under the canonical request URL.
+    expect(rasterCalls().map(([u]) => u)).toEqual(['/api/raster?dataset=rainfall&period=day&date=2025-10-21&extent=hawaii'])
+    expect(screen.getByTestId('viewer-heading')).toHaveTextContent('Rainfall, October 21, 2025, Hawaiʻi Island')
+  })
+
+  it('keeps query keys that belong to another feature, and the hash', async () => {
+    renderAt('/viewer/temp-max/monthly/2026/aug/oa?ask=hello%20there&units=F#map')
+    await waitFor(() => expect(loc()).toBe('/viewer/temperature-max/month/2026-08/oahu?units=f&ask=hello+there'))
+    await settle()
+    expect(visited).toHaveLength(2)
+    expect(visited[1]).toBe('/viewer/temperature-max/month/2026-08/oahu?units=f&ask=hello+there#map')
+  })
+
+  it('leaves a canonical address alone', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in&lat=22.1000&lng=-159.6000&z=11')
+    await settle()
+    expect(visited).toEqual(['/viewer/rainfall/day/2026-09-07/kauai?units=in&lat=22.1000&lng=-159.6000&z=11'])
   })
 })
 
@@ -302,6 +430,43 @@ describe('controls write the URL', () => {
     await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-06/kauai'))
   })
 
+  it('jumps to the first and last published maps and steps by a month (daily) or a year (monthly), inside the range', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'First day' })).toBeEnabled())
+    fireEvent.click(screen.getByRole('button', { name: 'Previous month' }))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-08-07/kauai'))
+    expect(navType()).toBe('PUSH')
+    fireEvent.click(screen.getByRole('button', { name: 'Next month' }))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai'))
+    // A month on would be 7 October, past the last map: the step stops at the last map.
+    fireEvent.click(screen.getByRole('button', { name: 'Next month' }))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-23/kauai'))
+    expect(screen.getByRole('button', { name: 'Next month' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Next day' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Last day' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'First day' }))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/1990-01-01/kauai'))
+    expect(screen.getByRole('button', { name: 'First day' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Previous month' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Previous day' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Last day' }))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-23/kauai'))
+  })
+
+  it('steps a monthly map by a year, and 31 January − 1 month is the last day of December', async () => {
+    renderAt('/viewer/spi-3/month/2026-08/statewide')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'First month' })).toBeEnabled())
+    fireEvent.click(screen.getByRole('button', { name: 'Previous year' }))
+    await waitFor(() => expect(loc()).toBe('/viewer/spi-3/month/2025-08/statewide'))
+    fireEvent.click(screen.getByRole('button', { name: 'First month' }))
+    await waitFor(() => expect(loc()).toBe('/viewer/spi-3/month/1990-01/statewide'))
+    fireEvent.click(screen.getByRole('button', { name: 'Next year' }))
+    await waitFor(() => expect(loc()).toBe('/viewer/spi-3/month/1991-01/statewide'))
+    fireEvent.click(screen.getByRole('button', { name: 'Last month' }))
+    await waitFor(() => expect(loc()).toBe('/viewer/spi-3/month/2026-08/statewide'))
+    expect(screen.getByRole('button', { name: 'Next year' })).toBeDisabled()
+  })
+
   it('refuses a date outside the published range and says why', async () => {
     renderAt('/viewer/rainfall/day/2026-09-07/kauai')
     await waitFor(() => expect(screen.getByTestId('date-picker-input')).toHaveAttribute('max', '2026-09-23'))
@@ -348,6 +513,48 @@ describe('controls write the URL', () => {
     fireEvent.click(within(screen.getByTestId('units-toggle')).getByLabelText('mm'))
     await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?scale=extreme'))
     expect(navType()).toBe('REPLACE')
+  })
+
+  it('replaces for base map, opacity and layers, draws them, and drops their defaults', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    await waitFor(() => expect(fake.layers.length).toBeGreaterThan(0))
+    expect(screen.getByTestId('tile-layer')).toHaveClass('basemap-photo')
+    fireEvent.change(screen.getByTestId('basemap-select'), { target: { value: 'topo' } })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?basemap=topo'))
+    expect(navType()).toBe('REPLACE')
+    expect(screen.getByTestId('tile-layer').dataset.url).toContain('USGSTopo')
+    expect(screen.getByTestId('tile-layer')).not.toHaveClass('basemap-photo')
+    // Overlays: the island outlines are a GeoJSON layer in the data pane.
+    expect(screen.queryByTestId('island-outlines')).toBeNull()
+    fireEvent.click(screen.getByTestId('layer-outline'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?basemap=topo&layers=outline'))
+    expect(navType()).toBe('REPLACE')
+    expect(screen.getByTestId('island-outlines').dataset.pane).toBe('climate-data')
+    fireEvent.click(screen.getByTestId('layer-stations'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?basemap=topo&layers=stations,outline'))
+    // Opacity: the slider writes on commit (keyboard commits at once) and the layer follows.
+    fireEvent.keyDown(screen.getByRole('slider', { name: 'Data layer opacity' }), { key: 'End' })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?basemap=topo&opacity=100&layers=stations,outline'))
+    expect(navType()).toBe('REPLACE')
+    expect(screen.getByTestId('opacity-value')).toHaveTextContent('100 %')
+    await waitFor(() => expect(fake.instances[fake.instances.length - 1].opacity).toBe(1))
+    // Back to the defaults: the keys leave the address (0 % is not a default).
+    fireEvent.keyDown(screen.getByRole('slider', { name: 'Data layer opacity' }), { key: 'Home' })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?basemap=topo&opacity=0&layers=stations,outline'))
+    fireEvent.change(screen.getByTestId('basemap-select'), { target: { value: 'satellite' } })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?opacity=0&layers=stations,outline'))
+    fireEvent.click(screen.getByTestId('layer-outline'))
+    fireEvent.click(screen.getByTestId('layer-stations'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?opacity=0'))
+    expect(screen.queryByTestId('island-outlines')).toBeNull()
+  })
+
+  it('offers the Stations layer only for datasets HCDP has station values for', async () => {
+    renderAt('/viewer/spi-3/month/2026-08/statewide?layers=outline')
+    expect(screen.queryByTestId('layer-stations')).toBeNull()
+    expect(screen.getByTestId('layer-outline')).toBeChecked()
+    expect(screen.getByTestId('basemap-select')).toHaveValue('satellite')
+    await settle()
   })
 
   it('writes map moves into the URL after 400 ms (replace, 4 decimals, integer zoom) — and only real moves', async () => {
@@ -497,15 +704,425 @@ describe('raster loading', () => {
   })
 })
 
+// ── banners ─────────────────────────────────────────────────────────────────
+describe('banners on the map', () => {
+  it('marks daily rainfall experimental, with a tooltip that says why', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    const badge = screen.getByTestId('experimental-badge')
+    expect(badge).toHaveTextContent('Experimental')
+    expect(screen.queryByTestId('viewer-caution')).toBeNull()
+    fireEvent.focus(badge)
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Daily rainfall and ignition products are experimental')
+    await settle()
+  })
+
+  it('marks every ignition product experimental and adds the one-line caution under the title card', async () => {
+    renderAt('/viewer/ignition-lead-2/day/2026-09-07/statewide')
+    expect(screen.getByTestId('experimental-badge')).toBeInTheDocument()
+    expect(screen.getByTestId('viewer-caution')).toHaveTextContent('Informational only — not an operational fire forecast (CC BY-NC-ND 4.0).')
+    await settle()
+  })
+
+  it('shows neither for monthly rainfall or SPI', async () => {
+    renderAt('/viewer/rainfall/month/2026-08/kauai')
+    expect(screen.queryByTestId('experimental-badge')).toBeNull()
+    expect(screen.queryByTestId('viewer-caution')).toBeNull()
+    await settle()
+  })
+})
+
+// ── station markers ─────────────────────────────────────────────────────────
+describe('?layers=stations', () => {
+  it('draws one marker per station in the view colours, with a tooltip, and a click selects it (push)', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?layers=stations')
+    await waitFor(() => expect(screen.getAllByTestId('station-marker')).toHaveLength(2))
+    expect(callsTo('/api/station-values')).toEqual(['/api/station-values?dataset=rainfall&period=day&date=2026-09-07'])
+    const [hilo, kahului] = screen.getAllByTestId('station-marker')
+    expect(hilo.dataset.center).toBe('19.72,-155.05')
+    expect(hilo.dataset.pane).toBe('climate-data')
+    expect(hilo.dataset.stroke).toBe('#000')
+    expect(hilo.dataset.weight).toBe('1')
+    expect(hilo.dataset.fill).toMatch(/^rgb\(/) // the ramp colour of 12.3 mm on 0–20
+    expect(hilo.dataset.radius).toBe('6') // zoom 10
+    expect(within(hilo).getByTestId('marker-tooltip')).toHaveTextContent('Hilo Airport · 12.3 mm')
+    expect(kahului.dataset.fill).toBe('#9ca3af')
+    expect(within(kahului).getByTestId('marker-tooltip')).toHaveTextContent('Kahului · no value')
+    expect(screen.queryByTestId('selection-mark')).toBeNull()
+    fireEvent.click(hilo)
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?layers=stations&station=1020.1'))
+    expect(navType()).toBe('PUSH')
+    expect(screen.getByTestId('selection-mark').dataset.center).toBe('19.72,-155.05')
+    // Clicking the selected station again changes nothing.
+    fireEvent.click(screen.getAllByTestId('station-marker')[0])
+    await settle()
+    expect(visited.filter((p) => p.endsWith('station=1020.1'))).toHaveLength(1)
+  })
+
+  it('shrinks the markers when zoomed out', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/statewide?layers=stations&lat=20.6&lng=-157.4&z=7')
+    await waitFor(() => expect(screen.getAllByTestId('station-marker')).toHaveLength(2))
+    expect(screen.getAllByTestId('station-marker')[0].dataset.radius).toBe('3')
+  })
+
+  it('marks a station named in the address even when the layer is off, from the station list', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?station=1075.0')
+    await waitFor(() => expect(screen.getByTestId('selection-mark').dataset.center).toBe('20.02,-155.67'))
+    expect(callsTo('/api/climate-stations')).toHaveLength(1)
+    expect(callsTo('/api/station-values')).toHaveLength(0)
+    expect(screen.queryByTestId('station-marker')).toBeNull()
+  })
+
+  it('says quietly when there are no station values for the date', async () => {
+    stationsMode = 404
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?layers=stations')
+    expect(await screen.findByTestId('stations-none')).toHaveTextContent('no station values for this date')
+    expect(screen.queryByTestId('station-marker')).toBeNull()
+  })
+
+  it('shows a stations pill while loading and cancels the request when the date changes', async () => {
+    stationsMode = 'hang'
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?layers=stations')
+    expect(await screen.findByTestId('stations-loading')).toHaveTextContent('stations…')
+    await waitFor(() => expect(hungStations).toHaveLength(1))
+    fireEvent.click(screen.getByRole('button', { name: 'Previous day' }))
+    await waitFor(() => expect(hungStations).toHaveLength(2))
+    expect(hungStations[0].signal.aborted).toBe(true)
+    expect(hungStations[1].url).toContain('date=2026-09-06')
+  })
+
+  it('asks nothing for a dataset without stations', async () => {
+    renderAt('/viewer/spi-3/month/2026-08/statewide?layers=stations')
+    await settle()
+    expect(callsTo('/api/station-values')).toHaveLength(0)
+    expect(screen.queryByTestId('stations-loading')).toBeNull()
+  })
+})
+
+// ── the time series panel ───────────────────────────────────────────────────
+const SEC = (iso) => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 1000
+describe('?station= and ?pin= open the time series', () => {
+  it('shows a station: name, SKN, island and elevation; the whole record by default; values in display units with gaps', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in&station=1020.1')
+    const panel = await screen.findByRole('complementary', { name: /Hilo Airport: Rainfall, daily time series/ })
+    expect(screen.getByTestId('timeseries-heading')).toHaveTextContent('Hilo Airport')
+    expect(screen.getByTestId('timeseries-details')).toHaveTextContent('SKN 1020.1 · Hawaiʻi · 11 m')
+    // The record is asked for over the published range of the dataset's daily maps.
+    await waitFor(() => expect(callsTo('/api/timeseries')).toEqual(['/api/timeseries?dataset=rainfall&period=day&start=1990-01-01&end=2026-09-23&station=1020.1']))
+    await waitFor(() => expect(fake.charts).toHaveLength(1))
+    const chart = fake.charts[0]
+    expect(chart.data[0]).toEqual([SEC('2026-09-01'), SEC('2026-09-02'), SEC('2026-09-03')])
+    expect(chart.data[1]).toEqual([0.3, null, 0.06]) // 7.72 mm and 1.5 mm in inches, a gap between
+    expect(chart.opts.series[1].spanGaps).toBe(false)
+    expect(within(panel).getByTestId('timeseries-readout')).toHaveTextContent('2 days · 0.06 to 0.3 in')
+    expect(within(panel).getByTestId('timeseries-csv')).toBeEnabled()
+    // Default window is "All"; rainfall has both periods, so the series period can be switched.
+    expect(within(screen.getByTestId('ts-window')).getByLabelText('All')).toBeChecked()
+    expect(within(screen.getByTestId('ts-period')).getByLabelText('Daily')).toBeChecked()
+  })
+
+  it('writes the window with ts= (replace) from the Month / Year / All buttons, and Custom from two date fields', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1')
+    await screen.findByTestId('timeseries-panel')
+    await waitFor(() => expect(callsTo('/api/timeseries')).toHaveLength(1))
+    fireEvent.click(within(screen.getByTestId('ts-window')).getByLabelText('Year'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1&ts=2025-09-07..2026-09-07'))
+    expect(navType()).toBe('REPLACE')
+    await waitFor(() => expect(callsTo('/api/timeseries')).toContain('/api/timeseries?dataset=rainfall&period=day&start=2025-09-07&end=2026-09-07&station=1020.1'))
+    fireEvent.click(within(screen.getByTestId('ts-window')).getByLabelText('Month'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1&ts=2026-08-07..2026-09-07'))
+    fireEvent.click(within(screen.getByTestId('ts-window')).getByLabelText('Custom'))
+    const start = await screen.findByTestId('ts-start')
+    expect(start).toHaveValue('2026-08-07')
+    fireEvent.change(start, { target: { value: '2026-06-01' } })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1&ts=2026-06-01..2026-09-07'))
+    fireEvent.click(within(screen.getByTestId('ts-window')).getByLabelText('All'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1'))
+    expect(screen.queryByTestId('ts-custom')).toBeNull()
+  })
+
+  it('switches the series period with tsp= (the daily window is dropped) and fetches the monthly record', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1&ts=2026-08-07..2026-09-07')
+    await screen.findByTestId('timeseries-panel')
+    fireEvent.click(within(screen.getByTestId('ts-period')).getByLabelText('Monthly'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1&tsp=month'))
+    expect(navType()).toBe('REPLACE')
+    await waitFor(() => expect(callsTo('/api/timeseries')).toContain('/api/timeseries?dataset=rainfall&period=month&start=1990-01&end=2026-08&station=1020.1'))
+    expect(within(screen.getByTestId('ts-window')).queryByLabelText('Month')).toBeNull() // no "Month" window for a monthly series
+  })
+
+  it('a click on the map pushes pin= (4 decimals) and opens the grid cell; the ocean is ignored', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    await waitFor(() => expect(fake.layers.length).toBeGreaterThan(0))
+    // nodata under the pointer (the mocked grid's bottom-left pixel): no pin.
+    await act(async () => { fake.map.fire('click', { latlng: { lat: 21.5, lng: -159.5 } }) })
+    await settle()
+    expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai')
+    expect(screen.queryByTestId('timeseries-panel')).toBeNull()
+    await act(async () => { fake.map.fire('click', { latlng: { lat: 22.123456, lng: -159.654321 } }) })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?pin=22.1235,-159.6543'))
+    expect(navType()).toBe('PUSH')
+    expect(await screen.findByTestId('timeseries-heading')).toHaveTextContent('Grid cell 22.1235, -159.6543')
+    expect(screen.getByTestId('selection-mark').dataset.center).toBe('22.1235,-159.6543')
+    await waitFor(() => expect(callsTo('/api/timeseries')).toEqual(['/api/timeseries?dataset=rainfall&period=day&start=1990-01-01&end=2026-09-23&lat=22.1235&lng=-159.6543']))
+    // The same cell again is not pushed twice.
+    await act(async () => { fake.map.fire('click', { latlng: { lat: 22.12349, lng: -159.65431 } }) })
+    await settle()
+    expect(visited.filter((p) => p.includes('pin=')).length).toBe(1)
+  })
+
+  it('a pin replaces a station and a station replaces a pin', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?layers=stations&station=1020.1&ts=2026-08-07..2026-09-07')
+    await screen.findByTestId('timeseries-panel')
+    await act(async () => { fake.map.fire('click', { latlng: { lat: 22.1, lng: -159.6 } }) })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?layers=stations&pin=22.1000,-159.6000&ts=2026-08-07..2026-09-07'))
+    await waitFor(() => expect(screen.getAllByTestId('station-marker')).toHaveLength(2))
+    fireEvent.click(screen.getAllByTestId('station-marker')[1])
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?layers=stations&station=800.2&ts=2026-08-07..2026-09-07'))
+    expect(screen.getByTestId('timeseries-heading')).toHaveTextContent('Kahului')
+  })
+
+  it('a long press on touch selects the cell under the finger', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    await act(async () => { await vi.advanceTimersByTimeAsync(10) })
+    const press = (type, init) => {
+      const e = new Event(type, { bubbles: true })
+      Object.assign(e, { pointerType: 'touch', isPrimary: true, clientX: 50, clientY: 40, ...init })
+      fake.container.dispatchEvent(e)
+    }
+    press('pointerdown')
+    press('pointermove', { clientX: 53 }) // a 3 px wobble is still a press
+    await act(async () => { await vi.advanceTimersByTimeAsync(449) })
+    expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai')
+    await act(async () => { await vi.advanceTimersByTimeAsync(1) })
+    expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?pin=22.1000,-159.5000') // 40 px down, 50 px right of the corner
+    // A press that moves on is a pan, not a selection.
+    press('pointerdown')
+    press('pointermove', { clientX: 80 })
+    await act(async () => { await vi.advanceTimersByTimeAsync(500) })
+    expect(visited.filter((p) => p.includes('pin=')).length).toBe(1)
+    vi.useRealTimers()
+  })
+
+  it('a dataset without station values drops the station (a pin survives); a period change drops the window', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1&ts=2026-08-07..2026-09-07')
+    await screen.findByTestId('timeseries-panel')
+    fireEvent.click(within(screen.getByTestId('period-toggle')).getByLabelText('Monthly'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/month/2026-08/kauai?station=1020.1'))
+    fireEvent.change(screen.getByTestId('dataset-select'), { target: { value: 'spi-3' } })
+    await waitFor(() => expect(loc()).toBe('/viewer/spi-3/month/2026-08/kauai'))
+    expect(screen.queryByTestId('timeseries-panel')).toBeNull()
+    await act(async () => { fake.map.fire('click', { latlng: { lat: 22.1, lng: -159.6 } }) })
+    await waitFor(() => expect(loc()).toBe('/viewer/spi-3/month/2026-08/kauai?pin=22.1000,-159.6000'))
+    fireEvent.change(screen.getByTestId('dataset-select'), { target: { value: 'temperature-mean' } })
+    await waitFor(() => expect(loc()).toBe('/viewer/temperature-mean/month/2026-08/kauai?pin=22.1000,-159.6000'))
+    expect(screen.getByTestId('timeseries-heading')).toHaveTextContent('Grid cell 22.1000, -159.6000')
+  })
+
+  it('closes with the × or Escape as a push that drops station, pin, ts and tsp', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in&station=1020.1&ts=2026-08-07..2026-09-07&tsp=month')
+    await screen.findByTestId('timeseries-panel')
+    fireEvent.click(screen.getByTestId('timeseries-close'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?units=in'))
+    expect(navType()).toBe('PUSH')
+    expect(screen.queryByTestId('timeseries-panel')).toBeNull()
+    await act(async () => { fake.map.fire('click', { latlng: { lat: 22.1, lng: -159.6 } }) })
+    await screen.findByTestId('timeseries-panel')
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByTestId('timeseries-panel')).toBeNull())
+    expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?units=in')
+  })
+
+  it('downloads a date,value CSV in display units under a station or cell file name', async () => {
+    const urls = []
+    URL.createObjectURL = vi.fn((blob) => { urls.push(blob); return 'blob:csv' })
+    URL.revokeObjectURL = vi.fn()
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () { urls.push(this.download) })
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in&station=1020.1')
+    const button = await screen.findByTestId('timeseries-csv')
+    await waitFor(() => expect(button).toBeEnabled())
+    fireEvent.click(button)
+    expect(urls[1]).toBe('station_1020.1_rainfall_day.csv')
+    const blob = urls[0]
+    expect(blob.type).toBe('text/csv;charset=utf-8')
+    expect(blob.size).toBe('date,value\n2026-09-01,0.3\n2026-09-02,\n2026-09-03,0.06\n'.length)
+    click.mockRestore()
+  })
+
+  it('says when the record is missing, and offers a retry when the service fails', async () => {
+    seriesMode = 404
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1')
+    expect(await screen.findByTestId('timeseries-notfound')).toHaveTextContent('no record')
+    seriesMode = 500
+    fireEvent.click(screen.getByRole('button', { name: 'Previous day' }))
+    await settle()
+    // The window did not change, so the same record is shown; a new station asks again.
+    await act(async () => { fake.map.fire('click', { latlng: { lat: 22.1, lng: -159.6 } }) })
+    expect(await screen.findByTestId('timeseries-error')).toHaveTextContent('did not load')
+    seriesMode = 'data'
+    fireEvent.click(within(screen.getByTestId('timeseries-error')).getByRole('button', { name: /Try again/ }))
+    await waitFor(() => expect(fake.charts.length).toBeGreaterThan(0))
+  })
+})
+
+// ── phone layout: the bottom sheet ──────────────────────────────────────────
+describe('below 768 px', () => {
+  // jsdom has no PointerEvent: a plain event carrying the pointer fields.
+  const press = (el, type, init) => act(() => {
+    const e = new Event(type, { bubbles: true })
+    Object.assign(e, { pointerId: 1, pointerType: 'touch', isPrimary: true, button: 0, clientX: 160, ...init })
+    el.dispatchEvent(e)
+  })
+  // Radix tabs change on mousedown, as a pointer does.
+  const pickTab = (sheet, name) => fireEvent.mouseDown(within(sheet).getByRole('tab', { name }))
+
+  it('moves the controls into a bottom sheet with four tabs and runs the map edge to edge', async () => {
+    narrowScreen(true)
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in')
+    expect(screen.getByTestId('viewer').dataset.layout).toBe('sheet')
+    const sheet = screen.getByTestId('bottom-sheet')
+    expect(sheet.dataset.snap).toBe('peek')
+    expect(within(sheet).getByTestId('viewer-heading')).toHaveTextContent('Rainfall, September 7, 2026, Kauaʻi')
+    expect(within(sheet).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Dataset', 'Date', 'Layers', 'Station'])
+    expect(screen.queryByTestId('viewer-controls')).toBeNull() // no rail
+    expect(screen.getByTestId('map-pane')).toHaveClass('border-y')
+    expect(screen.getByTestId('map-pane')).not.toHaveClass('rounded-lg')
+    // Dataset tab first: dataset, period, units, place, sharing.
+    expect(within(sheet).getByTestId('dataset-select')).toHaveValue('rainfall')
+    expect(within(sheet).getByTestId('extent-select')).toHaveValue('kauai')
+    expect(within(sheet).getByTestId('copy-link')).toBeInTheDocument()
+    expect(within(sheet).queryByTestId('date-picker')).toBeNull()
+    pickTab(sheet, 'Date')
+    expect(await within(sheet).findByTestId('date-picker')).toBeInTheDocument()
+    expect(within(sheet).getByTestId('compare-control')).toBeInTheDocument()
+    pickTab(sheet, 'Layers')
+    expect(await within(sheet).findByTestId('basemap-select')).toBeInTheDocument()
+    expect(within(sheet).getByTestId('ramp-select')).toBeInTheDocument()
+    expect(within(sheet).getByTestId('layer-stations')).toBeInTheDocument()
+    pickTab(sheet, 'Station')
+    expect(await within(sheet).findByTestId('station-hint')).toHaveTextContent('press and hold')
+    // The controls still write the address.
+    pickTab(sheet, 'Dataset')
+    fireEvent.change(await within(sheet).findByTestId('extent-select'), { target: { value: 'oahu' } })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/oahu?units=in'))
+  })
+
+  it('taps on the handle cycle peek → half → full → peek; a drag settles on the nearest rest', async () => {
+    narrowScreen(true)
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    const sheet = screen.getByTestId('bottom-sheet')
+    const handle = screen.getByTestId('sheet-handle')
+    fireEvent.click(handle)
+    expect(sheet.dataset.snap).toBe('half')
+    fireEvent.click(handle)
+    expect(sheet.dataset.snap).toBe('full')
+    fireEvent.click(handle)
+    expect(sheet.dataset.snap).toBe('peek')
+    // Drag the handle 300 px up from peek (124 px): nearer to half (384 px of 768) than to full.
+    press(handle, 'pointerdown', { clientY: 640 })
+    press(handle, 'pointermove', { clientY: 500 })
+    press(handle, 'pointermove', { clientY: 340 })
+    press(handle, 'pointerup', { clientY: 340 })
+    expect(sheet.dataset.snap).toBe('half')
+    fireEvent.click(handle) // the click that follows a drag is not a tap
+    expect(sheet.dataset.snap).toBe('half')
+    // A tiny wobble is a tap.
+    press(handle, 'pointerdown', { clientY: 400 })
+    press(handle, 'pointermove', { clientY: 398 })
+    press(handle, 'pointerup', { clientY: 398 })
+    fireEvent.click(handle)
+    expect(sheet.dataset.snap).toBe('full')
+    // Dragged all the way down → peek.
+    press(handle, 'pointerdown', { clientY: 100 })
+    press(handle, 'pointermove', { clientY: 700 })
+    press(handle, 'pointerup', { clientY: 700 })
+    expect(sheet.dataset.snap).toBe('peek')
+    await settle()
+  })
+
+  it('selecting a station opens the Station tab at half height, with the time series inside the sheet', async () => {
+    narrowScreen(true)
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?layers=stations')
+    const sheet = screen.getByTestId('bottom-sheet')
+    await waitFor(() => expect(screen.getAllByTestId('station-marker')).toHaveLength(2))
+    fireEvent.click(screen.getAllByTestId('station-marker')[0])
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?layers=stations&station=1020.1'))
+    await waitFor(() => expect(within(sheet).getByRole('tab', { name: 'Station' })).toHaveAttribute('aria-selected', 'true'))
+    expect(sheet.dataset.snap).toBe('half')
+    expect(await within(sheet).findByTestId('timeseries-panel')).toBeInTheDocument()
+    expect(within(sheet).getByTestId('timeseries-heading')).toHaveTextContent('Hilo Airport')
+    // Closing returns to the Dataset tab.
+    fireEvent.click(within(sheet).getByTestId('timeseries-close'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?layers=stations'))
+    await waitFor(() => expect(within(sheet).getByRole('tab', { name: 'Dataset' })).toHaveAttribute('aria-selected', 'true'))
+  })
+
+  it('a station in the address opens the Station tab on arrival, at peek height', async () => {
+    narrowScreen(true)
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1')
+    const sheet = screen.getByTestId('bottom-sheet')
+    expect(within(sheet).getByRole('tab', { name: 'Station' })).toHaveAttribute('aria-selected', 'true')
+    expect(sheet.dataset.snap).toBe('peek')
+    expect(await within(sheet).findByTestId('timeseries-panel')).toBeInTheDocument()
+  })
+
+  it('keeps the rail at 768 px and above', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    expect(screen.getByTestId('viewer').dataset.layout).toBe('rail')
+    expect(screen.queryByTestId('bottom-sheet')).toBeNull()
+    expect(screen.getByTestId('viewer-controls')).toBeInTheDocument()
+    await settle()
+  })
+})
+
 // ── sharing and comparing ───────────────────────────────────────────────────
 describe('sharing', () => {
-  it('copies the link with the clipboard API', async () => {
+  it('copies the canonical link with the clipboard API, whatever spelling the page was opened with', async () => {
     const writeText = vi.fn(async () => {})
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
-    renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in')
+    renderAt('/viewer/rain/daily/2026-09-07/ka?stations=1&units=in')
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?units=in&layers=stations'))
     fireEvent.click(screen.getByTestId('copy-link'))
     await waitFor(() => expect(screen.getByTestId('copy-link')).toHaveTextContent('Link copied'))
-    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/viewer/rainfall/day/2026-09-07/kauai?units=in`)
+    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/viewer/rainfall/day/2026-09-07/kauai?units=in&layers=stations`)
+  })
+
+  it('offers the system share sheet only where the browser has one, with the map title and the canonical link', async () => {
+    Object.defineProperty(navigator, 'share', { value: undefined, configurable: true, writable: true })
+    const { unmount } = renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in')
+    expect(screen.queryByTestId('share-link')).toBeNull()
+    unmount()
+    const share = vi.fn(async () => {})
+    Object.defineProperty(navigator, 'share', { value: share, configurable: true, writable: true })
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in')
+    fireEvent.click(screen.getByTestId('share-link'))
+    await waitFor(() => expect(share).toHaveBeenCalledWith({ title: 'Rainfall, September 7, 2026, Kauaʻi', url: `${window.location.origin}/viewer/rainfall/day/2026-09-07/kauai?units=in` }))
+    Object.defineProperty(navigator, 'share', { value: undefined, configurable: true, writable: true })
+  })
+
+  it('QR / short link asks /api/shorten for the canonical path and shows the short link with a QR code of it', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in')
+    fireEvent.click(screen.getByTestId('qr-link'))
+    const field = await screen.findByTestId('short-link')
+    await waitFor(() => expect(field).toHaveValue('http://localhost/s/k7Qz2'))
+    const post = global.fetch.mock.calls.find(([u]) => String(u) === '/api/shorten')
+    expect(post[1].method).toBe('POST')
+    expect(JSON.parse(post[1].body)).toEqual({ path: '/viewer/rainfall/day/2026-09-07/kauai?units=in' })
+    const qr = await screen.findByTestId('qr-code')
+    expect(qr.getAttribute('src')).toMatch(/^data:image\/svg\+xml;charset=utf-8,/)
+    expect(decodeURIComponent(qr.getAttribute('src'))).toContain('<svg')
+    expect(qr).toHaveAttribute('alt', 'QR code that opens http://localhost/s/k7Qz2')
+    expect(screen.getByText(/Print this page/)).toBeInTheDocument()
+  })
+
+  it('falls back to the long link (and a QR code of it) when the shortener fails', async () => {
+    shortenMode = 500
+    renderAt('/viewer/spi-3/month/2026-08/statewide')
+    fireEvent.click(screen.getByTestId('qr-link'))
+    const field = await screen.findByTestId('short-link')
+    await waitFor(() => expect(field).toHaveValue(`${window.location.origin}/viewer/spi-3/month/2026-08/statewide`))
+    expect(screen.getByTestId('short-link-fallback')).toHaveTextContent('did not answer')
+    expect(await screen.findByTestId('qr-code')).toHaveAttribute('alt', `QR code that opens ${window.location.origin}/viewer/spi-3/month/2026-08/statewide`)
   })
 
   it('shows the address to copy by hand when the clipboard is refused', async () => {

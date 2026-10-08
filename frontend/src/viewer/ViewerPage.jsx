@@ -18,12 +18,14 @@ import { CLIMATE_STATIONS_URL, findStation, stationValuesUrl, stationsOf, useJso
 import { NAMED_RAMPS, makeColorFn, rampPosition, valueAtLatLng } from './map/ramps'
 import {
   clampDate, compareDateFor, dateForPeriod, defaultRampFor, domainFor, formatValue, hasExtremeScale,
-  isRealDate, legendFor, pathWith, rampNameFor, rasterRequestUrl, sourceLineFor, unitsForDataset, unitsLineFor,
+  isExperimental, isIgnition, isRealDate, legendFor, pathWith, rampNameFor, rasterRequestUrl, sourceLineFor,
+  unitsForDataset, unitsLineFor,
 } from './map/viewerModel'
+import { TooltipProvider } from '../components/ui/tooltip'
 import { useRaster } from './map/rasterCache'
 import { getDateRange, getDateRangeSoon, useDateRange } from './map/dateRanges'
 import { Controls, CompareControl, LayerControls, ShareActions } from './map/Controls'
-import { Compass, CornerStack, Legend, MapPill, TitleCard, ValueReadout } from './map/MapFurniture'
+import { Compass, CornerStack, ExperimentalBadge, IGNITION_CAUTION, Legend, MapPill, TitleCard, ValueReadout } from './map/MapFurniture'
 import { GrammarError, MapStatus } from './map/ErrorStates'
 import Launcher from './map/Launcher'
 
@@ -235,6 +237,7 @@ function Viewer({ v }) {
   const stationProps = (sv) => (stationsOn ? { stations: sv.status === 'ready' ? stationsOf(sv.data) : null, stationStatus: sv.status } : {})
 
   return (
+    <TooltipProvider delayDuration={300}>
     <div className="mx-auto w-full max-w-[1440px] px-4 pb-8 pt-4" data-testid="viewer">
       <div className={cn('flex flex-col gap-4 lg:grid lg:items-start lg:gap-5', selection ? 'lg:grid-cols-[18rem_minmax(0,1fr)_20rem]' : 'lg:grid-cols-[18rem_minmax(0,1fr)]')}>
         <aside className="min-w-0 space-y-4" aria-label="Map settings">
@@ -274,6 +277,7 @@ function Viewer({ v }) {
         {panel && <div className="min-w-0" data-testid="timeseries-dock">{panel}</div>}
       </div>
     </div>
+    </TooltipProvider>
   )
 }
 
@@ -314,8 +318,9 @@ const MapPane = memo(function MapPane({
           onHover={setHover} onPick={setPick} syncBus={syncBus} leader={leader}
         />
       </Suspense>
-      <TitleCard title={title} unitsLine={unitsLineFor(v)} sourceLine={sourceLineFor(v)} />
+      <TitleCard title={title} unitsLine={unitsLineFor(v)} sourceLine={sourceLineFor(v)} caution={isIgnition(v) ? IGNITION_CAUTION : null} />
       <CornerStack>
+        {isExperimental(v) && <ExperimentalBadge />}
         {stationStatus === 'loading' && (
           <MapPill testid="stations-loading"><Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> stations…</MapPill>
         )}

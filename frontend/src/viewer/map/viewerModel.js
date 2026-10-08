@@ -146,6 +146,16 @@ export function legendFor(v) {
   return { header, labels }
 }
 
+/** The portal marks daily rainfall and every ignition product experimental. */
+export function isExperimental(v) {
+  return (v.dataset === 'rainfall' && v.period === 'day') || isIgnition(v)
+}
+
+/** Any ignition-probability product (today's map or a lead). */
+export function isIgnition(v) {
+  return DATASETS[v.dataset]?.api?.datatype === 'ignition_probability'
+}
+
 /** The portal's name for the product ("Daily Rainfall", "3-Month SPI …"). */
 export function portalLabelFor(v) {
   return portalDataset(specFor(v))?.label || DATASETS[v.dataset]?.label || v.dataset

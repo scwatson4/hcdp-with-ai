@@ -690,6 +690,33 @@ describe('raster loading', () => {
   })
 })
 
+// ── banners ─────────────────────────────────────────────────────────────────
+describe('banners on the map', () => {
+  it('marks daily rainfall experimental, with a tooltip that says why', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    const badge = screen.getByTestId('experimental-badge')
+    expect(badge).toHaveTextContent('Experimental')
+    expect(screen.queryByTestId('viewer-caution')).toBeNull()
+    fireEvent.focus(badge)
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Daily rainfall and ignition products are experimental')
+    await settle()
+  })
+
+  it('marks every ignition product experimental and adds the one-line caution under the title card', async () => {
+    renderAt('/viewer/ignition-lead-2/day/2026-09-07/statewide')
+    expect(screen.getByTestId('experimental-badge')).toBeInTheDocument()
+    expect(screen.getByTestId('viewer-caution')).toHaveTextContent('Informational only — not an operational fire forecast (CC BY-NC-ND 4.0).')
+    await settle()
+  })
+
+  it('shows neither for monthly rainfall or SPI', async () => {
+    renderAt('/viewer/rainfall/month/2026-08/kauai')
+    expect(screen.queryByTestId('experimental-badge')).toBeNull()
+    expect(screen.queryByTestId('viewer-caution')).toBeNull()
+    await settle()
+  })
+})
+
 // ── station markers ─────────────────────────────────────────────────────────
 describe('?layers=stations', () => {
   it('draws one marker per station in the view colours, with a tooltip, and a click selects it (push)', async () => {

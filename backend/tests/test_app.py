@@ -92,7 +92,7 @@ def test_viewer_links_get_their_own_title_for_link_previews(tmp_path, monkeypatc
 def test_map_png_validates_like_raster():
     c = client()
     assert c.get("/api/map.png", params={"dataset": "wind", "period": "day", "date": "2026-09-01"}).status_code == 400
-    assert c.get("/api/map.png", params={"dataset": "rainfall", "period": "month", "date": "2026-08", "ramp": "magma"}).status_code == 400
+    assert c.get("/api/map.png", params={"dataset": "rainfall", "period": "month", "date": "2026-08", "ramp": "not-a-ramp"}).status_code == 400
 
 
 def test_stations_endpoint():

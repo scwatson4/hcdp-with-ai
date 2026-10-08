@@ -14,12 +14,13 @@ import { Loader2 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { DATASETS, DEFAULT_BASEMAP, DEFAULT_OPACITY, EXTENTS, LAYER_KEYS, canonicalize, describeViewer, foreignQuery, formatViewerPath, hasStations, parseViewerPath } from './urlGrammar'
 import { scheduleUrlWrite } from './urlWrites'
+import { readUnitsPreference, writeUnitsPreference } from './unitsPreference'
 import { CLIMATE_STATIONS_URL, findStation, stationValuesUrl, stationsOf, useJson } from './map/stationData'
 import { NAMED_RAMPS, makeColorFn, rampPosition, valueAtLatLng } from './map/ramps'
 import {
   clampDate, compareDateFor, dateForPeriod, defaultRampFor, domainFor, formatValue, hasExtremeScale,
   isExperimental, isIgnition, isLogScale, isRampReversed, isRealDate, legendFor, pathWith, rampNameFor, rasterRequestUrl, sourceLineFor,
-  unitsForDataset, unitsLineFor,
+  unitChoicesFor, unitSystem, unitsForDataset, unitsLineFor,
 } from './map/viewerModel'
 import { TooltipProvider } from '../components/ui/tooltip'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
@@ -38,15 +39,27 @@ const StationList = lazy(() => import('./StationList'))
 
 const EYEBROW = 'font-mono text-[11px] font-medium uppercase tracking-wide text-subtle'
 
-/** The one spelling of an address the grammar accepts, with any query keys
- *  that are not the grammar's (another feature's) kept after it, or null
- *  when the address is already spelled that way or is not a viewer map. */
-export function canonicalRewrite(pathname, search = '') {
-  const canonical = canonicalize(pathname, search)
-  if (canonical == null) return null
+/** The one spelling of an address the grammar accepts (with `patch`, if
+ *  any, applied to it), with any query keys that are not the grammar's
+ *  (another feature's) kept after it, or null when the address is already
+ *  spelled that way or is not a viewer map. */
+export function canonicalRewrite(pathname, search = '', patch = null) {
+  const v = parseViewerPath(pathname, search)
+  if (!v || v.error) return null
+  const canonical = patch ? pathWith(v, patch) : formatViewerPath(v)
   const foreign = foreignQuery(search)
   const target = canonical + (foreign ? (canonical.includes('?') ? '&' : '?') + foreign : '')
   return target === `${pathname}${search || ''}` ? null : target
+}
+
+/** The units key the remembered preference adds to an address that names
+ *  none: 'in' or 'f' for an imperial preference on a dataset with units;
+ *  null otherwise — and null whenever the address itself says `units=`
+ *  (even `units=mm`: a key in the URL always wins). */
+export function preferredUnitsFor(v, search = '', preference = readUnitsPreference()) {
+  if (!v || v.error || preference !== 'imperial') return null
+  if (new URLSearchParams(search).has('units')) return null
+  return unitChoicesFor(v.dataset) ? unitsForDataset(v.dataset, { units: 'in' }) : null
 }
 
 export default function ViewerPage() {
@@ -55,9 +68,16 @@ export default function ViewerPage() {
   const v = useMemo(() => parseViewerPath(pathname, search), [pathname, search])
   const launcher = /^\/viewer\/?$/i.test(pathname)
   // Load-time canonical rewrite: aliases, month names, the first grammar's
-  // ?stations=1, keys out of order. A replace, so Back is not affected, and
-  // the parsed view is identical, so nothing below re-mounts.
-  const rewrite = !launcher && v && !v.error ? canonicalRewrite(pathname, search) : null
+  // ?stations=1, keys out of order — and the remembered unit system when
+  // the address names none. A replace, so Back is not affected, and the
+  // parsed view is identical (units aside), so nothing below re-mounts.
+  // Once an address of this visit has named its units (a pasted link, the
+  // toggle, or this rewrite), they are settled: the preference never fills
+  // them in again — so `units=mm`, dropped as the default, stays metric.
+  const unitsSettled = useRef(false)
+  if (new URLSearchParams(search).has('units')) unitsSettled.current = true
+  const units = !launcher && !unitsSettled.current ? preferredUnitsFor(v, search) : null
+  const rewrite = !launcher && v && !v.error ? canonicalRewrite(pathname, search, units ? { opts: { units } } : null) : null
   useEffect(() => {
     if (rewrite) navigate(rewrite + (hash || ''), { replace: true })
   }, [rewrite, hash, navigate])
@@ -173,7 +193,8 @@ function Viewer({ v }) {
   })
   const onLog = (on) => set('log', { opts: { log: on || undefined } })
   const onRange = (range) => set('range', { opts: { range: range || undefined } })
-  const onUnits = (u) => set('units', { opts: { units: u === 'in' || u === 'f' ? u : undefined } })
+  // The unit system is the one thing remembered per browser (besides the theme).
+  const onUnits = (u) => { writeUnitsPreference(unitSystem({ units: u })); set('units', { opts: { units: u === 'in' || u === 'f' ? u : undefined } }) }
   const onScale = (s) => set('scale', { opts: { scale: s === 'extreme' ? 'extreme' : undefined } })
   const onCompare = (date) => set('compare', { opts: { compare: date || undefined } })
   // The camera: 400 ms after the gesture ends (ClimateMap), then the limiter.

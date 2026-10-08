@@ -214,6 +214,7 @@ function narrowScreen(on) {
 }
 
 beforeEach(() => {
+  try { localStorage.clear() } catch { /* no storage */ }
   narrowScreen(false)
   rasterMode = 'data'
   stationsMode = 'data'
@@ -300,6 +301,66 @@ describe('an address spelled another way is rewritten to its canonical form', ()
     renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in&lat=22.1000&lng=-159.6000&z=11')
     await settle()
     expect(visited).toEqual(['/viewer/rainfall/day/2026-09-07/kauai?units=in&lat=22.1000&lng=-159.6000&z=11'])
+  })
+})
+
+// ── the one remembered preference: the unit system ──────────────────────────
+describe('the remembered unit system', () => {
+  it('fills in a link that names no units (replace) and is written by the toggle', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    await settle()
+    expect(visited).toEqual(['/viewer/rainfall/day/2026-09-07/kauai'])        // nothing remembered: nothing added
+    fireEvent.click(within(screen.getByTestId('units-toggle')).getByLabelText('in'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?units=in'))
+    expect(localStorage.getItem('hcdp-units')).toBe('imperial')
+    fireEvent.click(within(screen.getByTestId('units-toggle')).getByLabelText('mm'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai'))
+    expect(localStorage.getItem('hcdp-units')).toBe('metric')
+  })
+
+  it('opens a plain link in the remembered system — inches for rainfall, °F for temperature, nothing for an index', async () => {
+    localStorage.setItem('hcdp-units', 'imperial')
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?layers=stations')
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?units=in&layers=stations'))
+    expect(navType()).toBe('REPLACE')
+    expect(within(screen.getByTestId('units-toggle')).getByLabelText('in')).toBeChecked()
+    expect(screen.getByTestId('legend')).toHaveTextContent('Rainfall (in)')
+    await settle()
+    expect(visited).toHaveLength(2)
+  })
+
+  it('a units key in the address always wins — even the default spelling', async () => {
+    localStorage.setItem('hcdp-units', 'imperial')
+    const { unmount } = renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=mm')
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai'))   // canonical: the default leaves the address, and stays metric
+    await settle()
+    expect(within(screen.getByTestId('units-toggle')).getByLabelText('mm')).toBeChecked()
+    unmount()
+    renderAt('/viewer/temperature-max/month/2026-08/oahu')
+    await waitFor(() => expect(loc()).toBe('/viewer/temperature-max/month/2026-08/oahu?units=f'))
+    await settle()
+  })
+
+  it('does nothing for a unitless product and survives a browser that refuses storage', async () => {
+    localStorage.setItem('hcdp-units', 'imperial')
+    const { unmount } = renderAt('/viewer/spi-3/month/2026-08/statewide')
+    await settle()
+    expect(visited).toEqual(['/viewer/spi-3/month/2026-08/statewide'])
+    unmount()
+    const getItem = Storage.prototype.getItem
+    const setItem = Storage.prototype.setItem
+    Storage.prototype.getItem = () => { throw new Error('denied') }
+    Storage.prototype.setItem = () => { throw new Error('denied') }
+    try {
+      renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+      await settle()
+      expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai')
+      fireEvent.click(within(screen.getByTestId('units-toggle')).getByLabelText('in'))
+      await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?units=in'))
+    } finally {
+      Storage.prototype.getItem = getItem
+      Storage.prototype.setItem = setItem
+    }
   })
 })
 

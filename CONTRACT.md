@@ -184,4 +184,8 @@ Viewer entries carry `internal_path` templates such as `/viewer/rainfall/day/{da
 - Match the real HCDP site's section names and order: Access Data, Hawaiʻi Mesonet, Climate Summary,
   Pacific Portal, Extreme Events, Climate Tools; top nav Home · About · Data Portal · Research · Climate Tools.
 - Every page works at phone width. External links open in a new tab and say so.
-- No cookies, no analytics, no sign-in, nothing persisted except the theme.
+- No cookies, no analytics, no sign-in, nothing persisted except the theme — and one exception: the viewer's unit
+  system (`mm`/`°C` or `in`/`°F`) is remembered per browser (`localStorage` key `hcdp-units`, read and written in
+  try/catch; `frontend/src/viewer/unitsPreference.js`). It only fills in a viewer link that names no units, as a
+  load-time `replaceState` (`?units=in` / `?units=f`); a `units=` key in the address always wins, even `units=mm`.
+  The export email is never stored.

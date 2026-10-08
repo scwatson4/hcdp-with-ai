@@ -230,8 +230,10 @@ function SelectionMark({ at }) {
   )
 }
 
-/** Hover (rAF-throttled) and tap/click positions for the value readout. */
-function PointerProbe({ onHover, onPick }) {
+/** Hover (rAF-throttled) and tap/click positions for the value readout; a
+ *  click on the map (not on a marker — those stop their click) also selects
+ *  the grid cell under it. */
+function PointerProbe({ onHover, onPick, onSelectPoint }) {
   const raf = useRef(0)
   useMapEvents({
     mousemove(e) {
@@ -240,15 +242,60 @@ function PointerProbe({ onHover, onPick }) {
       raf.current = requestAnimationFrame(() => onHover?.({ lat, lng }))
     },
     mouseout() { cancelAnimationFrame(raf.current); onHover?.(null) },
-    click(e) { onPick?.({ lat: e.latlng.lat, lng: e.latlng.lng }) },
+    click(e) {
+      const at = { lat: e.latlng.lat, lng: e.latlng.lng }
+      onPick?.(at)
+      onSelectPoint?.(at)
+    },
   })
+  return null
+}
+
+/** A long press on touch (450 ms without moving) selects the cell under
+ *  the finger, as a click does with a pointer. Pointer events on the map's
+ *  container, so Leaflet's own handlers are untouched. */
+function LongPress({ onSelectPoint, ms = 450 }) {
+  const map = useMap()
+  const cb = useRef(onSelectPoint)
+  cb.current = onSelectPoint
+  useEffect(() => {
+    const el = typeof map?.getContainer === 'function' ? map.getContainer() : null
+    if (!el) return undefined
+    let timer = null
+    let start = null
+    const cancel = () => { clearTimeout(timer); timer = null; start = null }
+    const down = (e) => {
+      if (e.pointerType !== 'touch' || e.isPrimary === false) return
+      cancel()
+      start = { x: e.clientX, y: e.clientY }
+      timer = setTimeout(() => {
+        timer = null
+        const rect = el.getBoundingClientRect()
+        const p = map.containerPointToLatLng([start.x - rect.left, start.y - rect.top])
+        start = null
+        if (p) cb.current?.({ lat: p.lat, lng: p.lng })
+      }, ms)
+    }
+    const move = (e) => { if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) cancel() }
+    el.addEventListener('pointerdown', down)
+    el.addEventListener('pointermove', move)
+    el.addEventListener('pointerup', cancel)
+    el.addEventListener('pointercancel', cancel)
+    return () => {
+      cancel()
+      el.removeEventListener('pointerdown', down)
+      el.removeEventListener('pointermove', move)
+      el.removeEventListener('pointerup', cancel)
+      el.removeEventListener('pointercancel', cancel)
+    }
+  }, [map, ms])
   return null
 }
 
 function ClimateMap({
   extent, view = null, onViewChange = null, georaster = null, colorFn = null,
   basemap = DEFAULT_BASEMAP, opacity = 0.75, layers = [],
-  stations = null, selected = null, onSelectStation = null, formatValue = String,
+  stations = null, selected = null, onSelectStation = null, onSelectPoint = null, formatValue = String,
   onHover = null, onPick = null, syncBus = null, leader = false,
 }) {
   // MapContainer reads center/zoom once; ViewSync owns the view after that.
@@ -283,7 +330,8 @@ function ClimateMap({
       <ScaleControl position="bottomleft" imperial metric maxWidth={120} />
       {onViewChange && <ViewSync extent={extent} view={view} onViewChange={onViewChange} />}
       {syncBus && <PeerSync bus={syncBus} leader={leader} />}
-      <PointerProbe onHover={onHover} onPick={onPick} />
+      <PointerProbe onHover={onHover} onPick={onPick} onSelectPoint={onSelectPoint} />
+      {onSelectPoint && <LongPress onSelectPoint={onSelectPoint} />}
     </MapContainer>
   )
 }

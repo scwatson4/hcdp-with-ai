@@ -11,6 +11,7 @@
 import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
+import { cn } from '../lib/utils'
 import { DATASETS, DEFAULT_BASEMAP, DEFAULT_OPACITY, LAYER_KEYS, canonicalize, describeViewer, foreignQuery, formatViewerPath, hasStations, parseViewerPath } from './urlGrammar'
 import { scheduleUrlWrite } from './urlWrites'
 import { CLIMATE_STATIONS_URL, findStation, stationValuesUrl, stationsOf, useJson } from './map/stationData'
@@ -27,6 +28,7 @@ import { GrammarError, MapStatus } from './map/ErrorStates'
 import Launcher from './map/Launcher'
 
 const ClimateMap = lazy(() => import('./map/ClimateMap'))
+const TimeSeriesPanel = lazy(() => import('./TimeSeriesPanel'))
 
 const EYEBROW = 'font-mono text-[11px] font-medium uppercase tracking-wide text-subtle'
 
@@ -179,11 +181,34 @@ function Viewer({ v }) {
     if (skn) return selectedStation ? { kind: 'station', lat: selectedStation.lat, lng: selectedStation.lng } : null
     return pin ? { kind: 'pin', lat: pin.lat, lng: pin.lng } : null
   }, [skn, selectedStation?.lat, selectedStation?.lng, pin?.lat, pin?.lng]) // eslint-disable-line react-hooks/exhaustive-deps
-  // A station is a choice: push (Back returns to the map without it).
+  // Selecting is a choice: push (Back returns to the map without it). A
+  // station and a pin exclude each other. The panel takes focus only for a
+  // selection the visitor just made, never for one restored from the address.
+  const userSelected = useRef(false)
   const onSelectStation = useCallback((s) => {
     if (String(latest.current.opts.station || '') === String(s.skn)) return
+    userSelected.current = true
     go({ opts: { station: String(s.skn), pin: undefined } })
   }, [go])
+  const onSelectPoint = useCallback(({ lat, lng }) => {
+    const p = { lat: Number(lat.toFixed(4)), lng: Number(lng.toFixed(4)) }
+    const cur = latest.current.opts.pin
+    if (cur && cur.lat === p.lat && cur.lng === p.lng) return
+    userSelected.current = true
+    go({ opts: { pin: p, station: undefined } })
+  }, [go])
+  // Closing is the inverse of selecting: a push too, so Back reopens it.
+  const onCloseSeries = useCallback(() => {
+    userSelected.current = false
+    go({ opts: { station: undefined, pin: undefined, ts: undefined, tsp: undefined } })
+  }, [go])
+  const onTsRange = useCallback((range) => set('ts', { opts: { ts: range || undefined } }), [set])
+  // A window is written in one period's date format: the other period starts over.
+  const onTsPeriod = useCallback((p) => set('tsp', (cur) => ({ opts: { tsp: p === cur.period ? undefined : p, ts: undefined } })), [set])
+  const selection = useMemo(() => {
+    if (skn) return { kind: 'station', skn, station: selectedStation }
+    return pin ? { kind: 'pin', lat: pin.lat, lng: pin.lng } : null
+  }, [skn, selectedStation, pin?.lat, pin?.lng]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const shareUrl = origin + formatViewerPath(v)
@@ -195,15 +220,23 @@ function Viewer({ v }) {
   const pane = (date, r, fn, extra) => (
     <MapPane
       v={v} date={date} raster={r} colorFn={fn} ramp={ramp} domain={domain} dateRange={dateRange}
-      opacity={mapOpacity} layers={layers} selected={selected} onSelectStation={onSelectStation}
+      opacity={mapOpacity} layers={layers} selected={selected} onSelectStation={onSelectStation} onSelectPoint={onSelectPoint}
       syncBus={compareDate ? busRef.current : null} {...extra}
     />
+  )
+  const panel = selection && (
+    <Suspense fallback={<div className="rounded-lg border border-border bg-card p-4 text-sm text-subtle" data-testid="timeseries-skeleton">Loading the time series…</div>}>
+      <TimeSeriesPanel
+        v={v} selection={selection} onRange={onTsRange} onPeriod={onTsPeriod} onClose={onCloseSeries}
+        focusOnOpen={userSelected.current} className="lg:max-h-[calc(100dvh-8.5rem)] lg:overflow-y-auto"
+      />
+    </Suspense>
   )
   const stationProps = (sv) => (stationsOn ? { stations: sv.status === 'ready' ? stationsOf(sv.data) : null, stationStatus: sv.status } : {})
 
   return (
     <div className="mx-auto w-full max-w-[1440px] px-4 pb-8 pt-4" data-testid="viewer">
-      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-start lg:gap-5">
+      <div className={cn('flex flex-col gap-4 lg:grid lg:items-start lg:gap-5', selection ? 'lg:grid-cols-[18rem_minmax(0,1fr)_20rem]' : 'lg:grid-cols-[18rem_minmax(0,1fr)]')}>
         <aside className="min-w-0 space-y-4" aria-label="Map settings">
           <header>
             <p className={EYEBROW}>Climate viewer</p>
@@ -237,6 +270,8 @@ function Viewer({ v }) {
             </div>
           )}
         </section>
+        {/* The time series: a 20 rem column beside the map on wide screens, below it otherwise. */}
+        {panel && <div className="min-w-0" data-testid="timeseries-dock">{panel}</div>}
       </div>
     </div>
   )
@@ -246,7 +281,7 @@ function Viewer({ v }) {
  *  pointer never re-renders the controls. */
 const MapPane = memo(function MapPane({
   v, date, raster, colorFn, ramp, domain, dateRange, opacity = DEFAULT_OPACITY / 100, layers = [],
-  stations = null, stationStatus = null, selected = null, onSelectStation = null,
+  stations = null, stationStatus = null, selected = null, onSelectStation = null, onSelectPoint = null,
   onViewChange = null, syncBus = null, leader = false, showLegend = true, showCompass = true,
 }) {
   const [hover, setHover] = useState(null)
@@ -254,6 +289,12 @@ const MapPane = memo(function MapPane({
   // A new map (date, dataset, place) forgets the old pointer position.
   useEffect(() => { setPick(null); setHover(null) }, [raster.url])
   const ready = raster.status === 'ready'
+  // No pin on the ocean: a cell without a value has no record to show.
+  const georaster = ready ? raster.georaster : null
+  const selectPoint = useCallback((p) => {
+    if (georaster && valueAtLatLng(georaster, p.lat, p.lng) == null) return
+    onSelectPoint?.(p)
+  }, [georaster, onSelectPoint])
   const point = hover || pick
   const value = point && ready ? valueAtLatLng(raster.georaster, point.lat, point.lng) : null
   const readout = point && ready ? (value == null ? 'no data here' : formatValue(value, v.dataset, v.opts)) : null
@@ -268,7 +309,7 @@ const MapPane = memo(function MapPane({
           extent={v.extent} view={v.opts.view || null} onViewChange={onViewChange}
           georaster={ready ? raster.georaster : null} colorFn={colorFn}
           basemap={v.opts.basemap || DEFAULT_BASEMAP} opacity={opacity} layers={layers}
-          stations={stations} selected={selected} onSelectStation={onSelectStation}
+          stations={stations} selected={selected} onSelectStation={onSelectStation} onSelectPoint={onSelectPoint ? selectPoint : null}
           formatValue={(val) => formatValue(val, v.dataset, v.opts)}
           onHover={setHover} onPick={setPick} syncBus={syncBus} leader={leader}
         />

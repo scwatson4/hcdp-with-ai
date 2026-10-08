@@ -27,11 +27,13 @@ const fake = vi.hoisted(() => {
     getPane() { return null },
     createPane() { return { style: {} } },
     addLayer() {}, removeLayer: vi.fn(), invalidateSize() {},
-    getContainer() { return null },
+    getContainer() { return fake.container },
+    // A 1° per 100 px fake projection from the container's top-left corner.
+    containerPointToLatLng([x, y]) { return { lat: 22.5 - y / 100, lng: -160 + x / 100 } },
     on() {}, off() {},
     fire(name, e = {}) { for (const h of [...handlers]) h[name]?.(e) },
   }
-  return { map, handlers, layers: [], instances: [], mapProps: [] }
+  return { map, handlers, layers: [], instances: [], mapProps: [], charts: [], container: null }
 })
 
 vi.mock('react-leaflet', async () => {
@@ -95,6 +97,17 @@ vi.mock('georaster-layer-for-leaflet', () => ({
 // Radix's slider measures its thumb with a ResizeObserver; jsdom has none.
 if (!global.ResizeObserver) global.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} }
 
+// uPlot draws on a canvas jsdom does not have: keep what it was given.
+vi.mock('uplot', () => ({
+  default: class {
+    constructor(opts, data, el) { this.opts = opts; this.data = data; this.root = document.createElement('div'); this.root.className = 'uplot'; el?.appendChild(this.root); fake.charts.push(this) }
+    setData(d) { this.data = d }
+    setSize() {}
+    destroy() { this.destroyed = true; this.root.remove() }
+    static tzDate(d) { return d }
+  },
+}))
+
 // ── fetch ───────────────────────────────────────────────────────────────────
 const DAY_RANGE = ['1990-01-01T10:00:00.000Z', '2026-09-23T10:00:00.000Z']
 const MONTH_RANGE = ['1990-01-01T10:00:00.000Z', '2026-08-01T10:00:00.000Z']
@@ -115,10 +128,19 @@ const CLIMATE_STATIONS = {
   ],
 }
 
+// A short record: a gap on the 2nd, as the API sends it.
+const RECORD = (u) => ({
+  points: [['2026-09-01', 7.72], ['2026-09-02', null], ['2026-09-03', 1.5]],
+  units: 'mm', dataset: u.searchParams.get('dataset'), period: u.searchParams.get('period'),
+  location: u.searchParams.get('station') ? { skn: u.searchParams.get('station') } : { lat: u.searchParams.get('lat'), lng: u.searchParams.get('lng') },
+})
+
 let rasterMode = 'data' // 'data' | 'empty' | 404 | 500 | 'network' | 'hang'
 let stationsMode = 'data' // 'data' | 404 | 'hang'
+let seriesMode = 'data' // 'data' | 404 | 500 | 'hang'
 let hung = []
 let hungStations = []
+let hungSeries = []
 function hang(url, init, list) {
   return new Promise((resolve, reject) => {
     list.push({ url: String(url), signal: init.signal, resolve })
@@ -138,6 +160,12 @@ function installFetch() {
       return { ok: true, status: 200, json: async () => STATION_VALUES }
     }
     if (u.pathname === '/api/climate-stations') return { ok: true, status: 200, json: async () => CLIMATE_STATIONS }
+    if (u.pathname === '/api/timeseries') {
+      if (seriesMode === 404) return { ok: false, status: 404, json: async () => ({ detail: 'no record' }) }
+      if (seriesMode === 500) return { ok: false, status: 502, json: async () => ({ detail: 'HCDP API returned 500' }) }
+      if (seriesMode === 'hang') return hang(url, init, hungSeries)
+      return { ok: true, status: 200, json: async () => RECORD(u) }
+    }
     if (u.pathname === '/api/raster') {
       if (rasterMode === 'network') throw new TypeError('Failed to fetch')
       if (rasterMode === 404) return { ok: false, status: 404, json: async () => ({ detail: 'no map for that date' }) }
@@ -175,8 +203,10 @@ const navType = () => screen.getByTestId('location').dataset.type
 beforeEach(() => {
   rasterMode = 'data'
   stationsMode = 'data'
+  seriesMode = 'data'
   hung = []
   hungStations = []
+  hungSeries = []
   visited = []
   resetUrlWrites()
   clearStationCache()
@@ -184,6 +214,8 @@ beforeEach(() => {
   fake.layers.length = 0
   fake.instances.length = 0
   fake.mapProps.length = 0
+  fake.charts.length = 0
+  fake.container = document.createElement('div')
   clearRasterCache()
   clearDateRanges()
   installFetch()
@@ -685,6 +717,158 @@ describe('?layers=stations', () => {
     await settle()
     expect(callsTo('/api/station-values')).toHaveLength(0)
     expect(screen.queryByTestId('stations-loading')).toBeNull()
+  })
+})
+
+// ── the time series panel ───────────────────────────────────────────────────
+const SEC = (iso) => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 1000
+describe('?station= and ?pin= open the time series', () => {
+  it('shows a station: name, SKN, island and elevation; the whole record by default; values in display units with gaps', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in&station=1020.1')
+    const panel = await screen.findByRole('complementary', { name: /Hilo Airport: Rainfall, daily time series/ })
+    expect(screen.getByTestId('timeseries-heading')).toHaveTextContent('Hilo Airport')
+    expect(screen.getByTestId('timeseries-details')).toHaveTextContent('SKN 1020.1 · Hawaiʻi · 11 m')
+    // The record is asked for over the published range of the dataset's daily maps.
+    await waitFor(() => expect(callsTo('/api/timeseries')).toEqual(['/api/timeseries?dataset=rainfall&period=day&start=1990-01-01&end=2026-09-23&station=1020.1']))
+    await waitFor(() => expect(fake.charts).toHaveLength(1))
+    const chart = fake.charts[0]
+    expect(chart.data[0]).toEqual([SEC('2026-09-01'), SEC('2026-09-02'), SEC('2026-09-03')])
+    expect(chart.data[1]).toEqual([0.3, null, 0.06]) // 7.72 mm and 1.5 mm in inches, a gap between
+    expect(chart.opts.series[1].spanGaps).toBe(false)
+    expect(within(panel).getByTestId('timeseries-readout')).toHaveTextContent('2 days · 0.06 to 0.3 in')
+    expect(within(panel).getByTestId('timeseries-csv')).toBeEnabled()
+    // Default window is "All"; rainfall has both periods, so the series period can be switched.
+    expect(within(screen.getByTestId('ts-window')).getByLabelText('All')).toBeChecked()
+    expect(within(screen.getByTestId('ts-period')).getByLabelText('Daily')).toBeChecked()
+  })
+
+  it('writes the window with ts= (replace) from the Month / Year / All buttons, and Custom from two date fields', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1')
+    await screen.findByTestId('timeseries-panel')
+    await waitFor(() => expect(callsTo('/api/timeseries')).toHaveLength(1))
+    fireEvent.click(within(screen.getByTestId('ts-window')).getByLabelText('Year'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1&ts=2025-09-07..2026-09-07'))
+    expect(navType()).toBe('REPLACE')
+    await waitFor(() => expect(callsTo('/api/timeseries')).toContain('/api/timeseries?dataset=rainfall&period=day&start=2025-09-07&end=2026-09-07&station=1020.1'))
+    fireEvent.click(within(screen.getByTestId('ts-window')).getByLabelText('Month'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1&ts=2026-08-07..2026-09-07'))
+    fireEvent.click(within(screen.getByTestId('ts-window')).getByLabelText('Custom'))
+    const start = await screen.findByTestId('ts-start')
+    expect(start).toHaveValue('2026-08-07')
+    fireEvent.change(start, { target: { value: '2026-06-01' } })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1&ts=2026-06-01..2026-09-07'))
+    fireEvent.click(within(screen.getByTestId('ts-window')).getByLabelText('All'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1'))
+    expect(screen.queryByTestId('ts-custom')).toBeNull()
+  })
+
+  it('switches the series period with tsp= (the daily window is dropped) and fetches the monthly record', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1&ts=2026-08-07..2026-09-07')
+    await screen.findByTestId('timeseries-panel')
+    fireEvent.click(within(screen.getByTestId('ts-period')).getByLabelText('Monthly'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1&tsp=month'))
+    expect(navType()).toBe('REPLACE')
+    await waitFor(() => expect(callsTo('/api/timeseries')).toContain('/api/timeseries?dataset=rainfall&period=month&start=1990-01&end=2026-08&station=1020.1'))
+    expect(within(screen.getByTestId('ts-window')).queryByLabelText('Month')).toBeNull() // no "Month" window for a monthly series
+  })
+
+  it('a click on the map pushes pin= (4 decimals) and opens the grid cell; the ocean is ignored', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    await waitFor(() => expect(fake.layers.length).toBeGreaterThan(0))
+    // nodata under the pointer (the mocked grid's bottom-left pixel): no pin.
+    await act(async () => { fake.map.fire('click', { latlng: { lat: 21.5, lng: -159.5 } }) })
+    await settle()
+    expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai')
+    expect(screen.queryByTestId('timeseries-panel')).toBeNull()
+    await act(async () => { fake.map.fire('click', { latlng: { lat: 22.123456, lng: -159.654321 } }) })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?pin=22.1235,-159.6543'))
+    expect(navType()).toBe('PUSH')
+    expect(await screen.findByTestId('timeseries-heading')).toHaveTextContent('Grid cell 22.1235, -159.6543')
+    expect(screen.getByTestId('selection-mark').dataset.center).toBe('22.1235,-159.6543')
+    await waitFor(() => expect(callsTo('/api/timeseries')).toEqual(['/api/timeseries?dataset=rainfall&period=day&start=1990-01-01&end=2026-09-23&lat=22.1235&lng=-159.6543']))
+    // The same cell again is not pushed twice.
+    await act(async () => { fake.map.fire('click', { latlng: { lat: 22.12349, lng: -159.65431 } }) })
+    await settle()
+    expect(visited.filter((p) => p.includes('pin=')).length).toBe(1)
+  })
+
+  it('a pin replaces a station and a station replaces a pin', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?layers=stations&station=1020.1&ts=2026-08-07..2026-09-07')
+    await screen.findByTestId('timeseries-panel')
+    await act(async () => { fake.map.fire('click', { latlng: { lat: 22.1, lng: -159.6 } }) })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?layers=stations&pin=22.1000,-159.6000&ts=2026-08-07..2026-09-07'))
+    await waitFor(() => expect(screen.getAllByTestId('station-marker')).toHaveLength(2))
+    fireEvent.click(screen.getAllByTestId('station-marker')[1])
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?layers=stations&station=800.2&ts=2026-08-07..2026-09-07'))
+    expect(screen.getByTestId('timeseries-heading')).toHaveTextContent('Kahului')
+  })
+
+  it('a long press on touch selects the cell under the finger', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    await act(async () => { await vi.advanceTimersByTimeAsync(10) })
+    const press = (type, init) => {
+      const e = new Event(type, { bubbles: true })
+      Object.assign(e, { pointerType: 'touch', isPrimary: true, clientX: 50, clientY: 40, ...init })
+      fake.container.dispatchEvent(e)
+    }
+    press('pointerdown')
+    press('pointermove', { clientX: 53 }) // a 3 px wobble is still a press
+    await act(async () => { await vi.advanceTimersByTimeAsync(449) })
+    expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai')
+    await act(async () => { await vi.advanceTimersByTimeAsync(1) })
+    expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?pin=22.1000,-159.5000') // 40 px down, 50 px right of the corner
+    // A press that moves on is a pan, not a selection.
+    press('pointerdown')
+    press('pointermove', { clientX: 80 })
+    await act(async () => { await vi.advanceTimersByTimeAsync(500) })
+    expect(visited.filter((p) => p.includes('pin=')).length).toBe(1)
+    vi.useRealTimers()
+  })
+
+  it('closes with the × or Escape as a push that drops station, pin, ts and tsp', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in&station=1020.1&ts=2026-08-07..2026-09-07&tsp=month')
+    await screen.findByTestId('timeseries-panel')
+    fireEvent.click(screen.getByTestId('timeseries-close'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?units=in'))
+    expect(navType()).toBe('PUSH')
+    expect(screen.queryByTestId('timeseries-panel')).toBeNull()
+    await act(async () => { fake.map.fire('click', { latlng: { lat: 22.1, lng: -159.6 } }) })
+    await screen.findByTestId('timeseries-panel')
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByTestId('timeseries-panel')).toBeNull())
+    expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?units=in')
+  })
+
+  it('downloads a date,value CSV in display units under a station or cell file name', async () => {
+    const urls = []
+    URL.createObjectURL = vi.fn((blob) => { urls.push(blob); return 'blob:csv' })
+    URL.revokeObjectURL = vi.fn()
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () { urls.push(this.download) })
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in&station=1020.1')
+    const button = await screen.findByTestId('timeseries-csv')
+    await waitFor(() => expect(button).toBeEnabled())
+    fireEvent.click(button)
+    expect(urls[1]).toBe('station_1020.1_rainfall_day.csv')
+    const blob = urls[0]
+    expect(blob.type).toBe('text/csv;charset=utf-8')
+    expect(blob.size).toBe('date,value\n2026-09-01,0.3\n2026-09-02,\n2026-09-03,0.06\n'.length)
+    click.mockRestore()
+  })
+
+  it('says when the record is missing, and offers a retry when the service fails', async () => {
+    seriesMode = 404
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1')
+    expect(await screen.findByTestId('timeseries-notfound')).toHaveTextContent('no record')
+    seriesMode = 500
+    fireEvent.click(screen.getByRole('button', { name: 'Previous day' }))
+    await settle()
+    // The window did not change, so the same record is shown; a new station asks again.
+    await act(async () => { fake.map.fire('click', { latlng: { lat: 22.1, lng: -159.6 } }) })
+    expect(await screen.findByTestId('timeseries-error')).toHaveTextContent('did not load')
+    seriesMode = 'data'
+    fireEvent.click(within(screen.getByTestId('timeseries-error')).getByRole('button', { name: /Try again/ }))
+    await waitFor(() => expect(fake.charts.length).toBeGreaterThan(0))
   })
 })
 

@@ -1,4 +1,20 @@
 import { describe, it, expect } from 'vitest'
+import { shiftMonths } from './viewerModel'
+
+describe('shiftMonths', () => {
+  it('keeps the day when it exists and clamps it to the month otherwise', () => {
+    expect(shiftMonths('2026-09-07', 'day', -1)).toBe('2026-08-07')
+    expect(shiftMonths('2026-03-31', 'day', -1)).toBe('2026-02-28')
+    expect(shiftMonths('2024-01-31', 'day', 1)).toBe('2024-02-29')
+    expect(shiftMonths('2026-01-31', 'day', -1)).toBe('2025-12-31')
+    expect(shiftMonths('2026-09-07', 'day', -12)).toBe('2025-09-07')
+  })
+  it('moves a month by whole months', () => {
+    expect(shiftMonths('2026-08', 'month', -12)).toBe('2025-08')
+    expect(shiftMonths('2026-08', 'month', 12)).toBe('2027-08')
+    expect(shiftMonths('2026-01', 'month', -1)).toBe('2025-12')
+  })
+})
 import {
   parseDateRange, dateForPeriod, shiftDate, clampDate, isRealDate, yearBefore, hawaiiYesterday, hawaiiLastMonth,
   legendFor, domainFor, displayUnit, toDisplay, formatValue, unitsForDataset, selectedUnit, rampNameFor,

@@ -3,7 +3,7 @@
 // the view except the half-typed text of the date field.
 
 import { useEffect, useId, useRef, useState } from 'react'
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Link2, SlidersHorizontal } from 'lucide-react'
+import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ExternalLink, Link2, SkipBack, SkipForward, SlidersHorizontal } from 'lucide-react'
 import { Button } from '../../components/ui/button'
 import { Slider } from '../../components/ui/slider'
 import { Switch } from '../../components/ui/switch'
@@ -12,7 +12,7 @@ import { DATASETS, DEFAULT_BASEMAP, DEFAULT_OPACITY, EXTENTS, LAYER_KEYS, hasSta
 import { BASEMAP_OPTIONS } from './basemaps'
 import {
   PORTAL_URL, clampDate, hasExtremeScale, inRange, isRealDate, rampOptionsFor, rampNameFor,
-  selectedUnit, shiftDate, shortDate, toDisplay, displayUnit, unitChoicesFor, hawaiiToday, specFor,
+  selectedUnit, shiftDate, shiftMonths, shortDate, toDisplay, displayUnit, unitChoicesFor, hawaiiToday, specFor,
   yearBefore,
 } from './viewerModel'
 import { portalDataset } from '../portalDatasets.reference'
@@ -54,7 +54,10 @@ export function Segmented({ legend, name, value, options, onChange, className, t
 
 function StepButton({ label, disabled, onClick, children }) {
   return (
-    <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0" aria-label={label} title={label} disabled={disabled} onClick={onClick}>
+    <Button
+      type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
+      aria-label={label} title={label} disabled={disabled} onClick={onClick}
+    >
       {children}
     </Button>
   )
@@ -63,7 +66,9 @@ function StepButton({ label, disabled, onClick, children }) {
 /** Day: a native date field (committed once it holds a real, published
  *  date — at once on Enter or leaving the field, else after a pause, so
  *  typing a year digit by digit does not load four maps). Month: month and
- *  year lists. Both have previous / next buttons. */
+ *  year lists. Under either, the portal's six steps: first, a big step back
+ *  (a month for daily maps, a year for monthly), one back, one on, a big
+ *  step on, last — all inside the published range. */
 export function DatePicker({ period, date, range, onChange, label = null, testid = 'date-picker' }) {
   const id = useId()
   const [draft, setDraft] = useState(date)
@@ -76,7 +81,12 @@ export function DatePicker({ period, date, range, onChange, label = null, testid
   // "previous" goes to the latest map).
   const prev = clampDate(shiftDate(date, period, -1), range)
   const next = clampDate(shiftDate(date, period, 1), range)
+  const big = period === 'day' ? 1 : 12
+  const prevBig = clampDate(shiftMonths(date, period, -big), range)
+  const nextBig = clampDate(shiftMonths(date, period, big), range)
   const unit = period === 'day' ? 'day' : 'month'
+  const bigUnit = period === 'day' ? 'month' : 'year'
+  const name = (what) => (label ? `${label}: ${what}` : what.charAt(0).toUpperCase() + what.slice(1))
   const hint = range ? `Maps from ${shortDate(range.start)} to ${shortDate(range.end)}` : null
 
   const commit = (val) => {
@@ -91,7 +101,7 @@ export function DatePicker({ period, date, range, onChange, label = null, testid
   if (period === 'day') {
     field = (
       <input
-        id={id} type="date" className={cn(FIELD, 'min-w-0 flex-1 px-2 font-mono text-[13px]')}
+        id={id} type="date" className={cn(FIELD, 'min-w-0 px-2 font-mono text-[13px]')}
         value={draft} min={range?.start} max={range?.end}
         onChange={(e) => {
           const val = e.target.value
@@ -113,7 +123,7 @@ export function DatePicker({ period, date, range, onChange, label = null, testid
     for (let yy = lastYear; yy >= firstYear; yy--) years.push(String(yy))
     if (!years.includes(y)) years.unshift(y)
     field = (
-      <div className="flex min-w-0 flex-1 gap-1">
+      <div className="flex min-w-0 gap-1">
         <Select id={id} value={m} onChange={(mm) => commit(clampDate(`${y}-${mm}`, range))} className="min-w-0 flex-[3]" aria-label={label ? `${label}: month` : 'Month'} data-testid={`${testid}-month`}>
           {MONTHS.map((name, i) => {
             const mm = String(i + 1).padStart(2, '0')
@@ -132,14 +142,28 @@ export function DatePicker({ period, date, range, onChange, label = null, testid
       {period === 'day'
         ? <label htmlFor={id} className={LABEL}>{label || 'Date'}</label>
         : <span id={`${id}-label`} className={LABEL}>{label || 'Month'}</span>}
-      <div className="flex items-center gap-1" role={period === 'day' ? undefined : 'group'} aria-labelledby={period === 'day' ? undefined : `${id}-label`}>
-        <StepButton label={`${label ? `${label}: previous` : 'Previous'} ${unit}`} disabled={prev >= date} onClick={() => commit(prev)}>
-          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-        </StepButton>
+      <div className="space-y-1.5" role={period === 'day' ? undefined : 'group'} aria-labelledby={period === 'day' ? undefined : `${id}-label`}>
         {field}
-        <StepButton label={`${label ? `${label}: next` : 'Next'} ${unit}`} disabled={next <= date} onClick={() => commit(next)}>
-          <ChevronRight className="h-4 w-4" aria-hidden="true" />
-        </StepButton>
+        <div className="flex items-center justify-between gap-1" data-testid={`${testid}-steps`}>
+          <StepButton label={name(`first ${unit}`)} disabled={!range || range.start >= date} onClick={() => commit(range.start)}>
+            <SkipBack className="h-4 w-4" aria-hidden="true" />
+          </StepButton>
+          <StepButton label={name(`previous ${bigUnit}`)} disabled={prevBig >= date} onClick={() => commit(prevBig)}>
+            <ChevronsLeft className="h-4 w-4" aria-hidden="true" />
+          </StepButton>
+          <StepButton label={name(`previous ${unit}`)} disabled={prev >= date} onClick={() => commit(prev)}>
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+          </StepButton>
+          <StepButton label={name(`next ${unit}`)} disabled={next <= date} onClick={() => commit(next)}>
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          </StepButton>
+          <StepButton label={name(`next ${bigUnit}`)} disabled={nextBig <= date} onClick={() => commit(nextBig)}>
+            <ChevronsRight className="h-4 w-4" aria-hidden="true" />
+          </StepButton>
+          <StepButton label={name(`last ${unit}`)} disabled={!range || range.end <= date} onClick={() => commit(range.end)}>
+            <SkipForward className="h-4 w-4" aria-hidden="true" />
+          </StepButton>
+        </div>
       </div>
       <p id={`${id}-hint`} className={cn('mt-1 text-xs', warn ? 'text-destructive' : 'text-subtle')} aria-live="polite" data-testid={`${testid}-hint`}>
         {warn || hint || ' '}

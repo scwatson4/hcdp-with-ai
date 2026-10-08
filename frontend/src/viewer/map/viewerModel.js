@@ -275,6 +275,16 @@ export function shiftDate(date, period, delta) {
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`
 }
 
+/** The same day `n` months on (or back, n < 0), the day clamped to the
+ *  month's length (31 March − 1 → 28/29 February); for a month, n months on. */
+export function shiftMonths(date, period, n) {
+  if (period === 'month') return shiftDate(date, 'month', n)
+  const [y, m, d] = date.split('-').map(Number)
+  const first = new Date(Date.UTC(y, m - 1 + n, 1))
+  const last = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate()
+  return `${first.getUTCFullYear()}-${pad(first.getUTCMonth() + 1)}-${pad(Math.min(d, last))}`
+}
+
 /** The same day (or month) a year earlier; 29 February becomes the 28th. */
 export function yearBefore(date) {
   const y = String(Number(date.slice(0, 4)) - 1).padStart(4, '0')

@@ -18,10 +18,9 @@ import { DATASETS } from './urlGrammar'
 import { LABEL, Segmented } from './map/Controls'
 import { useDateRange } from './map/dateRanges'
 import { timeseriesUrl, useJson } from './map/stationData'
-import { clampDate, dateForPeriod, displayUnit, inRange, isRealDate, shiftDate, shortDate, toDisplay } from './map/viewerModel'
+import { clampDate, dateForPeriod, displayUnit, inRange, isRealDate, shiftDate, shiftMonths, shortDate, toDisplay } from './map/viewerModel'
 
 const FIELD = 'h-9 min-w-0 flex-1 rounded-md border border-border bg-card px-2 font-mono text-[13px] text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-const pad = (n) => String(n).padStart(2, '0')
 
 // ── dates ───────────────────────────────────────────────────────────────────
 
@@ -32,19 +31,11 @@ export function epochOf(date) {
   return Date.UTC(+m[1], +m[2] - 1, m[3] ? +m[3] : 1) / 1000
 }
 
-/** The same day `n` months earlier (31 March − 1 → 28/29 February). */
-export function monthsBefore(day, n) {
-  const [y, m, d] = day.split('-').map(Number)
-  const first = new Date(Date.UTC(y, m - 1 - n, 1))
-  const last = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate()
-  return `${first.getUTCFullYear()}-${pad(first.getUTCMonth() + 1)}-${pad(Math.min(d, last))}`
-}
-
 /** The preset windows, ending at the map's date (inside the record). */
 export function presetWindows(anchor, period, whole) {
   const end = whole ? clampDate(anchor, whole) : anchor
   const clamp = (start) => ({ start: whole ? clampDate(start, whole) : start, end })
-  if (period === 'day') return { month: clamp(monthsBefore(end, 1)), year: clamp(monthsBefore(end, 12)) }
+  if (period === 'day') return { month: clamp(shiftMonths(end, 'day', -1)), year: clamp(shiftMonths(end, 'day', -12)) }
   return { year: clamp(shiftDate(end, 'month', -11)) }
 }
 

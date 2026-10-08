@@ -416,6 +416,43 @@ describe('controls write the URL', () => {
     await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-06/kauai'))
   })
 
+  it('jumps to the first and last published maps and steps by a month (daily) or a year (monthly), inside the range', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'First day' })).toBeEnabled())
+    fireEvent.click(screen.getByRole('button', { name: 'Previous month' }))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-08-07/kauai'))
+    expect(navType()).toBe('PUSH')
+    fireEvent.click(screen.getByRole('button', { name: 'Next month' }))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai'))
+    // A month on would be 7 October, past the last map: the step stops at the last map.
+    fireEvent.click(screen.getByRole('button', { name: 'Next month' }))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-23/kauai'))
+    expect(screen.getByRole('button', { name: 'Next month' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Next day' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Last day' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'First day' }))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/1990-01-01/kauai'))
+    expect(screen.getByRole('button', { name: 'First day' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Previous month' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Previous day' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Last day' }))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-23/kauai'))
+  })
+
+  it('steps a monthly map by a year, and 31 January − 1 month is the last day of December', async () => {
+    renderAt('/viewer/spi-3/month/2026-08/statewide')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'First month' })).toBeEnabled())
+    fireEvent.click(screen.getByRole('button', { name: 'Previous year' }))
+    await waitFor(() => expect(loc()).toBe('/viewer/spi-3/month/2025-08/statewide'))
+    fireEvent.click(screen.getByRole('button', { name: 'First month' }))
+    await waitFor(() => expect(loc()).toBe('/viewer/spi-3/month/1990-01/statewide'))
+    fireEvent.click(screen.getByRole('button', { name: 'Next year' }))
+    await waitFor(() => expect(loc()).toBe('/viewer/spi-3/month/1991-01/statewide'))
+    fireEvent.click(screen.getByRole('button', { name: 'Last month' }))
+    await waitFor(() => expect(loc()).toBe('/viewer/spi-3/month/2026-08/statewide'))
+    expect(screen.getByRole('button', { name: 'Next year' })).toBeDisabled()
+  })
+
   it('refuses a date outside the published range and says why', async () => {
     renderAt('/viewer/rainfall/day/2026-09-07/kauai')
     await waitFor(() => expect(screen.getByTestId('date-picker-input')).toHaveAttribute('max', '2026-09-23'))

@@ -206,7 +206,14 @@ function renderAt(path) {
 const loc = () => screen.getByTestId('location').textContent
 const navType = () => screen.getByTestId('location').dataset.type
 
+// The viewport: wide by default; narrowScreen(true) answers the viewer's
+// (max-width: 767px) query as a phone would.
+function narrowScreen(on) {
+  window.matchMedia = (q) => ({ matches: on && /max-width:\s*767px/.test(q), media: q, onchange: null, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent() { return false } })
+}
+
 beforeEach(() => {
+  narrowScreen(false)
   rasterMode = 'data'
   stationsMode = 'data'
   seriesMode = 'data'
@@ -940,6 +947,116 @@ describe('?station= and ?pin= open the time series', () => {
     seriesMode = 'data'
     fireEvent.click(within(screen.getByTestId('timeseries-error')).getByRole('button', { name: /Try again/ }))
     await waitFor(() => expect(fake.charts.length).toBeGreaterThan(0))
+  })
+})
+
+// ── phone layout: the bottom sheet ──────────────────────────────────────────
+describe('below 768 px', () => {
+  // jsdom has no PointerEvent: a plain event carrying the pointer fields.
+  const press = (el, type, init) => act(() => {
+    const e = new Event(type, { bubbles: true })
+    Object.assign(e, { pointerId: 1, pointerType: 'touch', isPrimary: true, button: 0, clientX: 160, ...init })
+    el.dispatchEvent(e)
+  })
+  // Radix tabs change on mousedown, as a pointer does.
+  const pickTab = (sheet, name) => fireEvent.mouseDown(within(sheet).getByRole('tab', { name }))
+
+  it('moves the controls into a bottom sheet with four tabs and runs the map edge to edge', async () => {
+    narrowScreen(true)
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in')
+    expect(screen.getByTestId('viewer').dataset.layout).toBe('sheet')
+    const sheet = screen.getByTestId('bottom-sheet')
+    expect(sheet.dataset.snap).toBe('peek')
+    expect(within(sheet).getByTestId('viewer-heading')).toHaveTextContent('Rainfall, September 7, 2026, Kauaʻi')
+    expect(within(sheet).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Dataset', 'Date', 'Layers', 'Station'])
+    expect(screen.queryByTestId('viewer-controls')).toBeNull() // no rail
+    expect(screen.getByTestId('map-pane')).toHaveClass('border-y')
+    expect(screen.getByTestId('map-pane')).not.toHaveClass('rounded-lg')
+    // Dataset tab first: dataset, period, units, place, sharing.
+    expect(within(sheet).getByTestId('dataset-select')).toHaveValue('rainfall')
+    expect(within(sheet).getByTestId('extent-select')).toHaveValue('kauai')
+    expect(within(sheet).getByTestId('copy-link')).toBeInTheDocument()
+    expect(within(sheet).queryByTestId('date-picker')).toBeNull()
+    pickTab(sheet, 'Date')
+    expect(await within(sheet).findByTestId('date-picker')).toBeInTheDocument()
+    expect(within(sheet).getByTestId('compare-control')).toBeInTheDocument()
+    pickTab(sheet, 'Layers')
+    expect(await within(sheet).findByTestId('basemap-select')).toBeInTheDocument()
+    expect(within(sheet).getByTestId('ramp-select')).toBeInTheDocument()
+    expect(within(sheet).getByTestId('layer-stations')).toBeInTheDocument()
+    pickTab(sheet, 'Station')
+    expect(await within(sheet).findByTestId('station-hint')).toHaveTextContent('press and hold')
+    // The controls still write the address.
+    pickTab(sheet, 'Dataset')
+    fireEvent.change(await within(sheet).findByTestId('extent-select'), { target: { value: 'oahu' } })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/oahu?units=in'))
+  })
+
+  it('taps on the handle cycle peek → half → full → peek; a drag settles on the nearest rest', async () => {
+    narrowScreen(true)
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    const sheet = screen.getByTestId('bottom-sheet')
+    const handle = screen.getByTestId('sheet-handle')
+    fireEvent.click(handle)
+    expect(sheet.dataset.snap).toBe('half')
+    fireEvent.click(handle)
+    expect(sheet.dataset.snap).toBe('full')
+    fireEvent.click(handle)
+    expect(sheet.dataset.snap).toBe('peek')
+    // Drag the handle 300 px up from peek (124 px): nearer to half (384 px of 768) than to full.
+    press(handle, 'pointerdown', { clientY: 640 })
+    press(handle, 'pointermove', { clientY: 500 })
+    press(handle, 'pointermove', { clientY: 340 })
+    press(handle, 'pointerup', { clientY: 340 })
+    expect(sheet.dataset.snap).toBe('half')
+    fireEvent.click(handle) // the click that follows a drag is not a tap
+    expect(sheet.dataset.snap).toBe('half')
+    // A tiny wobble is a tap.
+    press(handle, 'pointerdown', { clientY: 400 })
+    press(handle, 'pointermove', { clientY: 398 })
+    press(handle, 'pointerup', { clientY: 398 })
+    fireEvent.click(handle)
+    expect(sheet.dataset.snap).toBe('full')
+    // Dragged all the way down → peek.
+    press(handle, 'pointerdown', { clientY: 100 })
+    press(handle, 'pointermove', { clientY: 700 })
+    press(handle, 'pointerup', { clientY: 700 })
+    expect(sheet.dataset.snap).toBe('peek')
+    await settle()
+  })
+
+  it('selecting a station opens the Station tab at half height, with the time series inside the sheet', async () => {
+    narrowScreen(true)
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?layers=stations')
+    const sheet = screen.getByTestId('bottom-sheet')
+    await waitFor(() => expect(screen.getAllByTestId('station-marker')).toHaveLength(2))
+    fireEvent.click(screen.getAllByTestId('station-marker')[0])
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?layers=stations&station=1020.1'))
+    await waitFor(() => expect(within(sheet).getByRole('tab', { name: 'Station' })).toHaveAttribute('aria-selected', 'true'))
+    expect(sheet.dataset.snap).toBe('half')
+    expect(await within(sheet).findByTestId('timeseries-panel')).toBeInTheDocument()
+    expect(within(sheet).getByTestId('timeseries-heading')).toHaveTextContent('Hilo Airport')
+    // Closing returns to the Dataset tab.
+    fireEvent.click(within(sheet).getByTestId('timeseries-close'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?layers=stations'))
+    await waitFor(() => expect(within(sheet).getByRole('tab', { name: 'Dataset' })).toHaveAttribute('aria-selected', 'true'))
+  })
+
+  it('a station in the address opens the Station tab on arrival, at peek height', async () => {
+    narrowScreen(true)
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1')
+    const sheet = screen.getByTestId('bottom-sheet')
+    expect(within(sheet).getByRole('tab', { name: 'Station' })).toHaveAttribute('aria-selected', 'true')
+    expect(sheet.dataset.snap).toBe('peek')
+    expect(await within(sheet).findByTestId('timeseries-panel')).toBeInTheDocument()
+  })
+
+  it('keeps the rail at 768 px and above', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    expect(screen.getByTestId('viewer').dataset.layout).toBe('rail')
+    expect(screen.queryByTestId('bottom-sheet')).toBeNull()
+    expect(screen.getByTestId('viewer-controls')).toBeInTheDocument()
+    await settle()
   })
 })
 

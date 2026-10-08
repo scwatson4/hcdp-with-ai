@@ -24,7 +24,9 @@ import {
 import { TooltipProvider } from '../components/ui/tooltip'
 import { useRaster } from './map/rasterCache'
 import { getDateRange, getDateRangeSoon, useDateRange } from './map/dateRanges'
-import { Controls, CompareControl, LayerControls, ShareActions } from './map/Controls'
+import { ColourFields, Controls, CompareControl, DatasetField, DatePicker, LayerControls, PeriodUnitsFields, PlaceField, ShareActions } from './map/Controls'
+import BottomSheet from '../components/BottomSheet'
+import { useNarrowScreen } from './useMediaQuery'
 import { Compass, CornerStack, ExperimentalBadge, IGNITION_CAUTION, Legend, MapPill, TitleCard, ValueReadout } from './map/MapFurniture'
 import { GrammarError, MapStatus } from './map/ErrorStates'
 import Launcher from './map/Launcher'
@@ -221,31 +223,114 @@ function Viewer({ v }) {
   const busRef = useRef(null)
   if (!busRef.current) busRef.current = { maps: new Set(), leader: null, guard: false }
 
+  // Below 768 px the rail becomes a bottom sheet with tabs and the map runs
+  // edge to edge above it; a fresh selection opens the Station tab.
+  const narrow = useNarrowScreen()
+  const [tab, setTab] = useState(() => (selection ? 'station' : 'dataset'))
+  const [snap, setSnap] = useState('peek')
+  const hadSelection = useRef(Boolean(selection))
+  useEffect(() => {
+    if (selection && !hadSelection.current) { setTab('station'); if (userSelected.current) setSnap((s) => (s === 'peek' ? 'half' : s)) }
+    if (!selection && hadSelection.current) setTab((t) => (t === 'station' ? 'dataset' : t))
+    hadSelection.current = Boolean(selection)
+  }, [selection])
+
   const pane = (date, r, fn, extra) => (
     <MapPane
       v={v} date={date} raster={r} colorFn={fn} ramp={ramp} domain={domain} dateRange={dateRange}
       opacity={mapOpacity} layers={layers} selected={selected} onSelectStation={onSelectStation} onSelectPoint={onSelectPoint}
-      syncBus={compareDate ? busRef.current : null} {...extra}
+      syncBus={compareDate ? busRef.current : null} flush={narrow} {...extra}
     />
   )
-  const panel = selection && (
+  const panel = (className) => selection && (
     <Suspense fallback={<div className="rounded-lg border border-border bg-card p-4 text-sm text-subtle" data-testid="timeseries-skeleton">Loading the time series…</div>}>
       <TimeSeriesPanel
         v={v} selection={selection} onRange={onTsRange} onPeriod={onTsPeriod} onClose={onCloseSeries}
-        focusOnOpen={userSelected.current} className="lg:max-h-[calc(100dvh-8.5rem)] lg:overflow-y-auto"
+        focusOnOpen={userSelected.current} className={className}
       />
     </Suspense>
   )
   const stationProps = (sv) => (stationsOn ? { stations: sv.status === 'ready' ? stationsOf(sv.data) : null, stationStatus: sv.status } : {})
+  const title = describeViewer(v)
+  const addressNote = (
+    <p className="text-xs text-subtle">
+      The address bar always describes this map. <Link to="/viewer" className="underline underline-offset-4 hover:text-foreground">How viewer addresses work</Link>
+    </p>
+  )
+
+  // Map heights: the phone layout leaves room for the header and the sheet's peek.
+  const single = narrow ? 'h-[calc(100dvh-13.25rem)] min-h-[300px]' : 'h-[68vh] min-h-[360px] sm:h-[min(72vh,640px)] lg:h-[calc(100dvh-8.5rem)] lg:min-h-[480px]'
+  const half = narrow ? 'h-[40vh] min-h-[220px]' : 'h-[48vh] min-h-[300px] sm:h-[min(72vh,640px)] lg:h-[calc(100dvh-8.5rem)] lg:min-h-[480px]'
+  const maps = compareDate ? (
+    <div className={cn('grid grid-cols-1 sm:grid-cols-2', narrow ? 'gap-1' : 'gap-3')} data-testid="compare-view">
+      <div className={half}>{pane(v.date, raster, colorFn, { onViewChange, leader: true, showLegend: false, ...stationProps(stationValues) })}</div>
+      <div className={half}>{pane(compareDate, compareRaster, compareColorFn, { showCompass: false, ...stationProps(compareStationValues) })}</div>
+    </div>
+  ) : (
+    <div className={single}>{pane(v.date, raster, colorFn, { onViewChange, ...stationProps(stationValues) })}</div>
+  )
+
+  if (narrow) {
+    const grid = 'grid grid-cols-2 gap-x-3 gap-y-4'
+    const tabs = [
+      {
+        id: 'dataset', label: 'Dataset',
+        content: (
+          <div className={grid}>
+            <DatasetField v={v} onChange={onDataset} />
+            <PeriodUnitsFields v={v} onPeriod={onPeriod} onUnits={onUnits} />
+            <PlaceField v={v} onChange={onExtent} />
+            <div className="col-span-2"><ShareActions path={sharePath} title={title} /></div>
+            <div className="col-span-2">{addressNote}</div>
+          </div>
+        ),
+      },
+      {
+        id: 'date', label: 'Date',
+        content: (
+          <div className="space-y-4">
+            <DatePicker period={v.period} date={v.date} range={range} onChange={onDate} />
+            <CompareControl v={v} range={range} compareDate={compareDate} onChange={onCompare} />
+          </div>
+        ),
+      },
+      {
+        id: 'layers', label: 'Layers',
+        content: (
+          <div className={grid}>
+            <ColourFields v={v} onRamp={onRamp} onScale={onScale} />
+            <div className="col-span-2"><LayerControls v={v} onBasemap={onBasemap} onOpacity={onOpacity} onOpacityPreview={setOpacityDraft} onLayerToggle={onLayerToggle} /></div>
+          </div>
+        ),
+      },
+      {
+        id: 'station', label: 'Station',
+        content: panel('border-0 p-0') || (
+          <p className="text-sm text-subtle" data-testid="station-hint">
+            Tap a station marker, or press and hold on the map, to see its record here.
+            {hasStations(v.dataset) && !layers.includes('stations') ? ' Turn on Stations under Layers to see the markers.' : ''}
+          </p>
+        ),
+      },
+    ]
+    return (
+      <TooltipProvider delayDuration={300}>
+        <div className="relative w-full pb-[7.75rem]" data-testid="viewer" data-layout="sheet">
+          <section className="min-w-0" aria-label="Map">{maps}</section>
+          <BottomSheet title={title} tabs={tabs} tab={tab} onTabChange={setTab} snap={snap} onSnapChange={setSnap} />
+        </div>
+      </TooltipProvider>
+    )
+  }
 
   return (
     <TooltipProvider delayDuration={300}>
-    <div className="mx-auto w-full max-w-[1440px] px-4 pb-8 pt-4" data-testid="viewer">
+    <div className="mx-auto w-full max-w-[1440px] px-4 pb-8 pt-4" data-testid="viewer" data-layout="rail">
       <div className={cn('flex flex-col gap-4 lg:grid lg:items-start lg:gap-5', selection ? 'lg:grid-cols-[18rem_minmax(0,1fr)_20rem]' : 'lg:grid-cols-[18rem_minmax(0,1fr)]')}>
         <aside className="min-w-0 space-y-4" aria-label="Map settings">
           <header>
             <p className={EYEBROW}>Climate viewer</p>
-            <h1 className="mt-0.5 font-display text-xl leading-tight lg:text-2xl" data-testid="viewer-heading">{describeViewer(v)}</h1>
+            <h1 className="mt-0.5 font-display text-xl leading-tight lg:text-2xl" data-testid="viewer-heading">{title}</h1>
           </header>
           <Controls
             v={v} range={range}
@@ -254,29 +339,12 @@ function Viewer({ v }) {
             layers={<LayerControls v={v} onBasemap={onBasemap} onOpacity={onOpacity} onOpacityPreview={setOpacityDraft} onLayerToggle={onLayerToggle} />}
             extra={<CompareControl v={v} range={range} compareDate={compareDate} onChange={onCompare} />}
           />
-          <ShareActions path={sharePath} title={describeViewer(v)} />
-          <p className="text-xs text-subtle">
-            The address bar always describes this map. <Link to="/viewer" className="underline underline-offset-4 hover:text-foreground">How viewer addresses work</Link>
-          </p>
+          <ShareActions path={sharePath} title={title} />
+          {addressNote}
         </aside>
-        <section className="min-w-0" aria-label="Map">
-          {compareDate ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" data-testid="compare-view">
-              <div className="h-[48vh] min-h-[300px] sm:h-[min(72vh,640px)] lg:h-[calc(100dvh-8.5rem)] lg:min-h-[480px]">
-                {pane(v.date, raster, colorFn, { onViewChange, leader: true, showLegend: false, ...stationProps(stationValues) })}
-              </div>
-              <div className="h-[48vh] min-h-[300px] sm:h-[min(72vh,640px)] lg:h-[calc(100dvh-8.5rem)] lg:min-h-[480px]">
-                {pane(compareDate, compareRaster, compareColorFn, { showCompass: false, ...stationProps(compareStationValues) })}
-              </div>
-            </div>
-          ) : (
-            <div className="h-[68vh] min-h-[360px] sm:h-[min(72vh,640px)] lg:h-[calc(100dvh-8.5rem)] lg:min-h-[480px]">
-              {pane(v.date, raster, colorFn, { onViewChange, ...stationProps(stationValues) })}
-            </div>
-          )}
-        </section>
+        <section className="min-w-0" aria-label="Map">{maps}</section>
         {/* The time series: a 20 rem column beside the map on wide screens, below it otherwise. */}
-        {panel && <div className="min-w-0" data-testid="timeseries-dock">{panel}</div>}
+        {selection && <div className="min-w-0" data-testid="timeseries-dock">{panel('lg:max-h-[calc(100dvh-8.5rem)] lg:overflow-y-auto')}</div>}
       </div>
     </div>
     </TooltipProvider>
@@ -288,7 +356,7 @@ function Viewer({ v }) {
 const MapPane = memo(function MapPane({
   v, date, raster, colorFn, ramp, domain, dateRange, opacity = DEFAULT_OPACITY / 100, layers = [],
   stations = null, stationStatus = null, selected = null, onSelectStation = null, onSelectPoint = null,
-  onViewChange = null, syncBus = null, leader = false, showLegend = true, showCompass = true,
+  onViewChange = null, syncBus = null, leader = false, showLegend = true, showCompass = true, flush = false,
 }) {
   const [hover, setHover] = useState(null)
   const [pick, setPick] = useState(null)
@@ -309,7 +377,7 @@ const MapPane = memo(function MapPane({
   const title = describeViewer(shown)
   const legend = legendFor(v)
   return (
-    <div className="hcdp-pane relative isolate h-full w-full overflow-hidden rounded-lg border border-border bg-inset" role="region" aria-label={`Map: ${title}`} data-testid="map-pane">
+    <div className={cn('hcdp-pane relative isolate h-full w-full overflow-hidden bg-inset', flush ? 'border-y border-border' : 'rounded-lg border border-border')} role="region" aria-label={`Map: ${title}`} data-testid="map-pane">
       <Suspense fallback={<div className="absolute inset-0 animate-pulse bg-muted" data-testid="map-skeleton" />}>
         <ClimateMap
           extent={v.extent} view={v.opts.view || null} onViewChange={onViewChange}

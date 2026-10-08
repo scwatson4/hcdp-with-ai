@@ -185,62 +185,96 @@ function scaleLabel(v, range) {
  *  one button so the map starts higher; they open by themselves when the
  *  link already sets one. */
 export function Controls({ v, range, onDataset, onPeriod, onDate, onExtent, onRamp, onUnits, onScale, layers = null, extra = null }) {
-  const ids = { dataset: useId(), extent: useId(), ramp: useId(), more: useId() }
+  const moreId = useId()
   const [more, setMore] = useState(() => Boolean(v.opts?.ramp || v.opts?.scale || v.opts?.compare || v.opts?.basemap || v.opts?.opacity != null || v.opts?.layers))
-  const ds = DATASETS[v.dataset]
-  const units = unitChoicesFor(v.dataset)
-  const portal = portalDataset(specFor(v))
-  const periods = ds.periods.map((p) => ({ value: p, label: p === 'month' ? 'Monthly' : 'Daily' }))
   return (
     <div className="grid grid-cols-2 gap-x-3 gap-y-3 lg:gap-y-4" data-testid="viewer-controls">
-      <div className="col-span-2">
-        <label htmlFor={ids.dataset} className={LABEL}>Dataset</label>
-        <Select id={ids.dataset} value={v.dataset} onChange={onDataset} data-testid="dataset-select">
-          {Object.entries(DATASETS).map(([key, d]) => <option key={key} value={key}>{d.label}</option>)}
-        </Select>
-      </div>
-      <Segmented legend="Period" name="viewer-period" value={v.period} options={periods} onChange={onPeriod} className={units ? '' : 'col-span-2'} testid="period-toggle" />
-      {units && (
-        <Segmented legend="Units" name="viewer-units" value={selectedUnit(v.dataset, v.opts)} options={units} onChange={onUnits} testid="units-toggle" />
-      )}
+      <DatasetField v={v} onChange={onDataset} />
+      <PeriodUnitsFields v={v} onPeriod={onPeriod} onUnits={onUnits} />
       <div className="col-span-2">
         <DatePicker period={v.period} date={v.date} range={range} onChange={onDate} />
       </div>
-      <div className="col-span-2">
-        <label htmlFor={ids.extent} className={LABEL}>Place</label>
-        <Select id={ids.extent} value={v.extent} onChange={onExtent} data-testid="extent-select">
-          {Object.entries(EXTENTS).map(([key, e]) => <option key={key} value={key}>{e.label}</option>)}
-        </Select>
-      </div>
+      <PlaceField v={v} onChange={onExtent} />
       <Button
         type="button" variant="ghost" size="sm" className="col-span-2 justify-between px-2 text-subtle lg:hidden"
-        aria-expanded={more} aria-controls={ids.more} onClick={() => setMore((m) => !m)} data-testid="more-options"
+        aria-expanded={more} aria-controls={moreId} onClick={() => setMore((m) => !m)} data-testid="more-options"
       >
         <span className="inline-flex items-center gap-1.5"><SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" /> Colours, layers and comparison</span>
         <ChevronDown className={cn('h-4 w-4 transition-transform', more && 'rotate-180')} aria-hidden="true" />
       </Button>
-      <div id={ids.more} className={cn('col-span-2 grid-cols-2 gap-x-3 gap-y-3 lg:grid lg:gap-y-4', more ? 'grid' : 'hidden')} data-testid="display-options">
-        <div className="col-span-2">
-          <label htmlFor={ids.ramp} className={LABEL}>Colours</label>
-          <Select id={ids.ramp} value={rampNameFor(v)} onChange={onRamp} data-testid="ramp-select">
-            {rampOptionsFor(v.dataset).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </Select>
-        </div>
-        {hasExtremeScale(v) && portal && (
-          <Segmented
-            legend="Colour scale" name="viewer-scale" className="col-span-2" testid="scale-toggle"
-            value={v.opts?.scale === 'extreme' ? 'extreme' : 'portal'}
-            options={[
-              { value: 'portal', label: `HCDP ${scaleLabel(v, portal.range)}` },
-              { value: 'extreme', label: `Storm ${scaleLabel(v, portal.extreme)}` },
-            ]}
-            onChange={onScale}
-          />
-        )}
+      <div id={moreId} className={cn('col-span-2 grid-cols-2 gap-x-3 gap-y-3 lg:grid lg:gap-y-4', more ? 'grid' : 'hidden')} data-testid="display-options">
+        <ColourFields v={v} onRamp={onRamp} onScale={onScale} />
         {layers && <div className="col-span-2">{layers}</div>}
         {extra && <div className="col-span-2">{extra}</div>}
       </div>
     </div>
+  )
+}
+
+// The rail's fields one by one (grid children of a two-column grid), so the
+// phone sheet can deal them out to its tabs.
+
+export function DatasetField({ v, onChange }) {
+  const id = useId()
+  return (
+    <div className="col-span-2">
+      <label htmlFor={id} className={LABEL}>Dataset</label>
+      <Select id={id} value={v.dataset} onChange={onChange} data-testid="dataset-select">
+        {Object.entries(DATASETS).map(([key, d]) => <option key={key} value={key}>{d.label}</option>)}
+      </Select>
+    </div>
+  )
+}
+
+export function PeriodUnitsFields({ v, onPeriod, onUnits }) {
+  const units = unitChoicesFor(v.dataset)
+  const periods = DATASETS[v.dataset].periods.map((p) => ({ value: p, label: p === 'month' ? 'Monthly' : 'Daily' }))
+  return (
+    <>
+      <Segmented legend="Period" name="viewer-period" value={v.period} options={periods} onChange={onPeriod} className={units ? '' : 'col-span-2'} testid="period-toggle" />
+      {units && (
+        <Segmented legend="Units" name="viewer-units" value={selectedUnit(v.dataset, v.opts)} options={units} onChange={onUnits} testid="units-toggle" />
+      )}
+    </>
+  )
+}
+
+export function PlaceField({ v, onChange }) {
+  const id = useId()
+  return (
+    <div className="col-span-2">
+      <label htmlFor={id} className={LABEL}>Place</label>
+      <Select id={id} value={v.extent} onChange={onChange} data-testid="extent-select">
+        {Object.entries(EXTENTS).map(([key, e]) => <option key={key} value={key}>{e.label}</option>)}
+      </Select>
+    </div>
+  )
+}
+
+/** Colour ramp and, for daily rainfall, the portal / storm scale. */
+export function ColourFields({ v, onRamp, onScale }) {
+  const id = useId()
+  const portal = portalDataset(specFor(v))
+  return (
+    <>
+      <div className="col-span-2">
+        <label htmlFor={id} className={LABEL}>Colours</label>
+        <Select id={id} value={rampNameFor(v)} onChange={onRamp} data-testid="ramp-select">
+          {rampOptionsFor(v.dataset).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </Select>
+      </div>
+      {hasExtremeScale(v) && portal && (
+        <Segmented
+          legend="Colour scale" name="viewer-scale" className="col-span-2" testid="scale-toggle"
+          value={v.opts?.scale === 'extreme' ? 'extreme' : 'portal'}
+          options={[
+            { value: 'portal', label: `HCDP ${scaleLabel(v, portal.range)}` },
+            { value: 'extreme', label: `Storm ${scaleLabel(v, portal.extreme)}` },
+          ]}
+          onChange={onScale}
+        />
+      )}
+    </>
   )
 }
 

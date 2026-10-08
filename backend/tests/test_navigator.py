@@ -130,7 +130,11 @@ def test_analysis_gets_a_server_built_handoff():
     assert nav2.handoff_url("x", {"path": "/data", "viewer": None}) == "https://ai.example.org/?ask=x&from=website"
     assert nav2.handoff_url("x", {"path": "/viewer/spi3/month/2026-08/state"}) == "https://ai.example.org/?ask=x&ctx=viewer%3A%2Fviewer%2Fspi-3%2Fmonth%2F2026-08%2Fstatewide&from=website"
     assert nav2.handoff_url("", None) == "https://ai.example.org/?from=website"
-    assert "analysis" in out["reply"]
+    assert out["reply"] == "This is better answered by our AI data analysis tool. Try it out here"
+    assert out2["reply"] == out["reply"]
+    # even a model that wrote its own words: the history must read as the visitor saw it
+    nav3, _ = make({"intent": "analysis", "reply": "Let me compute that for you.", "actions": [], "alternatives": []})
+    assert nav3.respond("mean rainfall at Hilo in 2025?")["reply"] == out["reply"]
     assert out["minimize"] is False
 
 

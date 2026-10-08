@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowUp, ExternalLink, Link2, Sparkles } from 'lucide-react'
+import { ArrowUp, ExternalLink, Link2 } from 'lucide-react'
 import { useAssistant } from './AssistantProvider'
 import { cn } from '../lib/utils'
+import { handoffUrl } from '../site/handoff'
 
-const AI_INTERFACE = import.meta.env.VITE_AI_INTERFACE_URL || 'https://hcdp-ai-interface.cis251375.projects.jetstream-cloud.org'
+// T2 pick B (2026-10-08): the hand-off moment. The sentence is fixed (the backend writes the
+// same words into the conversation history); "here" is the link; a grey line says what to
+// expect; the newest analysis reply counts down five seconds and opens the tab by itself.
+export const HANDOFF_SENTENCE = 'This is better answered by our AI data analysis tool. Try it out here'
+export const HANDOFF_NOTE = 'Opens in a new tab · your question comes with you · sign in there with a code or an HCDP API key'
 
 export const EXAMPLES = [
   'I need to download rainfall data from Hurricane Lowell',
@@ -18,6 +23,28 @@ function Alternative({ a }) {
   const inner = <><span className="font-medium">{a.title}</span>{a.why && <span className="text-subtle"> · {a.why}</span>}{!internal && <ExternalLink className="ml-1 inline h-3 w-3 text-subtle" aria-hidden="true" />}</>
   return internal ? <Link to={a.url} className="block rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs hover:border-foreground">{inner}</Link>
     : <a href={a.url} target="_blank" rel="noopener noreferrer" className="block rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs hover:border-foreground">{inner}</a>
+}
+
+/** An analysis reply: the fixed sentence with "here" as the link, the grey note, and the countdown
+ *  (or its outcome) when this is the reply the provider is counting down for. */
+function HandoffReply({ m }) {
+  const { handoff, stayHere, settleHandoff } = useAssistant()
+  const href = m.actions?.find((a) => a.type === 'handoff')?.url || handoffUrl({})
+  const mine = handoff && handoff.id === m.id ? handoff : null
+  const link = (text, testid) => <a href={href} target="_blank" rel="noopener noreferrer" onClick={settleHandoff} className="font-medium underline underline-offset-2 hover:text-accent" data-testid={testid}>{text}</a>
+  return (
+    <div data-testid="handoff-reply">
+      <p data-testid="handoff-sentence">{HANDOFF_SENTENCE.slice(0, -4)}{link('here', 'handoff-link')}</p>
+      <p className="mt-1 text-xs text-subtle">{HANDOFF_NOTE}</p>
+      {mine?.status === 'counting' && (
+        <p className="mt-1 text-xs text-subtle" data-testid="handoff-countdown" aria-live="off">
+          Opening in {mine.remaining} s · <button type="button" onClick={stayHere} className="inline-flex items-center rounded px-1 font-medium text-foreground underline underline-offset-2 hover:text-accent [@media(pointer:coarse)]:min-h-11" data-testid="handoff-stay">Stay here</button>
+        </p>
+      )}
+      {mine?.status === 'blocked' && <p className="mt-1 text-xs" data-testid="handoff-blocked">{link('Your browser blocked the new tab — open it here', 'handoff-blocked-link')}</p>}
+      {mine?.status === 'opened' && <p className="mt-1 text-xs text-subtle" data-testid="handoff-opened">Opened in a new tab</p>}
+    </div>
+  )
 }
 
 // The chat itself. `compact` is the dock panel; otherwise the landing box.
@@ -99,12 +126,11 @@ export default function AssistantPanel({ compact = false, autoFocus = false, bar
         {messages.map((m, i) => (i === 0 && (compact || rotateExamples) ? null : (
           <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
             <div className={cn('max-w-[92%] rounded-lg px-3 py-2 text-sm leading-relaxed', m.role === 'user' ? 'bg-accent text-accent-foreground' : 'bg-surface border border-border')}>
-              {m.content}
+              {m.intent === 'analysis' ? <HandoffReply m={m} /> : m.content}
               {m.role === 'user' && <button type="button" title="Copy a link that asks this" aria-label="Copy a link that asks this" onClick={(ev) => { const href = `${window.location.origin}/?ask=${encodeURIComponent(m.content)}`; const b = ev.currentTarget; navigator.clipboard?.writeText(href).then(() => { b.dataset.copied = '1'; setTimeout(() => { delete b.dataset.copied }, 1500) }).catch(() => window.prompt('Copy this link', href)) }} className="group ml-1 inline-grid h-6 w-6 place-items-center rounded align-middle text-accent-foreground/70 hover:bg-white/10 hover:text-accent-foreground data-[copied]:text-accent-foreground"><Link2 className="h-3.5 w-3.5 group-data-[copied]:hidden" aria-hidden="true" /><span className="hidden text-[10px] group-data-[copied]:inline">Copied</span></button>}
               {m.actions?.filter((a) => a.type === 'open').map((a, j) => (
                 <div key={j} className="mt-2"><a className="inline-flex items-center gap-1 rounded-md border border-border bg-canvas px-2.5 py-1 text-xs font-medium hover:border-foreground" href={a.url} target="_blank" rel="noopener noreferrer">{a.blocked ? 'Your browser blocked the new tab — open it here' : 'Opened in a new tab — open again'} <ExternalLink className="h-3 w-3" aria-hidden="true" /></a></div>
               ))}
-              {m.intent === 'analysis' && <div className="mt-2"><a className="inline-flex items-center gap-1 rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground" href={m.actions?.find((a) => a.type === 'handoff')?.url || AI_INTERFACE} target="_blank" rel="noopener noreferrer"><Sparkles className="h-3 w-3" aria-hidden="true" /> Open the analysis AI</a></div>}
               {m.alternatives?.length > 0 && !compact && <div className="mt-2 space-y-1">{m.alternatives.map((a, j) => <Alternative key={j} a={a} />)}</div>}
               {m.alternatives?.length > 0 && compact && <div className="mt-1.5 text-xs text-subtle">Also: {m.alternatives.slice(0, 3).map((a, j) => <span key={j}>{j > 0 && ' · '}{a.url?.startsWith('/') ? <Link to={a.url} className="underline underline-offset-2 hover:text-foreground">{a.title}</Link> : <a href={a.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">{a.title}</a>}</span>)}</div>}
             </div>

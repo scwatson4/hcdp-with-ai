@@ -80,6 +80,9 @@ ROUTE_PATTERNS = [re.compile(r"^/extreme-events/(" + "|".join(STORM_SLUGS) + r")
 PAGE_QUERY_KEYS = {"/": {"ask"}, "/mesonet": {"viewer", "station", "view"}, "/climate-summary": {"year", "month"}}
 STATIONS_PATH = DATA_DIR / "mesonet_stations.json"
 INTENTS = {"navigate", "analysis", "info", "clarify"}
+# The one sentence an analysis reply says (the assistant links "here"; the frontend renders the same words), so the
+# conversation history reads as the visitor saw it. T2 pick B, 2026-10-08.
+ANALYSIS_REPLY = "This is better answered by our AI data analysis tool. Try it out here"
 # The query layer, in the one order urlGrammar.formatViewerPath writes it ("stations" is the first grammar's spelling of layers=stations).
 VIEWER_QUERY_KEYS = ["ramp", "scale", "range", "log", "units", "basemap", "opacity", "layers", "station", "pin", "ts", "tsp", "compare", "lat", "lng", "z"]
 VIEWER_LEGACY_KEYS = {"stations"}
@@ -552,8 +555,8 @@ Respond with ONLY a JSON object:
                 actions.append({"type": "handoff", "url": self.handoff_url(message, context)})
         if intent == "analysis" and not any(a["type"] == "handoff" for a in actions):
             actions.append({"type": "handoff", "url": self.handoff_url(message, context)})
-        if intent == "analysis" and not reply:
-            reply = "That is a data-analysis question; the HCDP AI interface can work it out for you."
+        if intent == "analysis":
+            reply = ANALYSIS_REPLY
         alternatives = []
         for alt in raw.get("alternatives") or []:
             if not isinstance(alt, dict):

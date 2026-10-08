@@ -4,13 +4,14 @@
 
 import { useEffect, useId, useRef, useState } from 'react'
 import QRCode from 'qrcode'
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Copy, ExternalLink, Link2, Loader2, Palette, QrCode, Share2, SkipBack, SkipForward, SlidersHorizontal } from 'lucide-react'
+import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Copy, ExternalLink, Link2, Loader2, Palette, QrCode, Share2, SkipBack, SkipForward, SlidersHorizontal, Sparkles } from 'lucide-react'
 import { Button } from '../../components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
 import { Slider } from '../../components/ui/slider'
 import { Switch } from '../../components/ui/switch'
 import { cn } from '../../lib/utils'
 import { DATASETS, DEFAULT_BASEMAP, DEFAULT_OPACITY, EXTENTS, LAYER_KEYS, hasStations } from '../urlGrammar'
+import { handoffUrl } from '../../site/handoff'
 import { BASEMAP_OPTIONS } from './basemaps'
 import {
   PORTAL_URL, autoDomainFor, clampDate, convertDisplay, domainFor, fromDisplay, hasExtremeScale, inRange, isLogScale, isRampReversed,
@@ -494,6 +495,28 @@ export function CompareControl({ v, range, compareDate, onChange }) {
         <p className="text-xs text-subtle">The comparison date in this link ({v.opts.compare}) does not fit a {v.period === 'day' ? 'daily' : 'monthly'} map, so it is not shown.</p>
       )}
     </div>
+  )
+}
+
+/** The question the AI data analysis tool is asked about this map, from the view's own words. */
+export function analyzeQuestion(v) {
+  const label = DATASETS[v.dataset]?.label || v.dataset
+  const place = EXTENTS[v.extent]?.label || v.extent
+  return `Analyze the ${label} map for ${v.date} (${place})`
+}
+
+/** The rail's door to the AI data analysis tool (T1 D): a rainbow-outlined button that opens the
+ *  AI interface in a new tab with this map's question and, as `ctx`, the canonical address of the
+ *  view (`path`: what Copy link copies). Both come from props, so the link follows every change. */
+export function AnalyzeWithAI({ v, path }) {
+  const href = handoffUrl({ question: analyzeQuestion(v), viewerPath: path })
+  return (
+    <Button asChild variant="ghost" className="hcdp-rainbow-border w-full hover:shadow-md [@media(pointer:coarse)]:h-11">
+      <a href={href} target="_blank" rel="noopener noreferrer" data-testid="analyze-ai">
+        <Sparkles className="h-4 w-4" aria-hidden="true" /> Analyze this map with AI <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+        <span className="sr-only">(opens in a new tab)</span>
+      </a>
+    </Button>
   )
 }
 

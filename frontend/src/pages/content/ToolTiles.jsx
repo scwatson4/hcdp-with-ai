@@ -16,12 +16,13 @@ const FRAME = 'relative block aspect-[3/2] overflow-hidden rounded-[10px] bg-ins
 
 /**
  * One tile. `tool`: { name, caption?, href?, image: { src, width, height },
- * shade?: 'navy' | 'blue', soon?: bool }. With an `href` the whole tile is one
- * link that opens in a new tab; a `soon` tile is not a link.
+ * shade?: 'navy' | 'blue', soon?: bool, ai?: bool }. With an `href` the whole tile is one
+ * link that opens in a new tab; a `soon` tile is not a link. An `ai` tile wears the
+ * logo's spectrum as its 1.5 px outline, so it reads as the AI door.
  */
 export function ToolTile({ tool, headingLevel = 2 }) {
   const id = useId()
-  const { name, caption, href, image, shade = 'navy', soon = false } = tool
+  const { name, caption, href, image, shade = 'navy', soon = false, ai = false } = tool
   const Heading = `h${headingLevel}`
   const live = Boolean(href) && !soon
   const inner = (
@@ -57,8 +58,9 @@ export function ToolTile({ tool, headingLevel = 2 }) {
       rel="noopener noreferrer"
       aria-labelledby={`${id}name ${id}tab`}
       aria-describedby={caption ? `${id}caption` : undefined}
-      className={cn(FRAME, 'group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas')}
+      className={cn(FRAME, 'group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas', ai && 'hcdp-rainbow-border')}
       data-testid="tool"
+      data-ai={ai ? 'true' : undefined}
     >
       {inner}
       <span id={`${id}tab`} className="sr-only">(opens in a new tab)</span>

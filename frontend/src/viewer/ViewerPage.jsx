@@ -26,7 +26,7 @@ import { TooltipProvider } from '../components/ui/tooltip'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { useRaster } from './map/rasterCache'
 import { getDateRange, getDateRangeSoon, useDateRange } from './map/dateRanges'
-import { ColourFields, Controls, CompareControl, DatasetField, DatePicker, LayerControls, PeriodUnitsFields, PlaceField, ScaleControls, ShareActions } from './map/Controls'
+import { AnalyzeWithAI, ColourFields, Controls, CompareControl, DatasetField, DatePicker, LayerControls, PeriodUnitsFields, PlaceField, ScaleControls, ShareActions } from './map/Controls'
 import BottomSheet from '../components/BottomSheet'
 import { useNarrowScreen } from './useMediaQuery'
 import { Compass, CornerStack, ExperimentalBadge, IGNITION_CAUTION, Legend, MapPill, TitleCard, ValueReadout } from './map/MapFurniture'
@@ -343,6 +343,7 @@ function Viewer({ v }) {
             <DatasetField v={v} onChange={onDataset} />
             <PeriodUnitsFields v={v} onPeriod={onPeriod} onUnits={onUnits} />
             <PlaceField v={v} onChange={onExtent} />
+            <div className="col-span-2"><AnalyzeWithAI v={v} path={sharePath} /></div>
             <div className="col-span-2"><ShareActions path={sharePath} title={title} /></div>
             <div className="col-span-2">{addressNote}</div>
           </div>
@@ -410,6 +411,7 @@ function Viewer({ v }) {
                   layers={<LayerControls v={v} onBasemap={onBasemap} onOpacity={onOpacity} onOpacityPreview={setOpacityDraft} onLayerToggle={onLayerToggle} />}
                   extra={<CompareControl v={v} range={range} compareDate={compareDate} onChange={onCompare} />}
                 />
+                <AnalyzeWithAI v={v} path={sharePath} />
                 <ShareActions path={sharePath} title={title} />
                 {addressNote}
               </div>

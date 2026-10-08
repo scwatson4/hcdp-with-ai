@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import ClimateTools from './ClimateTools'
+import { AI_INTERFACE } from '../../site/handoff'
 
 const HCDP = 'https://www.hawaii.edu/climate-data-portal'
 
@@ -18,6 +19,9 @@ const PORTAL_TILES = [
   ['Climate of Hawaiʻi', `${HCDP}/climate-atlas/`, 'Download mean annual climate maps for Hawaiʻi.'],
 ]
 const SOON = 'Avian Malaria-Risk & Warning'
+// Ours (T1 D): the door to the AI data analysis tool, between the portal's nine live tiles and its coming-soon one.
+const AI_TILE = ['AI Data Analysis Tool', `${AI_INTERFACE}/?from=website`, 'ask questions of the data']
+const ALL_LIVE = [...PORTAL_TILES, AI_TILE]
 
 const renderPage = () => render(<MemoryRouter initialEntries={['/tools']}><ClimateTools /></MemoryRouter>)
 
@@ -30,13 +34,27 @@ describe('ClimateTools', () => {
     expect(within(related).getByRole('link', { name: /Climate Summary/ })).toHaveAttribute('href', '/climate-summary')
   })
 
-  it('shows the portal’s ten picture tiles in the portal’s order', () => {
+  it('shows the portal’s ten picture tiles in the portal’s order, plus our AI door before the coming-soon one', () => {
     renderPage()
     const grid = screen.getByRole('list', { name: 'Climate tools' })
     const tiles = within(grid).getAllByTestId('tool')
-    expect(tiles).toHaveLength(10)
+    expect(tiles).toHaveLength(11)
     const names = tiles.map((t) => within(t).getByRole('heading', { level: 2 }).textContent)
-    expect(names).toEqual([...PORTAL_TILES.map(([name]) => name), `${SOON} (Coming soon)`])
+    expect(names).toEqual([...ALL_LIVE.map(([name]) => name), `${SOON} (Coming soon)`])
+  })
+
+  it('gives the AI Data Analysis Tool tile its own picture, caption, rainbow outline and an external link', () => {
+    renderPage()
+    const tile = screen.getAllByTestId('tool').find((t) => t.getAttribute('data-ai') === 'true')
+    expect(tile).toBeTruthy()
+    expect(within(tile).getByRole('heading', { level: 2 })).toHaveTextContent('AI Data Analysis Tool')
+    expect(tile).toHaveTextContent('ask questions of the data')
+    expect(within(tile).getByRole('img')).toHaveAttribute('src', '/tiles/ai-data-analysis.jpg')
+    expect(within(tile).getByRole('img')).toHaveAttribute('alt', 'AI Data Analysis Tool')
+    expect(tile.className).toContain('hcdp-rainbow-border')
+    expect(tile).toHaveAttribute('href', `${AI_INTERFACE}/?from=website`)
+    expect(tile).toHaveAttribute('target', '_blank')
+    expect(tile.closest('li')).toHaveAttribute('id', 'tool-ai-data-analysis')
   })
 
   it('gives every tile a picture with alt text, reserved size and lazy loading', () => {
@@ -44,9 +62,9 @@ describe('ClimateTools', () => {
     const tiles = screen.getAllByTestId('tool')
     tiles.forEach((tile, i) => {
       const img = within(tile).getByRole('img')
-      const name = i < PORTAL_TILES.length ? PORTAL_TILES[i][0] : SOON
+      const name = i < ALL_LIVE.length ? ALL_LIVE[i][0] : SOON
       expect(img).toHaveAttribute('alt', name)
-      expect(img.getAttribute('src')).toMatch(/^\/tools\/[a-z-]+\.(png|jpg)$/)
+      expect(img.getAttribute('src')).toMatch(/^\/(tools|tiles)\/[a-z-]+\.(png|jpg)$/)
       expect(img).toHaveAttribute('loading', 'lazy')
       expect(Number(img.getAttribute('width'))).toBeGreaterThan(0)
       expect(Number(img.getAttribute('height'))).toBeGreaterThan(0)
@@ -57,8 +75,8 @@ describe('ClimateTools', () => {
     renderPage()
     const grid = screen.getByRole('list', { name: 'Climate tools' })
     const links = within(grid).getAllByRole('link')
-    expect(links).toHaveLength(PORTAL_TILES.length)
-    PORTAL_TILES.forEach(([name, href, caption], i) => {
+    expect(links).toHaveLength(ALL_LIVE.length)
+    ALL_LIVE.forEach(([name, href, caption], i) => {
       const link = links[i]
       expect(link).toHaveAttribute('href', href)
       expect(link).toHaveAttribute('target', '_blank')

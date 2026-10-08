@@ -29,6 +29,10 @@ export function Sidebar() {
       <ul className="mb-5 space-y-2" data-testid="sidebar-buttons">
         {SIDEBAR.buttons.map((b) => {
           const cls = 'block rounded-md border border-black/60 px-3 py-1.5 text-center font-nav text-[12.5px] font-bold uppercase tracking-[0.04em] text-white shadow-sm transition-transform hover:-translate-y-px hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+          if (b.ai) {
+            // The AI data analysis tool: not a portal colour — white with the logo's spectrum as a 1.5 px border, dark type (T1 A).
+            return <li key={b.label}><a href={b.href} target="_blank" rel="noopener noreferrer" data-testid="sidebar-ai-tool" className="hcdp-rainbow-border block rounded-md px-3 py-1.5 text-center font-nav text-[12.5px] font-bold uppercase tracking-[0.04em] text-foreground shadow-sm transition-transform hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{b.label}<span className="sr-only"> (opens in a new tab)</span></a></li>
+          }
           return <li key={b.label}>{b.to ? <Link to={b.to} className={cls} style={{ backgroundColor: b.color }}>{b.label}</Link> : <a href={b.href} target="_blank" rel="noopener noreferrer" className={cls} style={{ backgroundColor: b.color }}>{b.label}</a>}</li>
         })}
       </ul>

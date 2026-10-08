@@ -74,7 +74,7 @@ ROUTES = [
 # Deep-link routes beyond ROUTES: per-storm and per-tool pages — only the slugs that exist.
 STORM_SLUGS = ("lowell", "lala", "nolo", "kona-low-1", "kona-low-2", "kona-lows")
 TOOL_SLUGS = ("rainfall-atlas", "ccvd-portfolios", "h-rip", "groundwater-recharge", "monthly-climate-summary", "sea-level-rise-viewer",
-              "american-samoa-data-viewer", "soest-coastal-viewer", "climate-of-hawaii", "avian-malaria")
+              "american-samoa-data-viewer", "soest-coastal-viewer", "climate-of-hawaii", "ai-data-analysis", "avian-malaria")
 ROUTE_PATTERNS = [re.compile(r"^/extreme-events/(" + "|".join(STORM_SLUGS) + r")$"), re.compile(r"^/tools/(" + "|".join(TOOL_SLUGS) + r")$")]
 # Query keys each page understands (everything else is dropped as invalid).
 PAGE_QUERY_KEYS = {"/": {"ask"}, "/mesonet": {"viewer", "station", "view"}, "/climate-summary": {"year", "month"}}
@@ -359,6 +359,23 @@ def describe_view(v: dict) -> str:
     return f"{DATASETS[v['dataset']]['label']}, {when}, {labels[v['extent']]}"
 
 
+def viewer_context_path(context: dict | None) -> str | None:
+    """The canonical path (no query) of the viewer the visitor is on, from the assistant's context:
+    its parsed `viewer` first, else its `path`; None off the viewer."""
+    ctx = context or {}
+    viewer = ctx.get("viewer") or {}
+    candidates = []
+    if all(viewer.get(k) for k in ("dataset", "period", "date", "extent")):
+        candidates.append(f"/viewer/{viewer['dataset']}/{viewer['period']}/{viewer['date']}/{viewer['extent']}")
+    if isinstance(ctx.get("path"), str):
+        candidates.append(ctx["path"])
+    for c in candidates:
+        v = parse_viewer_path(c)
+        if v:
+            return v["canonical"].partition("?")[0]
+    return None
+
+
 def valid_internal_path(path: str) -> bool:
     if not isinstance(path, str) or not path.startswith("/"):
         return False
@@ -459,7 +476,7 @@ VIEWER DEEP LINKS: /viewer/{{dataset}}/{{period}}/{{date}}/{{extent}}
   A storm's rainfall is best shown as daily rainfall on its peak day for the island hit hardest; a drought question as spi-3 for the last complete month (SPI links may name an island: the statewide grid is shown zoomed to it).
 MORE SHAREABLE LINKS (every state on this site has a URL; use ONLY these forms — an invented path is dropped):
   /extreme-events/{{{"|".join(STORM_SLUGS)}}}   one storm's section
-  /tools/{{{"|".join(TOOL_SLUGS)}}}   one tool's tile — only these ten slugs; any other catalog entry is reached with an open action on its url
+  /tools/{{{"|".join(TOOL_SLUGS)}}}   one tool's tile — only these eleven slugs; any other catalog entry is reached with an open action on its url
   /mesonet?viewer=live|app|nolo&station={{id}}&view=dashboard|graphing|station-map|station-table|wind-map   the live Mesonet viewer on one station (use viewer=live with a station id; view=graphing for charts; app = the phone app)
   /climate-summary?year=YYYY&month=M   the monthly summary for one month
   /?ask={{url-encoded question}}   a link that asks this assistant a question on arrival (for sharing a question)
@@ -498,14 +515,19 @@ Respond with ONLY a JSON object:
         return self.normalize(raw, message, context)
 
     def handoff_url(self, message: str, context: dict | None = None) -> str:
-        """The analysis assistant gets the question plus what the visitor was looking at."""
+        """The link into the AI interface, in the shape frontend/src/site/handoff.js builds (keep the two in step):
+        `?ask=<the question as typed, at most 500 chars>&ctx=viewer:<canonical viewer path, no query>&from=website`.
+        `ctx` is present only when the visitor was on a viewer page; the question itself is never reworded."""
         base = self.ai_interface_url or "https://hcdp-ai-interface.cis251375.projects.jetstream-cloud.org"
-        ask = message
-        viewer = (context or {}).get("viewer") or {}
-        if viewer.get("dataset") and viewer.get("date"):
-            label = DATASETS.get(viewer["dataset"], {}).get("label", viewer["dataset"])
-            ask = f"{message} (I was looking at the {label} map for {viewer['date']}, {viewer.get('extent', 'statewide')})"
-        return f"{base}/?ask={quote(ask)}"
+        parts = []
+        ask = (message or "").strip()[:500]
+        if ask:
+            parts.append("ask=" + quote(ask, safe=""))
+        path = viewer_context_path(context)
+        if path:
+            parts.append("ctx=" + quote(f"viewer:{path}", safe=""))
+        parts.append("from=website")
+        return f"{base}/?{'&'.join(parts)}"
 
     def allowed_url(self, url) -> bool:
         if not isinstance(url, str):

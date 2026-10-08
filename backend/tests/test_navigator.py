@@ -50,7 +50,7 @@ def test_viewer_path_grammar():
     assert canonical_viewer_path("/viewer/rainfall-legacy/day/1950-03-01/statewide") is None
     assert valid_internal_path("/extreme-events#lowell")
     assert valid_internal_path("/about/team")
-    assert valid_internal_path("/extreme-events/lowell") and valid_internal_path("/tools/h-rip")
+    assert valid_internal_path("/extreme-events/lowell") and valid_internal_path("/tools/h-rip") and valid_internal_path("/tools/ai-data-analysis")
     assert valid_internal_path("/mesonet?viewer=live&station=0115&view=dashboard")
     assert valid_internal_path("/climate-summary?year=2026&month=8") and valid_internal_path("/?ask=rainfall%20map")
     assert not valid_internal_path("/mesonet?evil=1") and not valid_internal_path("/tools/../x") and not valid_internal_path("/extreme-events/Lowell!")
@@ -120,11 +120,16 @@ def test_analysis_gets_a_server_built_handoff():
     nav, _ = make({"intent": "analysis", "reply": "", "actions": [{"type": "handoff", "url": "https://phish.example/"}], "alternatives": []})
     out = nav.respond("what was the total rainfall at Hilo during Lowell?")
     assert out["intent"] == "analysis"
-    assert out["actions"] == [{"type": "handoff", "url": "https://ai.example.org/?ask=what%20was%20the%20total%20rainfall%20at%20Hilo%20during%20Lowell%3F"}]
-    # from a viewer page the hand-off carries what the visitor was looking at
+    assert out["actions"] == [{"type": "handoff", "url": "https://ai.example.org/?ask=what%20was%20the%20total%20rainfall%20at%20Hilo%20during%20Lowell%3F&from=website"}]
+    # from a viewer page the hand-off carries the view as `ctx` (the canonical path, no query) and the question as typed
     nav2, _ = make({"intent": "analysis", "reply": "", "actions": [], "alternatives": []})
-    out2 = nav2.respond("which gauge had the most?", [], {"path": "/viewer/rainfall/day/2026-09-07/kauai", "viewer": {"dataset": "rainfall", "period": "day", "date": "2026-09-07", "extent": "kauai"}})
-    assert "I%20was%20looking%20at%20the%20Rainfall%20map%20for%202026-09-07%2C%20kauai" in out2["actions"][0]["url"]
+    out2 = nav2.respond("which gauge had the most?", [], {"path": "/viewer/rain/day/2026-09-07/ka?units=in", "viewer": {"dataset": "rainfall", "period": "day", "date": "2026-09-07", "extent": "kauai"}})
+    assert out2["actions"][0]["url"] == "https://ai.example.org/?ask=which%20gauge%20had%20the%20most%3F&ctx=viewer%3A%2Fviewer%2Frainfall%2Fday%2F2026-09-07%2Fkauai&from=website"
+    assert "looking" not in out2["actions"][0]["url"]
+    # off the viewer there is no ctx; the path alone is enough to find the view
+    assert nav2.handoff_url("x", {"path": "/data", "viewer": None}) == "https://ai.example.org/?ask=x&from=website"
+    assert nav2.handoff_url("x", {"path": "/viewer/spi3/month/2026-08/state"}) == "https://ai.example.org/?ask=x&ctx=viewer%3A%2Fviewer%2Fspi-3%2Fmonth%2F2026-08%2Fstatewide&from=website"
+    assert nav2.handoff_url("", None) == "https://ai.example.org/?from=website"
     assert "analysis" in out["reply"]
     assert out["minimize"] is False
 

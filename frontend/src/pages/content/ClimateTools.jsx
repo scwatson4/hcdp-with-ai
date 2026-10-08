@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { Wrench, CloudRain, Globe2, Map as MapIcon, Sun, Leaf, BookOpen } from 'lucide-react'
-import { HCDP } from '../../site/nav'
+import { AI_TOOL, HCDP } from '../../site/nav'
 import { PageShell, Section } from './PageShell'
 import ExternalLink from './ExternalLink'
 import { ToolTileGrid } from './ToolTiles'
@@ -28,6 +28,10 @@ const TOOLS = [
   { name: 'American Samoa Data Viewer and Download', caption: 'Visualize and download climate data for American Samoa.', href: 'https://hcdp.github.io/ascdp/', image: img('american-samoa-data-viewer.png', 800, 395), shade: 'blue' },
   { name: 'SOEST Coastal Viewer', caption: 'View coastal data for Hawaiʻi.', href: 'https://www.soest.hawaii.edu/crc/slr-viewer/', image: img('soest-coastal-viewer.jpg', 663, 500), shade: 'blue' },
   { name: 'Climate of Hawaiʻi', caption: 'Download mean annual climate maps for Hawaiʻi.', href: `${HCDP}/climate-atlas/`, image: img('climate-of-hawaii.jpg', 663, 414), shade: 'blue' },
+  // Ours, not the portal's (T1 D, 2026-10-08): the door to the AI data analysis tool, after the portal's nine
+  // live tiles and before its coming-soon one. The picture is the AI interface's own sign-in page (captured
+  // 2026-10-08, 3:2, 800 px); the spectrum outline marks it as AI.
+  { name: AI_TOOL.label, caption: 'ask questions of the data', href: AI_TOOL.href, image: { src: '/tiles/ai-data-analysis.jpg', width: 800, height: 533, slug: 'ai-data-analysis' }, shade: 'navy', ai: true },
   { name: 'Avian Malaria-Risk & Warning', soon: true, center: true, image: img('avian-malaria.png', 301, 209), shade: 'blue' },
 ]
 
@@ -51,7 +55,7 @@ export default function ClimateTools() {
     >
       <div>
         <ToolTileGrid tools={TOOLS} label="Climate tools" />
-        <p className="mt-8 text-xs text-subtle" data-testid="image-credit">Images: Hawaiʻi Climate Data Portal</p>
+        <p className="mt-8 text-xs text-subtle" data-testid="image-credit">Images: Hawaiʻi Climate Data Portal; the AI Data Analysis Tool picture is the HCDP AI interface</p>
       </div>
     </PageShell>
   )

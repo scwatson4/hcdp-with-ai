@@ -323,10 +323,12 @@ function Viewer({ v }) {
     </div>
   )
 
-  // Map heights: the viewport minus the sticky block (header + the docked ask bar's 3.5 rem row, R1 D) and
-  // the bars above the map; the phone layout also leaves room for the sheet's peek.
-  const single = narrow ? 'h-[calc(100dvh-16.75rem)] min-h-[300px]' : 'h-[68vh] min-h-[360px] sm:h-[min(72vh,640px)] lg:h-[calc(100dvh-12rem)] lg:min-h-[480px]'
-  const half = narrow ? 'h-[40vh] min-h-[220px]' : 'h-[48vh] min-h-[300px] sm:h-[min(72vh,640px)] lg:h-[calc(100dvh-12rem)] lg:min-h-[480px]'
+  // Map heights (items 14 and 17): on desktop the map fills the viewport below the sticky block (header +
+  // docked bar, measured by App.jsx into --hcdp-sticky-h) less the page's 1 rem of padding above and below,
+  // never under 480 px, and the map column is sticky so the rail scrolls under it; on phones the map leaves
+  // room for the sticky block and the sheet's peek.
+  const single = narrow ? 'h-[calc(100dvh-var(--hcdp-sticky-h,6.75rem)-8rem)] min-h-[300px]' : 'h-[68vh] min-h-[360px] sm:h-[min(72vh,640px)] lg:h-[calc(100dvh-var(--hcdp-sticky-h,10.5rem)-2rem)] lg:min-h-[480px]'
+  const half = narrow ? 'h-[40vh] min-h-[220px]' : 'h-[48vh] min-h-[300px] sm:h-[min(72vh,640px)] lg:h-[calc(100dvh-var(--hcdp-sticky-h,10.5rem)-2rem)] lg:min-h-[480px]'
   const maps = compareDate ? (
     <div className={cn('grid grid-cols-1 sm:grid-cols-2', narrow ? 'gap-1' : 'gap-3')} data-testid="compare-view">
       <div className={half}>{pane(v.date, raster, colorFn, { onViewChange, leader: true, showLegend: false, ...stationProps(stationValues) })}</div>
@@ -431,16 +433,17 @@ function Viewer({ v }) {
                 <TabsContent value="stations" className="mt-4" data-testid="rail-stations">
                   {stationList(
                     <p className="text-xs text-subtle">The stations with a value on this date. Choose one to see its record; the map moves to it.</p>,
-                    'lg:max-h-[calc(100dvh-16.5rem)] lg:overflow-y-auto',
+                    'lg:max-h-[calc(100dvh-var(--hcdp-sticky-h,10.5rem)-6rem)] lg:overflow-y-auto',
                   )}
                 </TabsContent>
               </Tabs>
             )
           })()}
         </aside>
-        <section className="min-w-0" aria-label="Map">{maps}</section>
+        {/* Item 14: on desktop the map stays put under the sticky block while the rail scrolls. */}
+        <section className="min-w-0 lg:sticky lg:top-[calc(var(--hcdp-sticky-h,10.5rem)+1rem)]" aria-label="Map" data-testid="map-column">{maps}</section>
         {/* The time series: a 20 rem column beside the map on wide screens, below it otherwise. */}
-        {selection && <div className="min-w-0" data-testid="timeseries-dock">{panel('lg:max-h-[calc(100dvh-12rem)] lg:overflow-y-auto')}</div>}
+        {selection && <div className="min-w-0" data-testid="timeseries-dock">{panel('lg:max-h-[calc(100dvh-var(--hcdp-sticky-h,10.5rem)-2rem)] lg:overflow-y-auto')}</div>}
       </div>
     </div>
     </TooltipProvider>

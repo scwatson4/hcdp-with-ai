@@ -17,7 +17,7 @@ try {
     // errors thrown inside embedded third-party frames (the Mesonet dashboard's Leaflet plugin) are not ours
     page.on('pageerror', (e) => { const t = String(e); if (!/reading 'Control'/.test(t)) errors.push(t) })
     await page.goto(BASE + '/', { waitUntil: 'networkidle' })
-    check(`${label}: landing loads`, await page.locator('h1').first().isVisible())
+    check(`${label}: landing loads`, (await page.locator('h1').first().textContent()) === 'Hawaiʻi Climate Data Portal')   // the sr-only h1 (L1 B: no heading over the map)
     check(`${label}: six tool cards`, (await page.locator('[data-testid^="tool-"]').count()) === 6)
     check(`${label}: assistant box present`, await page.locator('[data-testid="landing-assistant"]').isVisible())
     check(`${label}: no horizontal scroll`, await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1))

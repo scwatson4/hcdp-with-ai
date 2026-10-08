@@ -10,6 +10,23 @@ const renderLanding = () => render(<MemoryRouter initialEntries={['/']}><Assista
 beforeEach(() => { vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ items: [] }) }))) })
 afterEach(() => { vi.unstubAllGlobals() })
 
+describe('Landing hero', () => {
+  it('has no heading text over the map, only an sr-only h1 with the portal’s name, and keeps the bar', () => {
+    renderLanding()
+    expect(screen.queryByText(/What are you/)).toBeNull()
+    expect(screen.queryByRole('heading', { name: /looking/ })).toBeNull()
+    const h1 = screen.getByRole('heading', { level: 1 })
+    expect(h1).toHaveTextContent('Hawaiʻi Climate Data Portal')
+    expect(h1.className).toContain('sr-only')
+    expect(screen.getByTestId('landing-assistant')).toBeInTheDocument()
+    expect(screen.getByTestId('assistant-input')).toHaveAttribute('aria-label', 'Ask AI')
+    // the bar's row is the middle track of the 45/55 grid
+    const hero = screen.getByTestId('landing-hero')
+    expect(hero.className).toContain('grid-rows-[45fr_auto_55fr]')
+    expect(screen.getByTestId('landing-assistant').parentElement.className).toContain('row-start-2')
+  })
+})
+
 describe('Landing sidebar', () => {
   it('has the portal’s five coloured buttons and a sixth, white, rainbow-outlined door to the AI data analysis tool', () => {
     renderLanding()

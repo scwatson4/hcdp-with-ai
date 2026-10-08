@@ -53,13 +53,16 @@ export default function Landing() {
   return (
     <div className="mx-auto w-full max-w-[1440px]">
       <div className="grid lg:grid-cols-[minmax(0,85fr)_minmax(210px,15fr)] lg:items-start">
-        <section className="relative isolate flex min-h-[62vh] items-center overflow-hidden lg:min-h-[70vh]" data-testid="landing-hero" style={{ background: ocean }}>
+        {/* L1 pick B (2026-10-08): no heading over the map — the page's name is an sr-only h1 and the bar
+            carries the question itself. The hero is a 45fr / auto / 55fr grid, so the bar's row sits at about
+            45 % of the hero's height; a tall answers card still grows the hero as before. */}
+        <section className="relative isolate grid min-h-[62vh] grid-rows-[45fr_auto_55fr] overflow-hidden lg:min-h-[70vh]" data-testid="landing-hero" style={{ background: ocean }}>
           <MapBackdrop />
-          {/* R4 B: a soft white glow behind the heading and the bar; the ocean and its islands stay visible around them. */}
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[5]" style={{ background: 'radial-gradient(ellipse 44% 36% at 50% 50%, hsl(var(--canvas) / 0.94) 0%, hsl(var(--canvas) / 0.72) 50%, hsl(var(--canvas) / 0) 100%)' }} />
-          <div className="relative z-10 mx-auto w-full max-w-3xl px-4 py-12 sm:py-16">
-            <h1 className="text-center font-display text-3xl font-semibold tracking-tight sm:text-4xl">What are you <span className="hcdp-grad-word">looking</span> for?</h1>
-            <div className="mt-6" data-testid="landing-assistant">
+          {/* R4 B: a soft white glow behind the bar; the ocean and its islands stay visible around it. */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[5]" style={{ background: 'radial-gradient(ellipse 44% 36% at 50% 45%, hsl(var(--canvas) / 0.94) 0%, hsl(var(--canvas) / 0.72) 50%, hsl(var(--canvas) / 0) 100%)' }} />
+          <div className="relative z-10 row-start-2 mx-auto w-full max-w-3xl px-4 py-6">
+            <h1 className="sr-only">Hawaiʻi Climate Data Portal</h1>
+            <div data-testid="landing-assistant">
               <AssistantPanel bar />
             </div>
           </div>

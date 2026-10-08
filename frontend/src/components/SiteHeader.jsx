@@ -5,11 +5,13 @@ import { Button } from './ui/button'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from './ui/dropdown-menu'
 import { NAV } from '../site/nav'
 import { cn } from '../lib/utils'
+import { OriginalVersionLink, ShareView } from './OriginalLink'
 
-// The portal's header: the logo centred on its own row, the menu centred under it in
-// Raleway small caps (tightened: 20 px gaps, 12.5 px type). The site is always light —
-// there is no theme toggle. App.jsx keeps the header sticky together with the docked
-// ask bar that sits under it on inner pages (R1 D).
+// The portal's header: the logo centred on its own row — with "Share this view" at the row's
+// far left and "Original HCDP version" at its far right (item 11), vertically centred with the
+// logo — and the menu centred under it in Raleway small caps (tightened: 20 px gaps, 12.5 px
+// type). The site is always light — there is no theme toggle. App.jsx keeps the header sticky
+// together with the docked ask bar that sits under it on inner pages (R1 D).
 function MenuItem({ item }) {
   if (item.external) {
     return (
@@ -34,12 +36,13 @@ export default function SiteHeader() {
   return (
     <header className="border-b border-border bg-canvas/95 backdrop-blur">
       <div className="hcdp-band" aria-hidden="true" />
-      <div className="relative mx-auto flex w-full max-w-6xl items-center justify-start px-4 pb-1 pt-3 sm:justify-center">
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 pb-1 pt-3" data-testid="logo-row">
+        <div className="flex min-w-0 items-center justify-start"><ShareView /></div>
         <Link to="/" aria-label="Hawaiʻi Climate Data Portal home" className="block">
-          <img src="/hcdp_logo.png" alt="HCDP — Hawaiʻi Climate Data Portal" width="1120" height="150" decoding="async" fetchPriority="high" className="h-8 w-auto sm:h-[52px] dark:hidden" />
-          <img src="/hcdp_logo_dark.png" alt="" width="1120" height="150" decoding="async" className="hidden h-8 w-auto sm:h-[52px] dark:block" />
+          <img src="/hcdp_logo.png" alt="HCDP — Hawaiʻi Climate Data Portal" width="1120" height="150" decoding="async" fetchPriority="high" className="h-7 w-auto sm:h-[52px]" />
         </Link>
-        <div className="absolute right-4 top-1/2 flex -translate-y-1/2 items-center gap-1">
+        <div className="flex min-w-0 items-center justify-end gap-1">
+          <OriginalVersionLink />
           <Button variant="ghost" size="sm" className="h-8 w-8 p-0 md:hidden" aria-label="Menu" aria-expanded={mobile} onClick={() => setMobile((v) => !v)}><Menu className="h-4 w-4" /></Button>
         </div>
       </div>

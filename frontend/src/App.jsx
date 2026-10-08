@@ -3,11 +3,11 @@ import { useEffect } from 'react'
 import SiteHeader from './components/SiteHeader'
 import SiteFooter from './components/SiteFooter'
 import AssistantBar from './assistant/AssistantBar'
-import OriginalLink from './components/OriginalLink'
 import ReturnStrip from './components/ReturnStrip'
 
-// The shell every page shares: the sticky block (the header and, on inner pages, the docked ask
-// bar — R1 D), the return strip, the share bar, the page, the footer.
+// The shell every page shares: the sticky block (the header — whose logo row carries "Share this
+// view" and "Original HCDP version" — and, on inner pages, the docked ask bar, R1 D), the return
+// strip, the page, the footer.
 export default function App() {
   const { pathname } = useLocation()
   // New page → top; the viewer's own URL changes (date, island…) keep the scroll position.
@@ -20,7 +20,6 @@ export default function App() {
         <AssistantBar />
       </div>
       <ReturnStrip />
-      <OriginalLink />
       <main id="main" className="flex-1">
         <Outlet />
       </main>

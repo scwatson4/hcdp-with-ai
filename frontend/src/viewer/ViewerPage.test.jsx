@@ -7,6 +7,7 @@ import { clearRasterCache } from './map/rasterCache'
 import { clearDateRanges } from './map/dateRanges'
 import { clearStationCache } from './map/stationData'
 import { resetUrlWrites } from './urlWrites'
+import { NAMED_RAMPS, interpolateColorRamp } from './map/ramps'
 
 // ── Leaflet, georaster and the GeoRasterLayer, mocked ───────────────────────
 // jsdom cannot run Leaflet; the mocks keep one fake map whose view and event
@@ -575,6 +576,114 @@ describe('controls write the URL', () => {
     act(() => { vi.advanceTimersByTime(1) })
     expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?lat=22.1235&lng=-159.6543&z=11')
     expect(navType()).toBe('REPLACE')
+  })
+})
+
+// ── colours and scale: ?ramp=-r, ?log=1, ?range= ────────────────────────────
+describe('the Colours and scale popover', () => {
+  const labels = () => within(screen.getByTestId('legend-labels')).getAllByText(/./).map((n) => n.textContent)
+  const openScale = () => { fireEvent.click(screen.getByTestId('scale-button')); return screen.getByTestId('scale-popover') }
+
+  it('summarises the scale in effect and writes the reversed ramp on the ramp key (replace)', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?layers=stations')
+    await waitFor(() => expect(screen.getAllByTestId('station-marker')).toHaveLength(2))
+    expect(screen.getByTestId('scale-summary')).toHaveTextContent('0–20 mm')
+    const before = screen.getAllByTestId('station-marker')[0].dataset.fill
+    expect(screen.getByTestId('legend-gradient')).not.toHaveAttribute('data-reversed')
+    const pop = openScale()
+    fireEvent.click(within(pop).getByTestId('reverse-switch'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?ramp=viridis_r-r&layers=stations'))
+    expect(navType()).toBe('REPLACE')
+    expect(screen.getByTestId('legend-gradient')).toHaveAttribute('data-reversed', 'true')
+    expect(screen.getByTestId('scale-summary')).toHaveTextContent('0–20 mm · reversed')
+    // the markers take their colour from the same function as the grid, so they flip too
+    await waitFor(() => expect(screen.getAllByTestId('station-marker')[0].dataset.fill).not.toBe(before))
+    await waitFor(() => expect(fake.layers[fake.layers.length - 1].pixelValuesToColorFn([0])).toBe('rgb(68,1,84)'))
+    // another ramp keeps the direction; the default ramp the right way round leaves the address
+    fireEvent.change(screen.getByTestId('ramp-select'), { target: { value: 'turbo' } })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?ramp=turbo-r&layers=stations'))
+    fireEvent.change(screen.getByTestId('ramp-select'), { target: { value: 'viridis_r' } })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?ramp=viridis_r-r&layers=stations'))
+    fireEvent.click(within(screen.getByTestId('scale-popover')).getByTestId('reverse-switch'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?layers=stations'))
+  })
+
+  it('writes log=1 and reads the legend at the values the colours stand for', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in')
+    await waitFor(() => expect(fake.layers.length).toBeGreaterThan(0))
+    expect(labels()).toEqual(['+0.79+', '+0.59', '+0.39', '+0.2', '0'])
+    const pop = openScale()
+    fireEvent.click(within(pop).getByTestId('log-switch'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?log=1&units=in'))
+    expect(navType()).toBe('REPLACE')
+    expect(labels()).toEqual(['+0.79+', '+0.35', '+0.14', '+0.04', '0'])    // 21^t − 1 mm, in inches
+    expect(screen.getByTestId('scale-summary')).toHaveTextContent('0–0.79 in · log')
+    // the tick under the pointer moves with the scale: 5 mm sits at ln 6 / ln 21 of the bar, not a quarter
+    await act(async () => { fake.map.fire('mousemove', { latlng: { lat: 22.5, lng: -159.5 } }); await new Promise((r) => setTimeout(r, 50)) })
+    expect(parseFloat(screen.getByTestId('legend-tick').style.bottom)).toBeCloseTo((Math.log1p(5) / Math.log1p(20)) * 100, 1)
+    await waitFor(() => expect(fake.layers[fake.layers.length - 1].pixelValuesToColorFn([5])).toBe(interpolateColorRamp(NAMED_RAMPS.viridis_r, Math.log1p(5) / Math.log1p(20))))
+    fireEvent.click(within(screen.getByTestId('scale-popover')).getByTestId('log-switch'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?units=in'))
+  })
+
+  it('locks the legend to two numbers typed in display units, written in native units, and resets to auto', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in')
+    const pop = openScale()
+    const low = within(pop).getByTestId('range-low'), high = within(pop).getByTestId('range-high')
+    expect(low).toHaveValue(0)
+    expect(high).toHaveValue(0.79)                                               // the automatic 0–20 mm, in inches
+    expect(within(pop).getByTestId('range-hint')).toHaveTextContent("Auto: HCDP's scale")
+    expect(within(pop).getByTestId('range-reset')).toBeDisabled()
+    fireEvent.change(high, { target: { value: '4' } })
+    fireEvent.change(low, { target: { value: '1' } })
+    fireEvent.keyDown(low, { key: 'Enter' })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?range=25.4..101.6&units=in'))
+    expect(navType()).toBe('REPLACE')
+    expect(labels()).toEqual(['+4+', '+3.25', '+2.5', '+1.75', '+1-'])          // both ends open: values lie beyond the lock
+    expect(within(pop).getByTestId('range-hint')).toHaveTextContent("Locked. HCDP's scale is 0–0.79 in.")
+    expect(screen.getByTestId('scale-summary')).toHaveTextContent('1–4 in · locked')
+    // the storm scale cannot override a lock; the lock wins
+    fireEvent.click(within(screen.getByTestId('scale-toggle')).getByLabelText(/Storm/))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?scale=extreme&range=25.4..101.6&units=in'))
+    expect(labels()[0]).toBe('+4+')
+    // nonsense is refused with a word, and nothing is written
+    fireEvent.change(high, { target: { value: '0.5' } })
+    fireEvent.blur(high)
+    expect(within(pop).getByTestId('range-hint')).toHaveTextContent('Two numbers, low below high.')
+    await settle()
+    expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?scale=extreme&range=25.4..101.6&units=in')
+    fireEvent.click(within(pop).getByTestId('range-reset'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?scale=extreme&units=in'))
+    expect(labels()[0]).toBe('+9.84+')
+    expect(within(pop).getByTestId('range-high')).toHaveValue(9.84)
+  })
+
+  it('restores a locked, reversed, log scale from the address and drops the lock when the product changes', async () => {
+    renderAt('/viewer/rainfall/month/2026-08/maui?ramp=turbo-r&range=0..300&log=1')
+    expect(screen.getByTestId('ramp-select')).toHaveValue('turbo')
+    expect(screen.getByTestId('legend-gradient')).toHaveAttribute('data-reversed', 'true')
+    expect(labels()).toEqual(['+300+', '+71.26', '+16.35', '+3.17', '0'])
+    const pop = openScale()
+    expect(within(pop).getByTestId('reverse-switch')).toHaveAttribute('aria-checked', 'true')
+    expect(within(pop).getByTestId('log-switch')).toHaveAttribute('aria-checked', 'true')
+    expect(within(pop).getByTestId('range-low')).toHaveValue(0)
+    expect(within(pop).getByTestId('range-high')).toHaveValue(300)
+    // a lock is in one product's units and scale: changing the dataset or period drops it, the ramp and log travel
+    fireEvent.click(within(screen.getByTestId('period-toggle')).getByLabelText('Daily'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-08-31/maui?ramp=turbo-r&log=1'))
+    fireEvent.change(screen.getByTestId('dataset-select'), { target: { value: 'temperature-max' } })
+    await waitFor(() => expect(loc()).toBe('/viewer/temperature-max/day/2026-08-31/maui?ramp=turbo-r&log=1'))
+  })
+
+  it('offers the same fields inline in the phone sheet', async () => {
+    narrowScreen(true)
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    const sheet = screen.getByTestId('bottom-sheet')
+    fireEvent.mouseDown(within(sheet).getByRole('tab', { name: 'Layers' }))
+    const controls = await within(sheet).findByTestId('scale-controls')
+    expect(screen.queryByTestId('scale-button')).toBeNull()
+    fireEvent.click(within(controls).getByTestId('log-switch'))
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?log=1'))
   })
 })
 

@@ -18,13 +18,13 @@ import { CLIMATE_STATIONS_URL, findStation, stationValuesUrl, stationsOf, useJso
 import { NAMED_RAMPS, makeColorFn, rampPosition, valueAtLatLng } from './map/ramps'
 import {
   clampDate, compareDateFor, dateForPeriod, defaultRampFor, domainFor, formatValue, hasExtremeScale,
-  isExperimental, isIgnition, isRealDate, legendFor, pathWith, rampNameFor, rasterRequestUrl, sourceLineFor,
+  isExperimental, isIgnition, isLogScale, isRampReversed, isRealDate, legendFor, pathWith, rampNameFor, rasterRequestUrl, sourceLineFor,
   unitsForDataset, unitsLineFor,
 } from './map/viewerModel'
 import { TooltipProvider } from '../components/ui/tooltip'
 import { useRaster } from './map/rasterCache'
 import { getDateRange, getDateRangeSoon, useDateRange } from './map/dateRanges'
-import { ColourFields, Controls, CompareControl, DatasetField, DatePicker, LayerControls, PeriodUnitsFields, PlaceField, ShareActions } from './map/Controls'
+import { ColourFields, Controls, CompareControl, DatasetField, DatePicker, LayerControls, PeriodUnitsFields, PlaceField, ScaleControls, ShareActions } from './map/Controls'
 import BottomSheet from '../components/BottomSheet'
 import { useNarrowScreen } from './useMediaQuery'
 import { Compass, CornerStack, ExperimentalBadge, IGNITION_CAUTION, Legend, MapPill, TitleCard, ValueReadout } from './map/MapFurniture'
@@ -116,8 +116,12 @@ function Viewer({ v }) {
   const ramp = NAMED_RAMPS[rampNameFor(v)]
   const { min, max } = domainFor(v)
   const domain = useMemo(() => ({ min, max }), [min, max])
-  const colorFn = useMemo(() => makeColorFn(ramp, domain, raster.georaster?.noDataValue), [ramp, domain, raster.georaster])
-  const compareColorFn = useMemo(() => makeColorFn(ramp, domain, compareRaster.georaster?.noDataValue), [ramp, domain, compareRaster.georaster])
+  // ?ramp=name-r and ?log=1 shape one colour function; the grid, the station
+  // markers and the legend all read it, so they can never disagree.
+  const reverse = isRampReversed(v)
+  const log = isLogScale(v)
+  const colorFn = useMemo(() => makeColorFn(ramp, domain, raster.georaster?.noDataValue, { reverse, log }), [ramp, domain, raster.georaster, reverse, log])
+  const compareColorFn = useMemo(() => makeColorFn(ramp, domain, compareRaster.georaster?.noDataValue, { reverse, log }), [ramp, domain, compareRaster.georaster, reverse, log])
 
   // ── control handlers ────────────────────────────────────────────────────
   const onDataset = async (dataset) => {
@@ -133,8 +137,11 @@ function Viewer({ v }) {
       date: samePeriod ? clampDate(cur.date, r) : dateForPeriod(cur.date, period, r),
       opts: {
         units: unitsForDataset(dataset, cur.opts),
-        ramp: cur.opts.ramp && cur.opts.ramp !== defaultRampFor(dataset) ? cur.opts.ramp : undefined,
+        // A chosen ramp travels; the old dataset's default does not, unless it is reversed (reverse rides on the ramp key).
+        ramp: cur.opts.ramp && (cur.opts.ramp !== defaultRampFor(dataset) || cur.opts.reverse) ? cur.opts.ramp : undefined,
         scale: keepsScale(cur, dataset, period),
+        // A locked range is in one product's units and scale: it does not survive a change of product or period.
+        range: undefined,
         compare: samePeriod ? cur.opts.compare : undefined,
         // A station means nothing for a gridded-only product; a pin (a grid cell) survives.
         station: hasStations(dataset) ? cur.opts.station : undefined,
@@ -149,11 +156,19 @@ function Viewer({ v }) {
     if (period === cur.period) return
     const r = await getDateRangeSoon(cur.dataset, period, cur.extent)
     if (id !== seq.current) return
-    go({ period, date: dateForPeriod(cur.date, period, r), opts: { scale: keepsScale(cur, cur.dataset, period), compare: undefined, ts: undefined } })
+    go({ period, date: dateForPeriod(cur.date, period, r), opts: { scale: keepsScale(cur, cur.dataset, period), range: undefined, compare: undefined, ts: undefined } })
   }
   const onDate = (date) => { seq.current++; go({ date }) }
   const onExtent = (extent) => { seq.current++; go({ extent, opts: { view: undefined } }) }
-  const onRamp = (name) => set('ramp', { opts: { ramp: name === defaultRampFor(latest.current.dataset) ? undefined : name } })
+  // The ramp key carries the direction too (ramp=name-r), so the dataset's
+  // default ramp is only omitted while it runs the portal's way.
+  const onRamp = (name) => set('ramp', (cur) => ({ opts: { ramp: name === defaultRampFor(cur.dataset) && !cur.opts.reverse ? undefined : name } }))
+  const onReverse = (on) => set('ramp', (cur) => {
+    const name = rampNameFor(cur)
+    return { opts: { ramp: on || name !== defaultRampFor(cur.dataset) ? name : undefined, reverse: on || undefined } }
+  })
+  const onLog = (on) => set('log', { opts: { log: on || undefined } })
+  const onRange = (range) => set('range', { opts: { range: range || undefined } })
   const onUnits = (u) => set('units', { opts: { units: u === 'in' || u === 'f' ? u : undefined } })
   const onScale = (s) => set('scale', { opts: { scale: s === 'extreme' ? 'extreme' : undefined } })
   const onCompare = (date) => set('compare', { opts: { compare: date || undefined } })
@@ -241,7 +256,7 @@ function Viewer({ v }) {
 
   const pane = (date, r, fn, extra) => (
     <MapPane
-      v={v} date={date} raster={r} colorFn={fn} ramp={ramp} domain={domain} dateRange={dateRange}
+      v={v} date={date} raster={r} colorFn={fn} ramp={ramp} domain={domain} reverse={reverse} log={log} dateRange={dateRange}
       opacity={mapOpacity} layers={layers} selected={selected} onSelectStation={onSelectStation} onSelectPoint={onSelectPoint}
       syncBus={compareDate ? busRef.current : null} flush={narrow} {...extra}
     />
@@ -303,6 +318,7 @@ function Viewer({ v }) {
         content: (
           <div className={grid}>
             <ColourFields v={v} onRamp={onRamp} onScale={onScale} />
+            <div className="col-span-2"><ScaleControls v={v} onReverse={onReverse} onLog={onLog} onRange={onRange} inline /></div>
             <div className="col-span-2"><LayerControls v={v} onBasemap={onBasemap} onOpacity={onOpacity} onOpacityPreview={setOpacityDraft} onLayerToggle={onLayerToggle} /></div>
           </div>
         ),
@@ -339,7 +355,7 @@ function Viewer({ v }) {
           <Controls
             v={v} range={range}
             onDataset={onDataset} onPeriod={onPeriod} onDate={onDate} onExtent={onExtent}
-            onRamp={onRamp} onUnits={onUnits} onScale={onScale}
+            onRamp={onRamp} onUnits={onUnits} onScale={onScale} onReverse={onReverse} onLog={onLog} onRange={onRange}
             layers={<LayerControls v={v} onBasemap={onBasemap} onOpacity={onOpacity} onOpacityPreview={setOpacityDraft} onLayerToggle={onLayerToggle} />}
             extra={<CompareControl v={v} range={range} compareDate={compareDate} onChange={onCompare} />}
           />
@@ -358,7 +374,7 @@ function Viewer({ v }) {
 /** One map with its furniture. Hover state lives here so moving the
  *  pointer never re-renders the controls. */
 const MapPane = memo(function MapPane({
-  v, date, raster, colorFn, ramp, domain, dateRange, opacity = DEFAULT_OPACITY / 100, layers = [],
+  v, date, raster, colorFn, ramp, domain, reverse = false, log = false, dateRange, opacity = DEFAULT_OPACITY / 100, layers = [],
   stations = null, stationStatus = null, selected = null, onSelectStation = null, onSelectPoint = null,
   onViewChange = null, syncBus = null, leader = false, showLegend = true, showCompass = true, flush = false,
 }) {
@@ -376,7 +392,7 @@ const MapPane = memo(function MapPane({
   const point = hover || pick
   const value = point && ready ? valueAtLatLng(raster.georaster, point.lat, point.lng) : null
   const readout = point && ready ? (value == null ? 'no data here' : formatValue(value, v.dataset, v.opts)) : null
-  const tick = value != null ? rampPosition(value, domain.min, domain.max) : null
+  const tick = value != null ? rampPosition(value, domain.min, domain.max, log) : null
   const shown = { ...v, date }
   const title = describeViewer(shown)
   const legend = legendFor(v)
@@ -401,7 +417,7 @@ const MapPane = memo(function MapPane({
         {stationStatus === 'notfound' && <MapPill quiet testid="stations-none">no station values for this date</MapPill>}
         {stationStatus === 'error' && <MapPill quiet testid="stations-error">station values did not load</MapPill>}
       </CornerStack>
-      {showLegend && <Legend header={legend.header} labels={legend.labels} ramp={ramp} tick={tick} />}
+      {showLegend && <Legend header={legend.header} labels={legend.labels} ramp={ramp} reverse={reverse} tick={tick} />}
       {showCompass && <Compass />}
       <ValueReadout text={readout} />
       <MapStatus v={shown} raster={raster} dateRange={dateRange} />

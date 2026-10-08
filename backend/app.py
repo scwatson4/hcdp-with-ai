@@ -547,9 +547,12 @@ async def api_timeseries(dataset: str, period: str, start: str, end: str, statio
 
 
 def og_cache_key(v: dict, ramp: str, fmt: str) -> str:
-    """Only what changes the picture: dataset, period, date, extent, ramp, scale, units (not camera, basemap, layers, station)."""
+    """Only what changes the picture: dataset, period, date, extent, ramp (and its direction), scale, a locked range,
+    pseudo-log, units (not camera, basemap, layers, station)."""
     o = v["opts"]
-    return hashlib.sha1("|".join([v["dataset"], v["period"], v["date"], v["extent"], ramp, o.get("scale", ""), o.get("units", ""), fmt]).encode()).hexdigest()
+    rng = o.get("range")
+    return hashlib.sha1("|".join([v["dataset"], v["period"], v["date"], v["extent"], ramp, "r" if o.get("reverse") else "", o.get("scale", ""),
+                                  f"{rng[0]}..{rng[1]}" if rng else "", "log" if o.get("log") else "", o.get("units", ""), fmt]).encode()).hexdigest()
 
 
 async def og_image(path: str, fmt: str) -> Path:
@@ -566,7 +569,8 @@ async def og_image(path: str, fmt: str) -> Path:
         crop = ISLAND_BOUNDS.get(extent) if extent != "statewide" and (dataset in STATEWIDE_ONLY or EXTENTS[extent] == "mn") else None
         subtitle = f"{legend['label']} ({legend['units']})" if legend["units"] else legend["label"]
         try:
-            data = await run_in_threadpool(render_og, tif, ramp, legend["domain"], describe_view(v), subtitle, (legend["lo"], legend["hi"], legend["header"]), crop, fmt)
+            data = await run_in_threadpool(render_og, tif, ramp, legend["domain"], describe_view(v), subtitle, (legend["lo"], legend["hi"], legend["header"]), crop, fmt,
+                                           "Hawaiʻi Climate Data Portal", bool(opts.get("reverse")), bool(opts.get("log")))
         except ValueError:
             raise HTTPException(404, "no data in that map") from None
         await run_in_threadpool(_atomic_write, out, data)

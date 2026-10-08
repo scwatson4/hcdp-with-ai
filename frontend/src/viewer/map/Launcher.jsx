@@ -78,8 +78,10 @@ export default function Launcher({ now = new Date() }) {
           and the <em>place</em> is {places.map((p, i) => <span key={p}><code className={code}>{p}</code>{i < places.length - 2 ? ', ' : i === places.length - 2 ? ' or ' : ''}</span>)}.
           Options after a <code className={code}>?</code> change how the map is drawn, never the data:
           {' '}<code className={code}>units=in</code> or <code className={code}>units=f</code> for inches and °F,
-          {' '}<code className={code}>ramp=turbo</code> for another colour scheme,
+          {' '}<code className={code}>ramp=turbo</code> for another colour scheme (<code className={code}>ramp=turbo-r</code> runs it the other way),
           {' '}<code className={code}>scale=extreme</code> for the 0–250 mm storm scale on daily rainfall,
+          {' '}<code className={code}>range=0..100</code> to lock the legend to your own bounds (in the dataset's units),
+          {' '}<code className={code}>log=1</code> for pseudo-log colours that spread out the small values,
           and <code className={code}>lat</code>, <code className={code}>lng</code> and <code className={code}>z</code> for an exact view, like a Google Maps link.
         </p>
       </section>

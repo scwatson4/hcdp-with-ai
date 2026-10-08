@@ -9,7 +9,7 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from ramps_data import DEFAULT_COLORMAP_BY_DATATYPE, NAMED_RAMPS  # noqa: E402
-from mapimage import default_ramp, known_ramp, lut, render_og, render_png  # noqa: E402
+from mapimage import default_ramp, known_ramp, lut, pseudo_log, render_og, render_png  # noqa: E402
 
 rasterio = pytest.importorskip("rasterio")
 from rasterio.transform import from_origin  # noqa: E402
@@ -28,6 +28,28 @@ def test_lut_ends_match_the_portal_ramp():
     assert np.array_equal(lut("no-such-ramp"), lut("viridis"))
     assert known_ramp("turbo") and not known_ramp("rainbow") and not known_ramp("") and not known_ramp(None)
     assert default_ramp("rainfall") == "viridis_r" and default_ramp("temperature") == "viridis" and default_ramp("unknown") == "viridis_r"
+
+
+def test_lut_reverse_and_pseudo_log_match_the_viewer():
+    v, r = lut("viridis"), lut("viridis", reverse=True)
+    assert np.array_equal(r, v[::-1]) and tuple(r[0]) == (0xFD, 0xE7, 0x25)
+    assert np.array_equal(lut("turbo", 64, True), lut("turbo", 64)[::-1])
+    assert pseudo_log(0) == 0 and pseudo_log(-3) == -pseudo_log(3) and abs(pseudo_log(np.e - 1) - 1) < 1e-12
+    assert list(np.round(pseudo_log(np.array([0.0, 1.0, 9.0])), 6)) == [0.0, round(np.log(2), 6), round(np.log(10), 6)]
+
+
+def test_render_og_honours_reverse_and_log(tmp_path):
+    p = _grid(tmp_path)
+    plain = np.array(Image.open(io.BytesIO(render_og(p, "viridis_r", (0, 300), "x", "y"))).convert("RGB"))[:500]
+    reverse = np.array(Image.open(io.BytesIO(render_og(p, "viridis_r", (0, 300), "x", "y", reverse=True))).convert("RGB"))[:500]
+    low, high = lut("viridis_r")[0], lut("viridis_r")[-1]
+    near = lambda arr, col: (np.abs(arr.astype(int) - col).sum(axis=2) < 40)  # noqa: E731
+    # the grid's 0 mm cells wear the low colour plainly and the high colour reversed; same picture otherwise
+    zero_cells = near(plain, low)
+    assert zero_cells.sum() > 100 and near(reverse, high)[zero_cells].mean() > 0.8 and near(plain, high)[zero_cells].mean() < 0.05   # (the resize blends edge pixels)
+    # pseudo-log pushes the mid values up the ramp: more cells near the top colour than on the linear scale
+    log = np.array(Image.open(io.BytesIO(render_og(p, "viridis_r", (0, 300), "x", "y", log=True))).convert("RGB"))[:500]
+    assert near(log, high).sum() > near(plain, high).sum()
 
 
 def _parse_ramps_js(text):

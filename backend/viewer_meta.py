@@ -76,14 +76,22 @@ def legend_labels(lo: float, hi: float, absolute: tuple[bool, bool]) -> tuple[st
 
 
 def legend_for(dataset: str, period: str, opts: dict) -> dict | None:
-    """Domain (data units) and the display legend for a view: {"domain", "header", "lo", "hi", "units"}."""
+    """Domain (data units) and the display legend for a view: {"domain", "header", "lo", "hi", "units"}.
+    A locked ?range= (viewer opts["range"] = (lo, hi), native units) wins over the portal's scale; its ends are
+    open wherever values can lie beyond them (viewerModel.rangeAbsoluteFor): closed only where the portal's end
+    is closed and the lock reaches it."""
     ds = portal_dataset(dataset, period)
     if not ds:
         return None
-    rng = ds["extreme"] if opts.get("scale") == "extreme" and ds["extreme"] else ds["range"]
+    auto = ds["extreme"] if opts.get("scale") == "extreme" and ds["extreme"] else ds["range"]
+    rng, absolute = auto, ds["absolute"]
+    locked = opts.get("range")
+    if locked and locked[0] < locked[1]:
+        rng = (float(locked[0]), float(locked[1]))
+        absolute = (absolute[0] and rng[0] <= auto[0], absolute[1] and rng[1] >= auto[1])
     unit = display_unit(dataset, opts.get("units")) if UNITS.get(dataset) else ds["units"]
     lo, hi = (to_display(rng[0], dataset, opts.get("units")), to_display(rng[1], dataset, opts.get("units")))
-    bottom, top = legend_labels(lo, hi, ds["absolute"])
+    bottom, top = legend_labels(lo, hi, absolute)
     return {"domain": rng, "header": f"{ds['name']} ({unit})" if unit else ds["name"], "lo": bottom, "hi": top, "units": unit, "label": ds["label"]}
 
 

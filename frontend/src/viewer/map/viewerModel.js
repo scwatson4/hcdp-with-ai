@@ -4,8 +4,8 @@
 // here parses or formats the URL itself — that is urlGrammar.js's job.
 
 import { DATASETS, EXTENTS, apiParamsFor, formatViewerPath } from '../urlGrammar'
-import { portalDataset, portalLegendHeader, portalLegendLabels } from '../portalDatasets.reference'
-import { NAMED_RAMPS, DEFAULT_COLORMAP_BY_DATATYPE, COLORMAP_OPTIONS } from './ramps'
+import { portalDataset, portalLegendHeader } from '../portalDatasets.reference'
+import { NAMED_RAMPS, DEFAULT_COLORMAP_BY_DATATYPE, COLORMAP_OPTIONS, makeScale } from './ramps'
 
 export const PORTAL_URL = 'https://www.hawaii.edu/climate-data-portal/data-portal/'
 
@@ -88,6 +88,24 @@ export function toDisplay(value, dataset, opts = {}) {
   return Number(rule.conv(value).toFixed(rule.dp))
 }
 
+/** The same conversion unrounded (legend arithmetic). */
+export function convertDisplay(value, dataset, opts = {}) {
+  if (value == null || !Number.isFinite(value)) return value
+  const rule = unitSystem(opts) === 'imperial' ? IMPERIAL[DATASETS[dataset]?.units ?? ''] : null
+  return rule ? rule.conv(value) : value
+}
+
+const FROM_IMPERIAL = { mm: (v) => v * 25.4, '°C': (v) => ((v - 32) * 5) / 9 }
+
+/** A number typed in display units back into the dataset's native units
+ *  (the ?range= inputs): inches → mm, °F → °C; unchanged for metric. */
+export function fromDisplay(value, dataset, opts = {}) {
+  if (value == null || !Number.isFinite(value)) return value
+  const native = DATASETS[dataset]?.units ?? ''
+  const back = unitSystem(opts) === 'imperial' ? FROM_IMPERIAL[native] : null
+  return back ? back(value) : value
+}
+
 /** A readout like "12.3 mm" / "0.48 in" / "0.52". */
 export function formatValue(value, dataset, opts = {}) {
   if (value == null || !Number.isFinite(value)) return null
@@ -124,26 +142,69 @@ export function hasExtremeScale(v) {
   return Boolean(portalDataset(specFor(v))?.extreme)
 }
 
-/** The legend domain: the portal's fixed range, or its extreme range when
- *  ?scale=extreme and the product has one. */
-export function domainFor(v) {
+/** The automatic legend domain: the portal's fixed range, or its extreme
+ *  range when ?scale=extreme and the product has one. */
+export function autoDomainFor(v) {
   const ds = portalDataset(specFor(v))
   if (!ds) return { min: 0, max: 1 }
   const range = v.opts?.scale === 'extreme' && ds.extreme ? ds.extreme : ds.range
   return { min: range[0], max: range[1] }
 }
 
-/** Legend header and its five labels, in display units. */
+/** The legend domain in effect: a locked ?range= (native units) wins over the automatic one. */
+export function domainFor(v) {
+  const r = v.opts?.range
+  if (r && Number.isFinite(r.min) && Number.isFinite(r.max) && r.min < r.max) return { min: r.min, max: r.max }
+  return autoDomainFor(v)
+}
+
+/** ?log=1: the colours run on sign(v)·ln(1+|v|) between the legend's ends. */
+export const isLogScale = (v) => Boolean(v.opts?.log)
+
+/** ?ramp=name-r: the ramp runs the other way. */
+export const isRampReversed = (v) => Boolean(v.opts?.reverse)
+
+/** Which legend ends are closed (no "+" / "-" mark). The portal's rule for
+ *  its own range; a locked range is open wherever values can lie beyond it,
+ *  so an end is closed only when the portal's end is and the lock reaches it. */
+export function rangeAbsoluteFor(v) {
+  const ds = portalDataset(specFor(v))
+  const abs = ds ? ds.rangeAbsolute : [true, true]
+  if (!v.opts?.range) return abs
+  const auto = autoDomainFor(v)
+  const { min, max } = domainFor(v)
+  return [abs[0] && min <= auto.min, abs[1] && max >= auto.max]
+}
+
+/** The five legend values, top → bottom, at equal steps of the bar — so a
+ *  pseudo-log legend reads the values its colours really stand for. */
+export function legendValuesFor(v, intervals = 5) {
+  const scale = makeScale(domainFor(v), { log: isLogScale(v) })
+  return Array.from({ length: intervals }, (_, i) => scale.valueAt(1 - i / (intervals - 1)))
+}
+
+/** Labels as the portal's leaflet-color-scale writes them: "+" before a
+ *  positive value, a "+" suffix on an open top, a "-" suffix on an open bottom. */
+export function legendLabelsFor(values, rangeAbsolute = [true, true]) {
+  const out = values.map((x) => {
+    const r = Math.round(x * 100) / 100 || 0   // never "-0"
+    return (r > 0 ? '+' : '') + r.toLocaleString('en-US')
+  })
+  if (rangeAbsolute && out.length > 1) {
+    if (!rangeAbsolute[0]) out[out.length - 1] += '-'
+    if (!rangeAbsolute[1]) out[0] += '+'
+  }
+  return out
+}
+
+/** Legend header and its five labels, in display units (converted after the
+ *  scale arithmetic, which runs on native values like the colouring does). */
 export function legendFor(v) {
   const spec = specFor(v)
-  const ds = portalDataset(spec)
   const unit = displayUnit(v.dataset, v.opts)
   const header = portalLegendHeader(spec, unit)
-  const { min, max } = domainFor(v)
-  const lo = toDisplay(min, v.dataset, v.opts)
-  const hi = toDisplay(max, v.dataset, v.opts)
-  const labels = portalLegendLabels([lo, hi], ds ? ds.rangeAbsolute : [true, true])
-  return { header, labels }
+  const values = legendValuesFor(v).map((x) => convertDisplay(x, v.dataset, v.opts))
+  return { header, labels: legendLabelsFor(values, rangeAbsoluteFor(v)) }
 }
 
 /** The portal marks daily rainfall and every ignition product experimental. */

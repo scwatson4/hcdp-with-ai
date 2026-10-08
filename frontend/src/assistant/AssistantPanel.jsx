@@ -99,7 +99,7 @@ export default function AssistantPanel({ compact = false, autoFocus = false, bar
     <div className={cn('flex flex-col', compact ? 'h-full' : '')} data-testid="assistant-panel">
       {bar && (
         <form onSubmit={submit} onMouseEnter={() => { hoverRef.current = true }} onMouseLeave={() => { hoverRef.current = false }} data-testid="ask-bar">
-          <div className="hcdp-ask relative flex h-14 items-center rounded-full border-[1.5px] border-border bg-canvas pl-6 pr-2 shadow-lg">
+          <div className="hcdp-ask relative flex h-14 items-center rounded-full pl-6 pr-2 shadow-lg" data-testid="ask-field">
             <input ref={inputRef} type="text" value={text} onChange={(e) => setText(e.target.value.slice(0, 500))} autoComplete="off" enterKeyHint="search"
               onKeyDown={(e) => { if (e.key === 'Enter') submit(e); else if (e.key === 'Tab' && !e.shiftKey && ghostQuery) { e.preventDefault(); setText(ghostQuery) } }}
               onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
@@ -148,7 +148,7 @@ export default function AssistantPanel({ compact = false, autoFocus = false, bar
       )}
       {!bar && (
       <form onSubmit={submit} className={cn('flex items-end gap-2 p-2', (compact || !rotateExamples || messages.length > 1) && 'border-t border-border')}>
-        <div className="hcdp-ask relative flex flex-1 rounded-md border border-border bg-canvas">
+        <div className="hcdp-ask relative flex flex-1 rounded-md" data-testid="ask-field">
         <textarea ref={inputRef} value={text} onChange={(e) => setText(e.target.value.slice(0, 500))} rows={compact ? 1 : 2}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) submit(e); else if (e.key === 'Tab' && !e.shiftKey && ghostQuery) { e.preventDefault(); setText(ghostQuery) } }}
           aria-describedby={ghostQuery ? 'ask-ghost-hint' : undefined}

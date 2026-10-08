@@ -25,6 +25,15 @@ beforeEach(() => {
 })
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.useRealTimers() })
 
+describe('the ask field', () => {
+  it('wears the spectrum border through its class alone (soft at rest, full with focus — see globals.css)', () => {
+    renderBar()
+    const field = screen.getByTestId('ask-field')
+    expect(field.className).toContain('hcdp-ask')
+    expect(field.className).not.toMatch(/border-border|bg-canvas/)
+  })
+})
+
 describe('the hand-off moment (analysis replies)', () => {
   it('says exactly the sentence with "here" as the external link, then the grey note and a countdown', async () => {
     renderBar()

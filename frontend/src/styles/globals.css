@@ -849,12 +849,17 @@
   background-origin: border-box;
   background-clip: padding-box, border-box;
 }
-/* The ask box wears the spectrum only while it has focus. */
-.hcdp-ask:focus-within {
-  border-color: transparent;
-  background-image: linear-gradient(hsl(var(--canvas)), hsl(var(--canvas))), var(--hcdp-rainbow);
+/* L2 pick A (2026-10-08): every ask field (the landing bar, the dock's field) wears the logo's spectrum as
+   a quiet 1.5 px border at rest (--hcdp-rainbow-soft, 55 %) and the full band while it has focus, with the
+   4 px halo. The class owns the border and the fill, so focusing never nudges the layout. */
+.hcdp-ask {
+  border: 1.5px solid transparent;
+  background-image: linear-gradient(hsl(var(--canvas)), hsl(var(--canvas))), var(--hcdp-rainbow-soft);
   background-origin: border-box;
   background-clip: padding-box, border-box;
+}
+.hcdp-ask:focus-within {
+  background-image: linear-gradient(hsl(var(--canvas)), hsl(var(--canvas))), var(--hcdp-rainbow);
   box-shadow: 0 0 0 4px hsl(var(--accent) / 0.12);
 }
 /* Goo close: the panel squashes and pulls into the lower-right corner like a blob,

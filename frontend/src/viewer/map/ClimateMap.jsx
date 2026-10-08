@@ -206,7 +206,9 @@ function StationMarkers({ stations, colorFn, format, onSelect }) {
       <CircleMarker
         key={s.skn} center={[s.lat, s.lng]} radius={radius} pane={DATA_PANE}
         pathOptions={{ color: '#000', weight: 1, opacity: 1, fillColor: fill || NO_VALUE_FILL, fillOpacity: 1 }}
-        eventHandlers={{ click: (e) => { if (e.originalEvent) DomEvent.stopPropagation(e.originalEvent); onSelect?.(s) } }}
+        // Given the Leaflet event, stopPropagation marks its DOM event
+        // _stopped, which is what keeps the map's own click (a pin) from firing.
+        eventHandlers={{ click: (e) => { DomEvent.stopPropagation(e); onSelect?.(s) } }}
         data-testid="station-marker"
       >
         <Tooltip direction="top" offset={[0, -radius]}>{`${s.name || `Station ${s.skn}`} · ${format(s.value) || 'no value'}`}</Tooltip>

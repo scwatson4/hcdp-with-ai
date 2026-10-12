@@ -3,12 +3,13 @@ import { useEffect, useRef, useState } from 'react'
 // The landing hero's backdrop (R4 B + R7 B): HCDP's newest statewide maps rendered by
 // /api/map.webp with the ocean filled in the hero's own blue, so there is no seam; each
 // arrives as a blurred 24 px preview first and sharpens when the full map lands.
-// The next map replaces the current one at once (no fade-in, 12 Oct); 8 s a map. Nothing to click and nothing to cycle by hand
+// The first map paints at once (no fade-in on load); each next map fades in over the current one very
+// gradually (4 s) and the old one is then removed, so nothing pales mid-fade; 10 s a map. Nothing to click and nothing to cycle by hand
 // (your rule, 2026-09-30): no caption, no pause, no dots, no progress line. Preloads
 // every image first, pauses in a hidden tab and stops for reduced-motion users.
 export const OCEAN = { light: 'bfe0f7', dark: '10263a' }   // keep in step with OCEAN_FILLS in backend/app.py
-const INTERVAL_MS = 8000
-const FADE_MS = 1800
+const INTERVAL_MS = 10000
+const FADE_MS = 4000
 const FALLBACK_AFTER_MS = 6000
 // A map shipped with the site (frontend/public), shown if /api/backdrops or the renders fail (R7 B).
 const FALLBACK = { dataset: 'rainfall', period: 'month', date: '2026-08', extent: 'statewide', label: 'Rainfall · August 2026', fallback: true }
@@ -81,7 +82,7 @@ export default function MapBackdrop({ opacity = 0.92 }) {
   // Drop the old map once the new one has fully faded in.
   useEffect(() => {
     if (prev === null) return undefined
-    const t = setTimeout(() => setPrev(null), 50)
+    const t = setTimeout(() => setPrev(null), FADE_MS + 100)
     return () => clearTimeout(t)
   }, [prev, index])
 
@@ -100,7 +101,7 @@ export default function MapBackdrop({ opacity = 0.92 }) {
         )}
         {ready && (
           <img key={`cur-${current.url || 'fallback'}-${ocean}`} src={src(current)} alt="" draggable="false"
-            className="absolute inset-0 h-full w-full select-none object-contain p-4 sm:p-8" style={{ opacity }} />   /* no fade-in (12 Oct): the map is simply there */
+            className={`${prev !== null ? 'hcdp-bd-in ' : ''}absolute inset-0 h-full w-full select-none object-contain p-4 sm:p-8`} style={{ opacity, '--bd-op': opacity, '--bd-fade': `${FADE_MS}ms` }} />   /* the first map is simply there; each next map fades in over the last, very gradually (12 Oct) */
         )}
       </div>
     </>

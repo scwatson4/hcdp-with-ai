@@ -7,7 +7,8 @@ export const HCDP = 'https://www.hawaii.edu/climate-data-portal'
 // The door to the AI data analysis tool (the separate HCDP AI interface): the same label on
 // the landing sidebar's sixth button, the Climate Tools tile and the viewer's rail button —
 // always external, outlined in the logo's spectrum rather than a solid portal colour (T1 picks
-// A + D, 2026-10-08). Not in the header menu (item 12).
+// A, 2026-10-08 — the user dropped D on 12 Oct: no header-menu entry; the label reads exactly
+// "AI Data Analysis Tool", one line, no arrow).
 export const AI_TOOL = { label: 'AI Data Analysis Tool', href: handoffUrl({}) }
 
 export const NAV = [

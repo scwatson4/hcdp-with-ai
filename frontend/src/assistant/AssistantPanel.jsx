@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowUp, ExternalLink, Link2 } from 'lucide-react'
 import { useAssistant } from './AssistantProvider'
@@ -10,6 +10,8 @@ import { handoffUrl } from '../site/handoff'
 // expect; the newest analysis reply counts down five seconds and opens the tab by itself.
 export const HANDOFF_SENTENCE = 'This is better answered by our AI data analysis tool. Try it out here'
 export const HANDOFF_NOTE = 'Opens in a new tab · your question comes with you · sign in there with a code or an HCDP API key'
+
+export const MAX_LINES = 3
 
 export const EXAMPLES = [
   'How do I download Hurricane Lowell rainfall data?',
@@ -109,20 +111,33 @@ export function AskBar({ docked = false, glass = false }) {
     return () => { cancelled = true; if (timer) clearTimeout(timer); if (wake) wake() }
   }, [ghostActive, reduceMotion])
   const ghostQuery = ghostActive ? exampleAt(idxRef.current) : null
+  // The field wraps long questions and grows to three lines; beyond that it scrolls inside (Enter sends, Shift+Enter breaks a line).
+  const lineHeight = docked ? 24 : (typeof window !== 'undefined' && window.matchMedia?.('(min-width: 640px)').matches ? 28 : 24)
+  const [lines, setLines] = useState(1)
+  useLayoutEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    if (!text) { setLines(1); return }
+    el.style.height = `${lineHeight}px`
+    const n = Math.max(1, Math.min(MAX_LINES, Math.round(el.scrollHeight / lineHeight) || 1))
+    setLines(n)
+    el.style.height = `${n * lineHeight}px`
+  }, [text, lineHeight])
   const submit = (e) => { e?.preventDefault(); const t = text; if (docked) setText(''); send(t) }
   const placeholder = ghostQuery ? '' : docked && hasConversation ? 'Ask for another page or map…' : 'What are you looking for?'
   return (
     <form onSubmit={submit} onMouseEnter={() => { hoverRef.current = true }} onMouseLeave={() => { hoverRef.current = false }} data-testid={docked ? 'docked-ask-bar' : 'ask-bar'}>
-      <div className={cn('hcdp-ask rounded-full', docked ? 'h-11' : 'h-14 shadow-lg', busy && 'hcdp-ask-busy')} data-testid="ask-field" data-busy={busy ? 'true' : 'false'}>
+      <div className={cn('hcdp-ask', lines > 1 ? 'rounded-3xl' : 'rounded-full', docked ? 'min-h-11' : 'min-h-14 shadow-lg', busy && 'hcdp-ask-busy')} data-testid="ask-field" data-busy={busy ? 'true' : 'false'} data-lines={lines}>
         <span aria-hidden="true" className="hcdp-ask-ring" />
-        <div className={cn('hcdp-ask-field relative flex h-full items-center', docked ? 'pl-4 pr-1' : 'pl-6 pr-2', glass && 'hcdp-ask-glass')}>
-          <input ref={inputRef} type="text" value={text} onChange={(e) => setText(e.target.value.slice(0, 500))} autoComplete="off" enterKeyHint="search"
-            onKeyDown={(e) => { if (e.key === 'Enter') submit(e); else if (e.key === 'Tab' && !e.shiftKey && ghostQuery) { e.preventDefault(); setText(ghostQuery) } }}
+        <div className={cn('hcdp-ask-field relative flex min-h-[inherit] items-end', docked ? 'py-1 pl-4 pr-1' : 'py-2 pl-6 pr-2', glass && 'hcdp-ask-glass')}>
+          <textarea ref={inputRef} value={text} rows={1} onChange={(e) => setText(e.target.value.slice(0, 500))} autoComplete="off" enterKeyHint="send"
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) submit(e); else if (e.key === 'Tab' && !e.shiftKey && ghostQuery) { e.preventDefault(); setText(ghostQuery) } }}
             onFocus={() => { setFocused(true); if (docked && hasConversation) setMode('panel') }} onBlur={() => setFocused(false)}
             aria-describedby={ghostQuery ? 'ask-ghost-hint' : undefined}
             placeholder={placeholder}
             aria-label="Ask AI" data-testid="assistant-input"
-            className={cn('h-full min-w-0 flex-1 bg-transparent text-[16px] text-foreground placeholder:text-subtle focus-visible:outline-none', !docked && 'sm:text-[18px]')} />
+            className={cn('hcdp-ask-input my-auto min-w-0 flex-1 resize-none bg-transparent text-[16px] leading-6 text-foreground placeholder:text-subtle focus-visible:outline-none', !docked && 'sm:text-[18px] sm:leading-7', lines >= MAX_LINES ? 'overflow-y-auto' : 'overflow-hidden')}
+            style={{ height: `${lines * lineHeight}px` }} />
           {ghostQuery && (
             <>
               <span id="ask-ghost-hint" className="sr-only">Press Tab to insert the suggested example question.</span>

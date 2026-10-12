@@ -948,3 +948,7 @@
   -webkit-text-fill-color: transparent;
 }
 .dark .hcdp-grad-word { background-image: var(--hcdp-rainbow); }
+
+/* The ask field wraps long questions (up to three lines, then scrolls inside); the ring follows the field's height. */
+.hcdp-ask-input { field-sizing: content; max-height: calc(3 * 1.75rem); }
+.hcdp-ask-input::-webkit-scrollbar { width: 6px; }

@@ -4,15 +4,18 @@ import { useEffect, useRef, useState } from 'react'
 // /api/map.webp with the ocean filled in the hero's own blue, so there is no seam; each
 // arrives as a blurred 24 px preview first and sharpens when the full map lands.
 // The first map paints at once (no fade-in on load); each next map fades in over the current one very
-// gradually (4 s) and the old one is then removed, so nothing pales mid-fade; the next one starts 6.5 s in. Nothing to click and nothing to cycle by hand
+// gradually (3 s) and the old one is then removed, so nothing pales mid-fade; the next one starts 3.5 s in. The shipped
+// opener (frontend/public/backdrop-fallback-*.webp, preloaded from index.html) paints with the page itself, so the
+// map is there from the first frame; the first live map fades over it in under a second. Nothing to click and nothing to cycle by hand
 // (your rule, 2026-09-30): no caption, no pause, no dots, no progress line. Preloads
 // every image first, pauses in a hidden tab and stops for reduced-motion users.
 export const OCEAN = { light: 'bfe0f7', dark: '10263a' }   // keep in step with OCEAN_FILLS in backend/app.py
-const INTERVAL_MS = 6500
-const FADE_MS = 4000
+const INTERVAL_MS = 3500
+const FADE_MS = 3000
 const FALLBACK_AFTER_MS = 6000
+const FIRST_FADE_MS = 900    // the first live map over the shipped opener (they are the same render, so this is invisible)
 // A map shipped with the site (frontend/public), shown if /api/backdrops or the renders fail (R7 B).
-const FALLBACK = { dataset: 'rainfall', period: 'month', date: '2026-08', extent: 'statewide', label: 'Rainfall · August 2026', fallback: true }
+const FALLBACK = { dataset: 'rainfall', period: 'month', date: '2026-09', extent: 'statewide', label: 'Rainfall · September 2026', fallback: true }
 
 /** True while <html> carries the `dark` class (the ThemeProvider toggles it). */
 export function useIsDark() {
@@ -88,6 +91,10 @@ export default function MapBackdrop({ opacity = 0.92 }) {
 
   const current = items[index]
   const ready = current && loaded[src(current)]
+  // The shipped opener stays under the first live map while that one fades in, then goes.
+  const bootRef = useRef(true)
+  const [bootGone, setBootGone] = useState(false)
+  const firstLive = ready && !bootGone && !current.fallback
   return (
     <>
       <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden" data-testid="map-backdrop" style={{ background: `#${ocean}` }}>
@@ -95,13 +102,13 @@ export default function MapBackdrop({ opacity = 0.92 }) {
           <img key={`prev-${items[prev].url || 'fallback'}-${ocean}`} src={src(items[prev])} alt="" draggable="false"
             className="absolute inset-0 h-full w-full select-none object-contain p-4 sm:p-8" style={{ opacity }} />
         )}
-        {current && !ready && current.preview && (
-          <img key={`pre-${current.url}`} src={current.preview} alt="" draggable="false"
-            className="absolute inset-0 h-full w-full select-none object-contain p-4 sm:p-8" style={{ opacity: opacity * 0.9, filter: 'blur(6px)' }} data-testid="backdrop-preview" />
+        {!bootGone && !(current && current.fallback && ready) && (
+          <img key={`boot-${ocean}`} src={`/backdrop-fallback-${dark ? 'dark' : 'light'}.webp`} alt="" draggable="false" fetchPriority="high" decoding="sync"
+            className="absolute inset-0 h-full w-full select-none object-contain p-4 sm:p-8" style={{ opacity }} data-testid="backdrop-opener" />
         )}
         {ready && (
           <img key={`cur-${current.url || 'fallback'}-${ocean}`} src={src(current)} alt="" draggable="false"
-            className={`${prev !== null ? 'hcdp-bd-in ' : ''}absolute inset-0 h-full w-full select-none object-contain p-4 sm:p-8`} style={{ opacity, '--bd-op': opacity, '--bd-fade': `${FADE_MS}ms` }} />   /* the first map is simply there; each next map fades in over the last, very gradually (12 Oct) */
+            className={`${prev !== null || firstLive ? 'hcdp-bd-in ' : ''}absolute inset-0 h-full w-full select-none object-contain p-4 sm:p-8`} style={{ opacity, '--bd-op': opacity, '--bd-fade': `${firstLive ? FIRST_FADE_MS : FADE_MS}ms` }} onAnimationEnd={() => { if (firstLive) { bootRef.current = false; setBootGone(true) } }} />
         )}
       </div>
     </>

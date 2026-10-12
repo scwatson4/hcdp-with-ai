@@ -18,6 +18,14 @@ export const EXAMPLES = [
   'How do I get station data through the API?',
 ]
 
+/** A random permutation of 0..n-1 (Fisher–Yates). Exported for tests. */
+export function shuffledOrder(n, random = Math.random) {
+  const a = Array.from({ length: n }, (_, i) => i)
+  for (let i = a.length - 1; i > 0; i -= 1) { const j = Math.floor(random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] }
+  return a
+}
+
+
 function Alternative({ a }) {
   const internal = a.url && a.url.startsWith('/')
   const inner = <><span className="font-medium">{a.title}</span>{a.why && <span className="text-subtle"> · {a.why}</span>}{!internal && <ExternalLink className="ml-1 inline h-3 w-3 text-subtle" aria-hidden="true" />}</>
@@ -62,7 +70,11 @@ export function AskBar({ docked = false, glass = false }) {
   const hasConversation = messages.length > 1
   const ghostActive = !text && !busy && !travelling && !hasConversation
   const reduceMotion = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-  const [typed, setTyped] = useState(reduceMotion ? EXAMPLES[0] : '')
+  // A fresh random order on every mount (Fisher–Yates), so a refresh almost never starts on the same example.
+  const orderRef = useRef(null)
+  if (!orderRef.current) orderRef.current = shuffledOrder(EXAMPLES.length)
+  const exampleAt = (i) => EXAMPLES[orderRef.current[i % orderRef.current.length]]
+  const [typed, setTyped] = useState(reduceMotion ? exampleAt(0) : '')
   const [ghostShown, setGhostShown] = useState(true)
   const [focused, setFocused] = useState(false)
   const idxRef = useRef(0)
@@ -74,7 +86,7 @@ export function AskBar({ docked = false, glass = false }) {
     const sleep = (ms) => new Promise((resolve) => { wake = resolve; timer = setTimeout(resolve, ms) })
     ;(async () => {
       while (!cancelled) {
-        const ex = EXAMPLES[idxRef.current % EXAMPLES.length]
+        const ex = exampleAt(idxRef.current)
         setGhostShown(true)
         for (let k = 1; k <= ex.length && !cancelled; k += 1) { setTyped(ex.slice(0, k)); await sleep(28) }
         if (cancelled) break
@@ -88,7 +100,7 @@ export function AskBar({ docked = false, glass = false }) {
     })()
     return () => { cancelled = true; if (timer) clearTimeout(timer); if (wake) wake() }
   }, [ghostActive, reduceMotion])
-  const ghostQuery = ghostActive ? EXAMPLES[idxRef.current % EXAMPLES.length] : null
+  const ghostQuery = ghostActive ? exampleAt(idxRef.current) : null
   const submit = (e) => { e?.preventDefault(); const t = text; if (docked) setText(''); send(t) }
   const placeholder = ghostQuery ? '' : docked && hasConversation ? 'Ask for another page or map…' : 'What are you looking for?'
   return (

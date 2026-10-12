@@ -63,7 +63,7 @@ export default function AssistantBar() {
                 <button type="button" aria-label="Close (Esc)" onClick={minimize} className="grid h-8 w-8 place-items-center rounded text-subtle hover:bg-muted hover:text-foreground [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11" data-testid="assistant-close"><X className="h-4 w-4" /></button>
               </div>
             </div>
-            <Conversation compact className="max-h-[min(60vh,26rem)]" />
+            <Conversation compact latestOnly className="max-h-[min(60vh,26rem)]" />
           </div>
         </div>
       )}

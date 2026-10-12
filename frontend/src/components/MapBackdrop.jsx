@@ -3,8 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 // The landing hero's backdrop (R4 B + R7 B): HCDP's newest statewide maps rendered by
 // /api/map.webp with the ocean filled in the hero's own blue, so there is no seam; each
 // arrives as a blurred 24 px preview first and sharpens when the full map lands.
-// The next map fades in over the current one and the old one is then removed, so
-// nothing pales mid-fade; 8 s a map. Nothing to click and nothing to cycle by hand
+// The next map replaces the current one at once (no fade-in, 12 Oct); 8 s a map. Nothing to click and nothing to cycle by hand
 // (your rule, 2026-09-30): no caption, no pause, no dots, no progress line. Preloads
 // every image first, pauses in a hidden tab and stops for reduced-motion users.
 export const OCEAN = { light: 'bfe0f7', dark: '10263a' }   // keep in step with OCEAN_FILLS in backend/app.py
@@ -82,7 +81,7 @@ export default function MapBackdrop({ opacity = 0.92 }) {
   // Drop the old map once the new one has fully faded in.
   useEffect(() => {
     if (prev === null) return undefined
-    const t = setTimeout(() => setPrev(null), FADE_MS + 100)
+    const t = setTimeout(() => setPrev(null), 50)
     return () => clearTimeout(t)
   }, [prev, index])
 
@@ -101,7 +100,7 @@ export default function MapBackdrop({ opacity = 0.92 }) {
         )}
         {ready && (
           <img key={`cur-${current.url || 'fallback'}-${ocean}`} src={src(current)} alt="" draggable="false"
-            className="hcdp-bd-in absolute inset-0 h-full w-full select-none object-contain p-4 sm:p-8" style={{ opacity, '--bd-op': opacity, '--bd-fade': `${FADE_MS}ms` }} />
+            className="absolute inset-0 h-full w-full select-none object-contain p-4 sm:p-8" style={{ opacity }} />   /* no fade-in (12 Oct): the map is simply there */
         )}
       </div>
     </>

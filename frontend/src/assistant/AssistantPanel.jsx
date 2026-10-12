@@ -89,19 +89,22 @@ export function AskBar({ docked = false, glass = false }) {
   const [focused, setFocused] = useState(false)
   const idxRef = useRef(0)
   const hoverRef = useRef(false)
+  const focusRef = useRef(false)   // a click into the field freezes the carousel where it is; typing stops it altogether
   const inputRef = useRef(null)
   useEffect(() => {
     if (!ghostActive || reduceMotion) return undefined
     let cancelled = false; let timer = null; let wake = null
     const sleep = (ms) => new Promise((resolve) => { wake = resolve; timer = setTimeout(resolve, ms) })
+    const whileFocused = async () => { while (focusRef.current && !cancelled) await sleep(200) }
     ;(async () => {
       while (!cancelled) {
+        await whileFocused()
         const ex = exampleAt(idxRef.current)
         setGhostShown(true)
-        for (let k = 1; k <= ex.length && !cancelled; k += 1) { setTyped(ex.slice(0, k)); await sleep(28) }
+        for (let k = 1; k <= ex.length && !cancelled; k += 1) { await whileFocused(); if (cancelled) break; setTyped(ex.slice(0, k)); await sleep(28) }
         if (cancelled) break
         await sleep(2000)
-        while (hoverRef.current && !cancelled) await sleep(300)
+        while ((hoverRef.current || focusRef.current) && !cancelled) await sleep(300)
         if (cancelled) break
         setGhostShown(false); await sleep(350)
         if (cancelled) break
@@ -132,7 +135,7 @@ export function AskBar({ docked = false, glass = false }) {
         <div className={cn('hcdp-ask-field relative flex min-h-[inherit] items-end', docked ? 'py-1 pl-4 pr-1' : 'py-2 pl-6 pr-2', glass && 'hcdp-ask-glass')}>
           <textarea ref={inputRef} value={text} rows={1} onChange={(e) => setText(e.target.value.slice(0, 500))} autoComplete="off" enterKeyHint="send"
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) submit(e); else if (e.key === 'Tab' && !e.shiftKey && ghostQuery) { e.preventDefault(); setText(ghostQuery) } }}
-            onFocus={() => { setFocused(true); if (docked && hasConversation) setMode('panel') }} onBlur={() => setFocused(false)}
+            onFocus={() => { setFocused(true); focusRef.current = true }} onBlur={() => { setFocused(false); focusRef.current = false }}
             aria-describedby={ghostQuery ? 'ask-ghost-hint' : undefined}
             placeholder={placeholder}
             aria-label="Ask AI" data-testid="assistant-input"
@@ -158,8 +161,10 @@ export function AskBar({ docked = false, glass = false }) {
  * The conversation: questions and plain answers (`hideUser` leaves the questions out — on the landing
  * page the question is already in the bar). `compact` is the docked bar's dropdown.
  */
-export function Conversation({ compact = false, hideUser = false, className }) {
-  const { messages, busy } = useAssistant()
+export function Conversation({ compact = false, hideUser = false, latestOnly = false, className }) {
+  const { messages: all, busy } = useAssistant()
+  // latestOnly: the docked dropdown shows the newest reply only — never the history (12 Oct).
+  const messages = latestOnly ? [all[0], ...all.filter((m) => m.role === 'assistant').slice(-1)] : all
   const listRef = useRef(null)
   const firstRender = useRef(true)
   useEffect(() => { if (firstRender.current) { firstRender.current = false; return } const el = listRef.current; if (el) el.scrollTop = el.scrollHeight }, [messages, busy])

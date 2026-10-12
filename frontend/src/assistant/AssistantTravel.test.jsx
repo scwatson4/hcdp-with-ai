@@ -140,7 +140,7 @@ describe('answer first, then travel (landing page)', () => {
 })
 
 describe('the docked bar (inner pages)', () => {
-  it('is there instead of a pill; its dropdown opens with a reply or on focus once a conversation exists, and closes with Esc, a click outside, or a navigation', async () => {
+  it('is there instead of a pill; its dropdown opens with a reply (never on focus, never the history) and closes with Esc, a click outside, or a navigation', async () => {
     reply = infoReply
     renderApp('/data')
     expect(screen.queryByTestId('assistant-dock')).toBeNull()
@@ -155,7 +155,7 @@ describe('the docked bar (inner pages)', () => {
     expect(dropdown).toHaveAccessibleName('Ask AI')
     expect(within(dropdown).getByText('Ask AI')).toBeInTheDocument()   // the words only — no HCDP mark glyph (item 15)
     expect(dropdown.querySelector('img')).toBeNull()
-    expect(within(dropdown).getByTestId('user-bubble')).toHaveTextContent('what is HCDP')
+    expect(within(dropdown).queryByTestId('user-bubble')).toBeNull()   // no history: the newest reply only (12 Oct)
     expect(within(dropdown).getByTestId('assistant-bubble')).toHaveTextContent('HCDP is the Hawaiʻi Climate Data Portal.')
     expect(input).toHaveValue('')
     expect(input).toHaveAttribute('placeholder', 'Ask for another page or map…')   // the ghost is off once a conversation exists
@@ -163,12 +163,8 @@ describe('the docked bar (inner pages)', () => {
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByTestId('assistant-dropdown')).toBeNull()
     fireEvent.focus(input)
-    expect(screen.getByTestId('assistant-dropdown')).toBeInTheDocument()
+    expect(screen.queryByTestId('assistant-dropdown')).toBeNull()   // clicking the bar shows no history (12 Oct)
     fireEvent.pointerDown(document.body)
-    expect(screen.queryByTestId('assistant-dropdown')).toBeNull()
-    fireEvent.focus(input)
-    expect(screen.getByTestId('assistant-dropdown')).toBeInTheDocument()
-    fireEvent.click(within(screen.getByTestId('assistant-dropdown')).getByTestId('assistant-close'))
     expect(screen.queryByTestId('assistant-dropdown')).toBeNull()
     // a navigation from an inner page goes at once, closes the dropdown and shows the strip
     fireEvent.focus(input)
@@ -180,7 +176,8 @@ describe('the docked bar (inner pages)', () => {
     fireEvent.click(screen.getByTestId('reply-strip-text'))
     expect(screen.queryByTestId('reply-strip')).toBeNull()
     expect(screen.getByTestId('assistant-dropdown')).toBeInTheDocument()
-    expect(screen.getAllByTestId('user-bubble')).toHaveLength(2)
+    expect(screen.queryAllByTestId('user-bubble')).toHaveLength(0)   // the strip opens the newest reply, not the history
+    expect(screen.getAllByTestId('assistant-bubble')).toHaveLength(1)
   })
 
   it('the HCDP logo always resets the landing page: home, the welcome state, the empty bar with its examples (item 13)', async () => {

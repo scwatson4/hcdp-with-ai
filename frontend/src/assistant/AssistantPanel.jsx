@@ -12,10 +12,18 @@ export const HANDOFF_SENTENCE = 'This is better answered by our AI data analysis
 export const HANDOFF_NOTE = 'Opens in a new tab · your question comes with you · sign in there with a code or an HCDP API key'
 
 export const EXAMPLES = [
-  'I need to download rainfall data from Hurricane Lowell',
+  'How do I download Hurricane Lowell rainfall data?',
   'Which stations are on Kauai?',
   'Show me the Tropical Storm Nolo tracker',
   'How do I get station data through the API?',
+  'Show me the drought map for August 2026',
+  'Show me daily rainfall on Kauaʻi during Hurricane Lowell',
+  'Take me to the Hurricane Lowell report',
+  'Take me to the Hawaiʻi Mesonet live data',
+  'Take me to the monthly climate summary',
+  'Where is the fire risk map',
+  'Where is the station data API',
+  'Where are the rainfall downloads',
 ]
 
 /** A random permutation of 0..n-1 (Fisher–Yates). Exported for tests. */

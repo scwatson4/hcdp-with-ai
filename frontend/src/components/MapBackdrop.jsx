@@ -4,11 +4,11 @@ import { useEffect, useRef, useState } from 'react'
 // /api/map.webp with the ocean filled in the hero's own blue, so there is no seam; each
 // arrives as a blurred 24 px preview first and sharpens when the full map lands.
 // The first map paints at once (no fade-in on load); each next map fades in over the current one very
-// gradually (4 s) and the old one is then removed, so nothing pales mid-fade; 10 s a map. Nothing to click and nothing to cycle by hand
+// gradually (4 s) and the old one is then removed, so nothing pales mid-fade; the next one starts 6.5 s in. Nothing to click and nothing to cycle by hand
 // (your rule, 2026-09-30): no caption, no pause, no dots, no progress line. Preloads
 // every image first, pauses in a hidden tab and stops for reduced-motion users.
 export const OCEAN = { light: 'bfe0f7', dark: '10263a' }   // keep in step with OCEAN_FILLS in backend/app.py
-const INTERVAL_MS = 10000
+const INTERVAL_MS = 6500
 const FADE_MS = 4000
 const FALLBACK_AFTER_MS = 6000
 // A map shipped with the site (frontend/public), shown if /api/backdrops or the renders fail (R7 B).

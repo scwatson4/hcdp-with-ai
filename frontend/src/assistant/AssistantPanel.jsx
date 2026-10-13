@@ -191,11 +191,25 @@ export function Conversation({ compact = false, hideUser = false, latestOnly = f
 /** The landing page's assistant: the hero bar and, once there is something to say, the answer card
  *  under it (the AI's bubbles only — the question is in the bar). */
 export default function AssistantPanel({ glass = false }) {
-  const { messages, busy, epoch } = useAssistant()
+  const { messages, busy, travelling, travel, epoch } = useAssistant()
+  const last = messages[messages.length - 1]
+  const lastIsNavigate = last?.role === 'assistant' && (last.actions || []).some((a) => a.type === 'navigate')
+  // 13 Oct: while the AI works, and while a navigation answer is read before the travel, only a rainbow comet
+  // ring and one line of text sit under the bar — no card, no background. The card stays for replies with
+  // nowhere to go (info, clarify, the hand-off).
+  const working = busy || (travelling && travel.phase === 'hold')
+  const status = busy ? 'Working on that…' : (lastIsNavigate ? last.content : '')
+  const showCard = !busy && !travelling && messages.length > 1 && !lastIsNavigate
   return (
     <div className="flex flex-col" data-testid="assistant-panel">
       <AskBar key={epoch} glass={glass} />
-      {(messages.length > 1 || busy) && (
+      {working && (
+        <div className="mt-4 flex items-center justify-center gap-3 px-2 text-center text-[15px] text-foreground/85 sm:text-[16px]" role="status" aria-live="polite" data-testid="landing-working">
+          <span className="hcdp-comet-ring" aria-hidden="true" />
+          <span key={status} className="hcdp-status-in" data-testid="landing-status">{status}</span>
+        </div>
+      )}
+      {showCard && (
         <div className="mt-3 rounded-xl border border-border bg-card/90 p-2 shadow-lg backdrop-blur" data-testid="landing-answers">
           <Conversation hideUser />
         </div>

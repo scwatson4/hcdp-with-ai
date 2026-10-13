@@ -49,14 +49,16 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
 
 describe('answer first, then travel (landing page)', () => {
-  it('shows the reply under the bar (AI bubble only, the question stays in the bar), holds 700 ms, rides up 450 ms, then navigates', async () => {
+  it('shows the reply as a working line under the bar (the question stays in the bar), holds 700 ms, rides up 450 ms, then navigates', async () => {
     renderApp('/')
     await ask('rain map kauai')
     // the hold: still on the landing page, the answer card shows the reply and no echoed question
     expect(screen.getByTestId('probe').textContent).toBe('/')
-    const card = screen.getByTestId('landing-answers')
-    expect(within(card).getByTestId('assistant-bubble')).toHaveTextContent(REPLY)
-    expect(within(card).queryByTestId('user-bubble')).toBeNull()
+    // 13 Oct: no card — a comet ring and the reply sentence as one line under the bar
+    expect(screen.queryByTestId('landing-answers')).toBeNull()
+    expect(screen.getByTestId('landing-working')).toBeInTheDocument()
+    expect(screen.getByTestId('landing-status')).toHaveTextContent(REPLY)
+    expect(screen.queryByTestId('user-bubble')).toBeNull()
     expect(screen.getByTestId('assistant-input')).toHaveValue('rain map kauai')
     expect(screen.getByTestId('landing-hero')).toHaveAttribute('data-travel', 'hold')
     expect(screen.queryByTestId('assistant-bar')).toBeNull()
@@ -210,6 +212,6 @@ describe('the docked bar (inner pages)', () => {
     expect(screen.getByTestId('probe').textContent).toBe('/')
     expect(screen.queryByTestId('assistant-bar')).toBeNull()
     expect(screen.getByTestId('landing-hero')).toBeInTheDocument()
-    expect(within(screen.getByTestId('landing-answers')).getByTestId('assistant-bubble')).toHaveTextContent(REPLY)
+    expect(screen.queryByTestId('landing-answers')).toBeNull()   // a navigation reply leaves no card behind (13 Oct)
   })
 })

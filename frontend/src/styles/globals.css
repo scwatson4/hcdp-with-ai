@@ -952,3 +952,20 @@
 /* The ask field wraps long questions (up to three lines, then scrolls inside); the ring follows the field's height. */
 .hcdp-ask-input { field-sizing: content; max-height: calc(3 * 1.75rem); }
 .hcdp-ask-input::-webkit-scrollbar { width: 6px; }
+
+/* 13 Oct: the working line under the landing bar — a small ring carrying the same spectrum comet as the bar,
+   one line of text beside it, nothing else. Reduced motion: a still arc. */
+.hcdp-comet-ring {
+  display: inline-block; flex: none; width: 18px; height: 18px; border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0 52%, #303078 62%, #3f8f8b 72%, #e8b84b 82%, #c9503c 92%, transparent 100%);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 2.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 2.5px));
+  animation: hcdp-comet-spin 1.1s linear infinite;
+}
+@keyframes hcdp-comet-spin { to { transform: rotate(360deg); } }
+.hcdp-status-in { animation: hcdp-status-in 260ms ease both; }
+@keyframes hcdp-status-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .hcdp-comet-ring { animation: none; }
+  .hcdp-status-in { animation: none; }
+}

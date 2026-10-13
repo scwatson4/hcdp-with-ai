@@ -62,6 +62,9 @@ def judge(case: dict, out: dict, catalog: list[dict]) -> dict:
     target_ok = near = False
     if exp_intent == "analysis":
         target_ok = any(a.get("type") == "handoff" for a in out.get("actions", []))
+    elif case["id"].startswith("off-topic-"):
+        # the scope guard: the fixed sentence (normalize sets off_topic) and nothing to navigate to
+        target_ok = out.get("off_topic") is True and not out.get("actions")
     elif exp_intent in ("info", "clarify"):
         target_ok = intent_ok or bool(exp_ids & set().union(*[resolve(catalog, u) for u in alts] or [set()]))
     else:

@@ -194,3 +194,11 @@ def test_no_placeholder_text_or_forbidden_names():
             low = s.lower()
             assert "todo" not in low and "lorem" not in low, s[:80]
             assert not FORBIDDEN_NAMES.search(s), s[:80]
+
+
+def test_off_topic_cases_expect_the_scope_reply():
+    off = [c for c in CASES if c["id"].startswith("off-topic-")]
+    assert len(off) >= 4
+    for c in off:
+        assert c["expected_intent"] == "info" and c["expected_ids"] == [] and "expected_path_prefix" not in c, c["id"]
+    assert any("ignore your rules" in c["query"] for c in off)   # the override attempt is covered

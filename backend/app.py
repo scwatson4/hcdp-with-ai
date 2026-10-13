@@ -3,7 +3,7 @@
 Endpoints
   POST /api/navigate          the navigator (see CONTRACT.md for the protocol)
   POST /api/narrate           one short wait line from gpt-6-luna while the answer is worked out
-  POST /api/summary           the AI summary of a destination (sources from the catalog, sentences + follow-ups from gpt-6-luna)
+  POST /api/summary           the AI overview of a destination (numbered sources from the catalog; sentences with cites, a 'more' fold and follow-ups from gpt-6-luna)
   POST /api/followups         three follow-up asks for a page, without a summary (reserved; not yet called by the client)
   GET  /api/raster            GeoTIFF proxy to the HCDP API (token stays here; disk cache; ETag + Range)
   GET  /api/dates             available date range for a dataset (proxy, memory cache)
@@ -82,7 +82,7 @@ app = FastAPI(title="HCDP with AI — navigator", docs_url=None, redoc_url=None)
 app.state.llm = NavigatorLLM()
 app.state.navigator = Navigator(app.state.llm, load_catalog(), ai_interface_url=AI_INTERFACE_URL)
 from llm import NarrationLLM, SummaryLLM  # noqa: E402
-from summary import EMPTY as EMPTY_SUMMARY, Summarizer  # noqa: E402
+from summary import Summarizer, empty_summary  # noqa: E402
 app.state.narrator = NarrationLLM()
 app.state.summarizer = Summarizer(app.state.navigator, SummaryLLM())
 app.state.dates_cache = {}
@@ -153,23 +153,20 @@ class SummaryBody(BaseModel):
     intent: str = Field(default="navigate", max_length=40)
 
 
-def _empty_summary() -> dict:
-    return {k: (list(v) if isinstance(v, list) else v) for k, v in EMPTY_SUMMARY.items()}
-
-
 @app.post("/api/summary")
 async def api_summary(body: SummaryBody, request: Request):
-    """The AI summary for the page the navigator just opened (13 Oct): {summary, chunks, sources, followups}. The
-    sources come from the catalog, the sentences and follow-ups from gpt-6-luna. Everything is empty — a 200, never an
-    error — for an off-topic or analysis answer, an address this site does not have, a spent limiter, or a model that
-    failed or timed out; the client then shows its reply strip instead."""
+    """The AI overview for the page the navigator just opened (13 Oct): {summary, chunks, cites, more, more_cites, sources,
+    followups}. The sources come from the catalog (numbered; `cites` says which each sentence rests on), the sentences,
+    the "more" fold and the follow-ups from gpt-6-luna. Everything is empty — a 200, never an error — for an off-topic or
+    analysis answer, an address this site does not have, a spent limiter, or a model that failed or timed out; the client
+    then shows its reply strip instead."""
     if body.intent in ("off_topic", "analysis") or not body.path.startswith("/"):
-        return _empty_summary()
+        return empty_summary()
     if request.app.state.summary_limiter.check(request.client.host if request.client else "?"):
-        return _empty_summary()
+        return empty_summary()
     summarizer = getattr(request.app.state, "summarizer", None)
     if summarizer is None:
-        return _empty_summary()
+        return empty_summary()
     return await run_in_threadpool(summarizer.summarize, body.message, body.reply, body.path, body.intent)
 
 

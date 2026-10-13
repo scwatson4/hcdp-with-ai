@@ -10,11 +10,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import app as appmod  # noqa: E402
 from llm import FOLLOWUPS_SYSTEM, SUMMARY_SYSTEM  # noqa: E402
 from navigator import Navigator, load_catalog  # noqa: E402
-from summary import EMPTY, Summarizer, clean_followups, clean_summary, page_hint, split_sentences  # noqa: E402
+from summary import EMPTY, Summarizer, clean_cited, clean_followups, clean_summary, empty_summary, extract_cites, page_hint, split_sentences  # noqa: E402
 
 LOWELL = "https://www.hawaii.edu/climate-data-portal/hurricane-lowell/"
 THREE = "You asked for the Hurricane Lowell report. This section tells the story of the storm, 6 to 8 September 2026, with its official HCDP links and viewer maps. Open the report or a rainfall map for 7 September below."
+CITED = "You asked for the Hurricane Lowell report. [1] This section tells the story of the storm, 6 to 8 September 2026, with its official HCDP links and viewer maps. [1, 2] Open the report or a rainfall map for 7 September below."
+MORE = "The official links card lists the report, the Mesonet viewer and two UH News stories. [1][2] Day chips open the viewer on 6, 7 and 8 September. The peak-day button opens Kauaʻi's rainfall for 7 September. [9]"
 FOLLOWUPS = ["Show me the daily rainfall map for 7 September", "Where can I download these station totals?", "Take me to the Lowell Mesonet viewer"]
+EMPTY_OUT = {"summary": "", "chunks": [], "cites": [], "more": [], "more_cites": [], "sources": [], "followups": []}
 
 
 class FakeLLM:
@@ -48,9 +51,22 @@ def test_sentences_are_split_cleaned_and_capped_at_sixty_words():
     assert clean_summary("") == [] and clean_summary(None) == [] and clean_summary(42) == []
 
 
+def test_citation_markers_are_pulled_out_and_aligned_with_the_chunks():
+    chunks, cites = clean_cited(CITED, 60, 3)
+    assert chunks == split_sentences(THREE) and cites == [[1], [1, 2], []]
+    assert "[" not in " ".join(chunks)
+    more, more_cites = clean_cited(MORE, 80, 3)
+    assert len(more) == 3 and more_cites == [[1, 2], [], []]            # [9] names no source: dropped
+    assert more[0] == "The official links card lists the report, the Mesonet viewer and two UH News stories."
+    assert extract_cites("Open the map [2][2] today [4].", 3) == ("Open the map today.", [2])
+    assert clean_cited("[1] [2]", 60, 2) == ([], [])                    # markers alone are not a sentence
+    assert clean_cited(CITED, 60, 0)[1] == [[], [], []]                 # no sources → no cites
+    assert clean_summary(CITED) == split_sentences(THREE)
+
+
 def test_followups_are_strings_short_distinct_and_at_most_three():
     assert clean_followups(FOLLOWUPS + ["A fourth"]) == FOLLOWUPS
-    assert clean_followups(["- Show me the map", "show me the map", "x" * 91, "", None, 3, "**Where** is the API?"]) == ["Show me the map", "Where is the API?"]
+    assert clean_followups(["- Show me the map", "show me the map [1]", "x" * 91, "", None, 3, "**Where** is the API?"]) == ["Show me the map", "Where is the API?"]
     assert clean_followups("not a list") == [] and clean_followups(None) == []
 
 
@@ -64,18 +80,22 @@ def test_page_hint_knows_maps_pages_and_storms():
 
 # ── the summarizer ────────────────────────────────────────────────────────────
 def test_summary_is_grounded_split_into_chunks_with_catalog_sources_and_validated_followups():
-    s, llm = make({"summary": THREE, "followups": FOLLOWUPS + ["one too many"]})
+    s, llm = make({"summary": CITED, "more": MORE, "followups": FOLLOWUPS + ["one too many"]})
     out = s.summarize("Take me to the Hurricane Lowell report", "Taking you to the Hurricane Lowell report.", "/extreme-events/lowell", "navigate")
+    assert set(out) == set(EMPTY_OUT)
     assert out["chunks"] == split_sentences(THREE) and len(out["chunks"]) == 3
-    assert out["summary"] == THREE
+    assert out["cites"] == [[1], [1, 2], []] and out["summary"] == THREE                  # the markers are stripped from the text
+    assert len(out["more"]) == 3 and out["more_cites"] == [[1, 2], [], []] and "[" not in " ".join(out["more"])
     assert out["sources"][0] == {"title": "Hurricane Lowell report", "url": LOWELL}
     assert len(out["sources"]) == 3 and all(x["url"].startswith("https://www.hawaii.edu/") for x in out["sources"])
     assert out["followups"] == FOLLOWUPS
     system, user, _ = llm.calls[0]
-    assert system == SUMMARY_SYSTEM
+    assert system == SUMMARY_SYSTEM and '"more"' in system and "square brackets" in system
     assert "Visitor's ask: Take me to the Hurricane Lowell report" in user and "Navigator's reply: Taking you to the Hurricane Lowell report." in user
     assert "Page title: Hurricane Lowell report" in user and "What it is: HCDP's story of Hurricane Lowell" in user and "When it is the answer:" in user
     assert "Page kind: a storm's section" in user
+    assert "Sources (cite by number):\n1. Hurricane Lowell report\n2. Hurricane Lowell Mesonet Viewer\n3. " in user   # titles only, numbered
+    assert LOWELL not in user                                                               # never the URLs
 
 
 def test_viewer_summary_tells_the_model_what_the_map_shows_and_leads_with_access_data():
@@ -83,12 +103,12 @@ def test_viewer_summary_tells_the_model_what_the_map_shows_and_leads_with_access
     out = s.summarize("rain on Kauai on Sept 7", "Taking you to the map.", "/viewer/rainfall/day/2026-09-07/kauai", "navigate")
     assert "The map shows: Rainfall, September 7, 2026, Kauaʻi" in llm.calls[0][1] and "Page kind: an interactive climate map" in llm.calls[0][1]
     assert out["sources"][0]["title"].startswith("Access Data") and out["sources"][1]["url"] == LOWELL
-    assert len(out["chunks"]) == 3
+    assert len(out["chunks"]) == 3 and out["cites"] == [[], [], []] and out["more"] == [] and out["more_cites"] == []
 
 
 def test_summary_is_empty_for_off_topic_analysis_bad_paths_and_model_failures():
     s, llm = make({"summary": THREE, "followups": FOLLOWUPS})
-    empty = {"summary": "", "chunks": [], "sources": [], "followups": []}
+    empty = EMPTY_OUT
     assert s.summarize("cookie recipe", "I can only help with HCDP…", "/data", "off_topic") == empty and llm.calls == []   # the model is never asked
     assert s.summarize("total rainfall?", "This is better answered…", "/data", "analysis") == empty and llm.calls == []
     assert s.summarize("x", "y", "/nowhere", "navigate") == empty and s.summarize("x", "y", "https://evil.example/", "navigate") == empty and lls(s, "") == empty
@@ -100,7 +120,7 @@ def test_summary_is_empty_for_off_topic_analysis_bad_paths_and_model_failures():
     assert s3.summarize("Lowell", "Taking you there.", "/extreme-events/lowell", "navigate") == empty
     s4 = Summarizer(Navigator(None, load_catalog()), None)
     assert s4.summarize("Lowell", "Taking you there.", "/extreme-events/lowell", "navigate") == empty
-    assert EMPTY == empty
+    assert EMPTY == empty and empty_summary() == empty and empty_summary() is not EMPTY
 
 
 def lls(s, path):
@@ -134,10 +154,11 @@ def test_summary_endpoint_contract():
     r = c.post("/api/summary", json={"message": "Take me to the Hurricane Lowell report", "reply": "Taking you to the Hurricane Lowell report.", "path": "/extreme-events/lowell", "intent": "navigate"})
     assert r.status_code == 200
     body = r.json()
-    assert set(body) == {"summary", "chunks", "sources", "followups"}
+    assert set(body) == set(EMPTY_OUT)
     assert body["chunks"] == split_sentences(THREE) and body["sources"][0]["url"] == LOWELL and body["followups"] == FOLLOWUPS
+    assert body["cites"] == [[], [], []] and body["more"] == [] and body["more_cites"] == []
     # off_topic and analysis never get a summary; neither does a foreign address; all are 200 with everything empty
-    empty = {"summary": "", "chunks": [], "sources": [], "followups": []}
+    empty = EMPTY_OUT
     assert c.post("/api/summary", json={"message": "cookie recipe", "reply": "…", "path": "/data", "intent": "off_topic"}).json() == empty
     assert c.post("/api/summary", json={"message": "x", "reply": "…", "path": "/data", "intent": "analysis"}).json() == empty
     assert c.post("/api/summary", json={"message": "x", "reply": "…", "path": "https://evil.example/", "intent": "navigate"}).json() == empty
@@ -147,7 +168,7 @@ def test_summary_endpoint_contract():
 
 
 def test_summary_endpoint_is_empty_not_an_error_when_the_model_fails_or_the_limiter_is_spent():
-    empty = {"summary": "", "chunks": [], "sources": [], "followups": []}
+    empty = EMPTY_OUT
     c = client(RuntimeError("slow"))
     r = c.post("/api/summary", json={"message": "Lowell", "reply": "Taking you there.", "path": "/extreme-events/lowell", "intent": "navigate"})
     assert r.status_code == 200 and r.json() == empty

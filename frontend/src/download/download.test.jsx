@@ -354,6 +354,15 @@ describe('the /download page (D2 A: a page of its own)', () => {
     expect(screen.getByTestId('download-ask')).toHaveTextContent(ASK)
   })
 
+  it('its ?ask= is the package address, not a question for the assistant (only /?ask= asks on arrival)', async () => {
+    const navigates = () => global.fetch.mock.calls.filter(([u]) => String(u) === '/api/navigate').length
+    render(<MemoryRouter initialEntries={[`/download?ask=${encodeURIComponent(ASK)}`]}><AssistantProvider><Routes><Route path="/download" element={<DownloadPage />} /></Routes></AssistantProvider></MemoryRouter>)
+    await screen.findByTestId('download-reading')
+    await new Promise((r) => setTimeout(r, 80))
+    expect(navigates()).toBe(0)
+    expect(posted('/api/download/plan')).toHaveLength(1)
+  })
+
   it('without an ask it asks for one and goes to its address', () => {
     function Probe() { const { pathname, search } = useLocation(); return <div data-testid="probe">{pathname + search}</div> }
     at(<><Routes><Route path="/download" element={<DownloadPage />} /></Routes><Probe /></>, '/download')

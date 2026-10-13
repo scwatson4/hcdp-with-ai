@@ -271,11 +271,12 @@ export function AssistantProvider({ children }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname])
 
-  // A shared question link (/?ask=…) asks it once on arrival.
+  // A shared question link (/?ask=…) asks it once on arrival — on the landing page only: /download?ask=… is the
+  // AI-prepared download's own address (13 Oct), not a question for the assistant.
   const askedRef = useRef(false)
   useEffect(() => {
     const ask = new URLSearchParams(location.search).get('ask')
-    if (!ask || askedRef.current) return
+    if (location.pathname !== '/' || !ask || askedRef.current) return
     askedRef.current = true
     setTimeout(() => send(ask), 50)
   // eslint-disable-next-line react-hooks/exhaustive-deps

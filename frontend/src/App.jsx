@@ -2,6 +2,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { useEffect, useRef } from 'react'
 import SiteHeader from './components/SiteHeader'
 import SiteFooter from './components/SiteFooter'
+import BackToTop from './components/BackToTop'
 import AssistantBar from './assistant/AssistantBar'
 import ReturnStrip from './components/ReturnStrip'
 
@@ -37,6 +38,7 @@ export default function App() {
         <Outlet />
       </main>
       <SiteFooter />
+      <BackToTop />
     </div>
   )
 }

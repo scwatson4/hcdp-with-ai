@@ -144,7 +144,7 @@ export function AskBar({ docked = false, glass = false }) {
           {ghostQuery && (
             <>
               <span id="ask-ghost-hint" className="sr-only">Press Tab to insert the suggested example question.</span>
-              <div aria-hidden="true" data-testid="composer-ghost" className={cn('pointer-events-none absolute top-1/2 -translate-y-1/2 truncate text-[16px] text-subtle transition-opacity duration-300 motion-reduce:transition-none', docked ? 'left-4 right-12 sm:right-28' : 'left-6 right-14 sm:right-32 sm:text-[18px]')} style={{ opacity: ghostShown ? 1 : 0 }}>
+              <div aria-hidden="true" data-testid="composer-ghost" className={cn('pointer-events-none absolute top-1/2 -translate-y-1/2 truncate text-[16px] transition-opacity duration-300 motion-reduce:transition-none', docked ? 'left-4 right-12 text-subtle sm:right-28' : 'left-6 right-14 text-foreground/70 sm:right-32 sm:text-[18px]')} style={{ opacity: ghostShown ? 1 : 0 }}>
                 {typed}<span className={cn('ml-px inline-block h-[1.1em] w-px translate-y-[3px] bg-subtle align-baseline', reduceMotion || typed.length >= ghostQuery.length ? 'opacity-0' : 'hcdp-caret')} />
               </div>
             </>

@@ -892,10 +892,10 @@
    86 % with a 12 px backdrop blur — so the islands stay visible around and through it. Measured 2026-10-08
    over the six live carousel maps: at 0.78 the ghost example (text-subtle) kept 4.84:1 against the darkest
    map's mean under the bar but only 4.10:1 against its darkest blurred 56 px patch (the humidity map), so the
-   fill is 0.86, which holds 4.53:1 there. Dark mode: the same with the dark canvas. Without backdrop-filter the
+   fill was 0.86 for 4.53:1 there; the user asked for more transparency (13 Oct) — 0.62 with a darker ghost (foreground at 70 %). Dark mode: the same with the dark canvas. Without backdrop-filter the
    field falls back to a solid canvas fill. */
 .hcdp-ask-glass {
-  background: hsl(var(--canvas) / 0.86);
+  background: hsl(var(--canvas) / 0.62);   /* 13 Oct: more see-through, so the islands show through the bar */
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }

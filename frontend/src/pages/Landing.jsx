@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Map, RadioTower, CalendarDays, Globe2, CloudLightning, Wrench, ArrowRight, ExternalLink, Instagram, Mail } from 'lucide-react'
+import { Map, RadioTower, CalendarDays, Globe2, CloudLightning, Wrench, ArrowRight, Instagram, Mail } from 'lucide-react'
 import { TOOL_CARDS, SIDEBAR } from '../site/nav'
 import AssistantPanel from '../assistant/AssistantPanel'
 import { useAssistant } from '../assistant/AssistantProvider'
@@ -21,7 +21,7 @@ function SidebarHeading({ children }) {
 }
 
 function ExtLink({ href, children }) {
-  return <a href={href} target="_blank" rel="noopener noreferrer" className="hover:underline">{children}<ExternalLink className="ml-1 inline h-3 w-3 align-[-2px] text-subtle" aria-label="opens in a new tab" /></a>
+  return <a href={href} target="_blank" rel="noopener noreferrer" className="hover:underline">{children}<span className="sr-only"> (opens in a new tab)</span></a>   /* no arrow boxes beside the links (13 Oct) */
 }
 
 // The portal's home-page sidebar, as on www.hawaii.edu/climate-data-portal.

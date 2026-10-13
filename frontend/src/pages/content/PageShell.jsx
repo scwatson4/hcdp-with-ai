@@ -24,11 +24,13 @@ export function useHashScroll() {
 // The frame every content page shares: the portal source link, the title and
 // lead, the body, and a "Related" list of sibling pages. When the assistant brought the visitor here,
 // its AI summary sits above the heading (13 Oct); `summary={false}` for a page that places it itself.
-export function PageShell({ title, lead, source, sourceLabel = 'This page on the HCDP portal', icon: Icon, actions, children, related = [], className, summary = true }) {
+// `top` renders before everything else (the AI-prepared download's offer card on /data/api, the AI line on /data).
+export function PageShell({ title, lead, source, sourceLabel = 'This page on the HCDP portal', icon: Icon, actions, children, related = [], className, summary = true, top = null }) {
   useHashScroll()
   return (
     <article className={cn('mx-auto w-full max-w-4xl px-4 py-8 sm:py-10', className)}>
       {/* The "Original HCDP version" link now lives in the bar above every page (components/OriginalLink). */}
+      {top}
       {summary && <AISummary className="mb-7" />}
       <header>
         <div className="flex items-start gap-3">

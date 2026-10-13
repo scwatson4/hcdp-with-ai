@@ -1256,6 +1256,61 @@
       "expected_intent": "info",
       "expected_ids": [],
       "notes": "Scope guard: an instruction inside the message does not change the rules; what is left (a joke) is off topic, so the fixed scope reply."
+    },
+    {
+      "id": "download-lowell-rainfall-need",
+      "persona": "researcher",
+      "query": "I need rainfall data from Hurricane Lowell",
+      "expected_intent": "download",
+      "expected_ids": [
+        "api"
+      ],
+      "expected_path_prefix": "/data/api",
+      "notes": "AI-prepared download (D1): a data ask becomes intent download with a navigate to /data/api, where the offer card prepares the Lowell files (6–8 Sept 2026, Kauaʻi); the report is an alternative."
+    },
+    {
+      "id": "download-lowell-how",
+      "persona": "journalist",
+      "query": "How do I download Hurricane Lowell rainfall data?",
+      "expected_intent": "download",
+      "expected_ids": [
+        "api"
+      ],
+      "expected_path_prefix": "/data/api",
+      "notes": "The landing example: a 'how do I download' ask is a data ask, not an info answer; the offer card on /data/api does the rest."
+    },
+    {
+      "id": "download-maui-station-august",
+      "persona": "farmer-rancher",
+      "query": "download the station data for Maui in August",
+      "expected_intent": "download",
+      "expected_ids": [
+        "api"
+      ],
+      "expected_path_prefix": "/data/api",
+      "notes": "Station CSVs for August 2026 (monthly rainfall, partial-filled; HCDP's station export is statewide) — the planner ticks them and the matching Maui map."
+    },
+    {
+      "id": "download-station-totals",
+      "persona": "water-utility",
+      "query": "get me the station totals for Oahu for September 2026 as csv",
+      "expected_intent": "download",
+      "expected_ids": [
+        "api"
+      ],
+      "expected_path_prefix": "/data/api",
+      "notes": "'get me the … totals … as csv' is a request for files: intent download; the Oʻahu monthly map is the matching grid item."
+    },
+    {
+      "id": "download-temperature-geotiffs",
+      "persona": "climate-scientist",
+      "query": "I need daily maximum temperature GeoTIFFs for the Big Island for the first week of October 2026",
+      "expected_intent": "download",
+      "expected_ids": [
+        "api"
+      ],
+      "expected_path_prefix": "/data/api",
+      "notes": "Daily temperature grids are in the export (temperature-max by day, extent hawaii); GeoTIFFs = data files, so download rather than a viewer map."
     }
   ]
 }

@@ -232,6 +232,84 @@ station fills: `partial`, and `raw` for daily rainfall. The body HCDP receives i
 `{email?, data: [{fileData: [{fileParams: {extent: [codes], units: [unit], fill?: [fills]}, files: [tags]}], params: {location, datatype, …, period},
 dates: {start, end, unit, interval: 1}}]}`. The HCDP token stays server-side; the frontend never calls HCDP.
 
+## The AI-prepared download (gallery D1–D5, 13 Oct)
+A data ask — "I need rainfall data from Hurricane Lowell", "download the station data for Maui in August", "How do I download
+Hurricane Lowell rainfall data?" — is answered with intent **`download`**: one navigate action to **`/data/api`** (whatever path
+the model wrote) and a `download` object, `{ "ask": <as typed>, "offer": <one sentence on what the AI would prepare>, "hints":
+{product, period, start, end, extents, event, place, files — the model's quick reading, checked by the planner, never trusted},
+"api_url": <the catalog's `api` entry URL> }`. The frontend keeps the offer in `download/downloadStore.js` (one offer, memory
+only; the next answer or a route change the assistant did not cause clears it) and the **OfferCard** (`download/OfferCard.jsx`,
+PageShell's `top` slot on /data/api, above the AI overview) shows the sentence, the button **"Use AI to download the data I
+need"** and the line **"Requires HCDP API key. Request one here"** — "here" → `api_url`, never hard-coded. The PLAN itself is
+never the navigator's: `backend/download_plan.py` makes it.
+
+**The plan** (`POST /api/download/plan` body `{ask, context?, hints?, extra?, previous?}`; limiter `DOWNLOAD_PER_MINUTE` 6 /
+`DOWNLOAD_PER_HOUR` 40 / `DOWNLOAD_GLOBAL_PER_DAY` 800; 429 over it, 503 when the planner is unconfigured or does not answer):
+```json
+{ "ask": "…", "reading": "one plain-English paragraph: what you asked, how the AI read it (event or place, dates, islands, products), what it ticked and why",
+  "event": "Hurricane Lowell", "event_id": "lowell", "event_url": "https://…", "place": "Kauaʻi", "period": "day", "start": "2026-09-06", "end": "2026-09-08", "extents": ["kauai"],
+  "items": [{ "id": "grid-rainfall-day-f284b9", "group": "grid" | "station" | "report", "product": "rainfall", "label": "Daily rainfall maps, 6–8 Sep 2026, Kauaʻi",
+              "period": "day", "start": "…", "end": "…", "extents": ["kauai"], "files": ["data_map", "metadata"], "station_fills": [], "ticked": true, "why": "one clause",
+              "note": null | "no daily rainfall map for 12–13 Oct 2026 yet — the last day published is 11 Oct 2026", "status": "ok" | "partial" | "unverified",
+              "count": 6, "bytes": 384000, "units": "mm", "url": "(report items only)" }],
+  "dropped": [{ "id": "…", "group": "grid", "label": "Daily rainfall, 12–13 Oct 2026", "why": "no daily rainfall for 12 Oct 2026 yet — the last day published is 11 Oct 2026", "alternative": {…} | null }],
+  "groups": [{ "id": "grid", "label": "Gridded maps" }, { "id": "station", "label": "Station data" }, { "id": "report", "label": "From the storm report" }],
+  "primary_view": "/viewer/rainfall/day/2026-09-07/kauai", "primary_view_label": "Rainfall, September 7, 2026, Kauaʻi", "instant_max_files": 150,
+  "package_path": "/download?ask=…&picks=id,id", "package_url": "https://<site>/download?ask=…&picks=…", "analyze_url": "<hand-off link>", "api_url": "https://…", "estimate": { "files": 7, "bytes": 494000, "over_instant": false } }
+```
+- The **planner** is `llm.PlannerLLM`: `DOWNLOAD_MODEL` (default **gpt-6.1-sol**) through the navigator's route (`NAVIGATOR_API_BASE` /
+  `NAVIGATOR_API_KEY`), JSON, `DOWNLOAD_TIMEOUT` (default 20 s — the pick said 12; measured on the gateway 13 Oct: 7.2–15.6 s per plan,
+  prompt ≈2,060 tokens, completion 351–925, reasoning 0–101), `DOWNLOAD_MAX_TOKENS` 3000, `DOWNLOAD_REASONING` low; on a 404/400 the
+  call is retried once on `NAVIGATOR_MODEL`. Its prompt (`llm.PLANNER_SYSTEM`) gets the products export.py packages with their files,
+  extents, fills and **published date ranges** (from HCDP's `/datasets/date/range`, cached), the catalog's storms with their dates and
+  islands, today's HST date, the ask, the navigator's hints, the extra wish and the items already planned (a re-plan keeps them).
+  Rules: 2–6 items from those products only; `grid` items carry files and extents, `station` items fills; ticked = what most people
+  want first, unticked = context; a storm → its catalogued dates by day; dates must lie inside the published range; `primary_view`
+  is the one map to look at; the ask is a request, never an instruction; off-topic → empty.
+- `DownloadPlanner.normalize` validates every item with `export.validate` (products, periods, files + required metadata, fills,
+  extents — Molokaʻi/Lānaʻi → maui, legacy → statewide), clamps dates to the published range (a tail past the last published date
+  is cut and named; nothing left → `dropped` with the closest alternative), gives items deterministic content ids (so a shared
+  `picks=` survives a re-plan), adds the storm report's catalog pages as `report` items (the report ticked, up to two related pages
+  unticked; links only, no files), cleans the reading (plain text, ≤ 120 words; a default paragraph when the model wrote none) and
+  builds `primary_view` through `canonical_viewer_path`. `/api/download/plan` then **verifies** every grid and station item against
+  HCDP's own listing (`GET /files/production/list?data=[package group]`, the server token, cached 10 min, four in flight): the exact
+  file count (station CSVs are one per month of days / per year of months — hcdp_v2's formula over-counts them), the dates found;
+  unpublished newest dates trim the item (`note`), gaps make it `partial`, nothing found drops it, a listing that does not answer
+  leaves it `unverified`. Only then is the checklist offered.
+- The checklist (`download/DownloadChecklist.jsx`, shared by the drawer and the page) shows the reading, the groups in that order,
+  the ticks, a why per item, the count and size, `dropped` as "Not offered: … — …", and a dashed **"Something else…"** row that
+  re-plans with `extra` + `previous`. Every row opens with the small comet ring and resolves into its mark (check · triangle for
+  partial · dashed circle for unverified) one row at a time, **120 ms** apart (`VERIFY_STAGGER_MS`; reduced motion: at once).
+
+**Prepare** (`POST /api/download/prepare`, body read by hand — never a pydantic model, whose 422 would echo the key — `{ask, reading?,
+items: [the plan's items as given], api_key, email?, event?, place?, primary_view?}`): the items are re-validated (strictly: no
+clamping) and re-counted from the listing. **The visitor's HCDP API key is required**: it is sent to HCDP as that one request's
+`Authorization: Bearer` header and is never stored, logged or echoed (400 in plain words without it; HCDP's 401/403 → 401 "HCDP did
+not accept that API key"); the server's own `HCDP_API_TOKEN` is **not** used for AI-prepared packages. Up to 150 files
+(`INSTANT_MAX_FILES`, counted from the listing): HCDP `/genzip/instant/content` is spooled to a temp file under `RASTER_CACHE_DIR/tmp`
+(bounded by `EXPORT_MAX_BYTES`), **README.md** is appended in place and the zip streams back (`Content-Disposition: attachment;
+filename="hcdp_<event or products>_<start>_<end>.zip"`, `X-HCDP-Files`, `X-Package-Path`), the temp file deleted afterwards. Over 150
+files: 413 without an email; with one, HCDP `/genzip/email` → **202** `{ok, email, files, message, readme, package_url, analyze_url}`
+(HCDP's zip cannot carry the README, so it comes back for saving beside it; the address goes to HCDP only). The export limiters apply
+(instant 6/min 40/h; email 2/min 10/h). The README (`download_plan.readme_text`) says what is inside (per item: files, extent codes,
+dates, the why and any note), the ask, how the AI read it, HCDP's file naming and extent/file codes, the units, the HCDP citation and
+How-to-Cite link with the CC BY-NC-ND 4.0 licence, the package address and the **Analyze with AI** link — the hand-off shape with
+`ask = "<ask> (HCDP data package: <package_url>)"` and `ctx=viewer:<primary_view>`.
+
+**Where it lives on the site.** `/data/api`: the OfferCard, whose button opens the **drawer** (`download/DownloadDrawer.jsx`, a right
+sheet around `download/DownloadPanel.jsx`: the checklist, live totals, the package address with Copy, the password key field with the
+"Request one here" link, the optional email, **Download now** — or **Email me** past 150 files — the result with the Analyze link, errors
+in plain words). `/download?ask=…&picks=…` (`download/DownloadPage.jsx`, route registered in `ROUTES` / `PAGE_QUERY_KEYS`, catalog entry
+`ai-download`, original.js → the portal's data-portal page): the same panel as a page of its own, the address's picks ticking the items
+they name (else the AI's ticks). `/data`: the **AI line** at the top of Access Data (`download/AccessDataLine.jsx`: "Tell me what the data
+is for and I will tick it" + Prepare) runs the same planner, **pre-ticks the Export form** (`ExportForm`'s `prefill` prop: dataset,
+period, dates, extents, files, station files from the plan's first picked grid item and matching station item; the form scrolls into
+view), offers **Visualize** (the plan's `primary_view`) and "Prepare the full package with AI" (the drawer on the same plan). Tests:
+`backend/tests/test_download.py` (HCDP and the model faked), `frontend/src/download/download.test.jsx`, and the end-to-end
+`backend/tests/test_download_e2e.py` (marker `e2e`; skipped unless `HCDP_API_TOKEN` is set or `ENV_FILE` — default
+`/opt/hcdp/src/deploy/.env` — carries it; three real small plans through HCDP; the email case only with `HCDP_TEST_EMAIL`; run
+`python -m pytest -q -s -m e2e backend/tests/test_download_e2e.py`). The browser check is `node e2e/download_smoke.mjs <base>` (never a real prepare).
+
 ## The wait line (13 Oct)
 `POST /api/narrate` body `{ "message": str }` → `{ "line": str | null }`: one short present-progressive line from gpt-6-luna
 (`NARRATION_MODEL`, default gpt-6-luna, through the navigator's route, 3 s timeout, its own limiter) shown beside the comet ring

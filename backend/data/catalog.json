@@ -614,6 +614,31 @@
    "http": 200
   },
   {
+   "id": "ai-download",
+   "kind": "page",
+   "title": "AI-prepared data download (this site)",
+   "url": null,
+   "internal_path": "/download",
+   "summary": "This site's AI-prepared download: a data ask becomes a verified checklist of HCDP packages (gridded rainfall and temperature maps, station CSVs, the storm report's pages), each confirmed against HCDP's file listing, then one zip with an AI-written README through HCDP's export, using the visitor's own HCDP API key. The list has a shareable address (/download?ask=…&picks=…).",
+   "when_to_use": "Reached from the offer card on the API page after a data ask, or by re-opening a shared package address; the navigator itself answers data asks with intent download and the API page.",
+   "example_queries": [
+    "re-open my prepared download list",
+    "share the package the AI prepared",
+    "the AI download checklist"
+   ],
+   "region": "hawaii",
+   "dates": null,
+   "tags": [
+    "download",
+    "package",
+    "zip",
+    "readme",
+    "ai",
+    "export",
+    "api key"
+   ]
+  },
+  {
    "id": "api-docs",
    "kind": "api",
    "title": "HCDP API documentation (endpoints and examples)",

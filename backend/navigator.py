@@ -72,6 +72,7 @@ HST = "Pacific/Honolulu"
 ROUTES = [
     "/", "/about", "/about/team", "/about/history", "/about/acknowledgements", "/about/how-to-cite",
     "/data", "/data/api", "/data/tutorials", "/mesonet", "/climate-summary", "/pacific", "/extreme-events", "/tools",
+    "/download",
 ]
 # Deep-link routes beyond ROUTES: per-storm and per-tool pages — only the slugs that exist.
 STORM_SLUGS = ("lowell", "lala", "nolo", "kona-low-1", "kona-low-2", "kona-lows")
@@ -79,9 +80,13 @@ TOOL_SLUGS = ("rainfall-atlas", "ccvd-portfolios", "h-rip", "groundwater-recharg
               "american-samoa-data-viewer", "soest-coastal-viewer", "climate-of-hawaii", "ai-data-analysis", "avian-malaria")
 ROUTE_PATTERNS = [re.compile(r"^/extreme-events/(" + "|".join(STORM_SLUGS) + r")$"), re.compile(r"^/tools/(" + "|".join(TOOL_SLUGS) + r")$")]
 # Query keys each page understands (everything else is dropped as invalid).
-PAGE_QUERY_KEYS = {"/": {"ask"}, "/mesonet": {"viewer", "station", "view"}, "/climate-summary": {"year", "month"}}
+PAGE_QUERY_KEYS = {"/": {"ask"}, "/mesonet": {"viewer", "station", "view"}, "/climate-summary": {"year", "month"}, "/download": {"ask", "picks"}}
 STATIONS_PATH = DATA_DIR / "mesonet_stations.json"
-INTENTS = {"navigate", "analysis", "info", "clarify"}
+# `download` (13 Oct, gallery D1): a data ask — "download", "data for", "I need the rainfall data", "get me the station totals" —
+# navigates to /data/api, where the AI-prepared download offer sits; the PLAN itself comes from /api/download/plan, not from here.
+INTENTS = {"navigate", "analysis", "info", "clarify", "download"}
+DOWNLOAD_PATH = "/data/api"
+DOWNLOAD_HINT_KEYS = ("product", "period", "start", "end", "extents", "event", "place", "files")
 # The model may also answer "off_topic" (the scope guard, 13 Oct); normalize() turns it into the fixed info reply below.
 MODEL_INTENTS = INTENTS | {"off_topic"}
 # The one sentence an analysis reply says (the assistant links "here"; the frontend renders the same words), so the
@@ -502,6 +507,7 @@ WHAT YOU CAN DO
 4. info — answer a factual question about HCDP from the catalog, briefly, without navigating.
 5. clarify — ask ONE short question, only when you truly cannot choose (prefer acting with a sensible default and offering alternatives).
 6. off_topic — the request is not about HCDP or Hawaiʻi's climate (see SCOPE): no reply text is needed, no actions, no alternatives.
+7. download — the visitor wants DATA FILES rather than a page or a map: "download …", "data for …", "I need the rainfall data …", "get me the station totals …", "how do I download …", "export …", "GeoTIFFs/CSVs of …" for rainfall or temperature (HCDP's export packages gridded maps and station data by day or month). Answer intent "download" with ONE navigate action to /data/api (the API page, where the site offers to prepare the files with AI) and a "download" object: {{"ask": the request as typed, "offer": one sentence on what the AI would prepare (which product, dates, islands, as one zip), "hints": {{"product": rainfall|rainfall-legacy|temperature-max|temperature-min|temperature-mean, "period": day|month, "start": …, "end": …, "extents": [slugs], "event": name or null, "place": name or null}}}}. The reply says you are taking them to the API page where the files can be prepared. A storm's data uses its catalogued dates. Mesonet 5-minute readings, SPI, NDVI, ignition and projections are NOT in the export: for those, navigate or open as before. Never navigate to /download yourself.
 
 SITE PAGES (internal paths): {", ".join(ROUTES)}
 VIEWER DEEP LINKS: /viewer/{{dataset}}/{{period}}/{{date}}/{{extent}}
@@ -530,11 +536,11 @@ RULES
 - Always offer 2–4 alternatives (title, url or internal path, one-clause why) so the visitor can choose.
 - Prefer this site's own pages/viewer for maps; prefer the real HCDP page (open) for reports, downloads and tools this site does not replicate.
 - If the visitor asks what you can do, answer with intent info and list the main tools as alternatives.
-- If a request is about a storm in the catalog, the storm's report/tracker is the primary answer; a viewer deep link for its dates is an alternative (or the primary if they ask for a map).
+- If a request is about a storm in the catalog, the storm's report/tracker is the primary answer; a viewer deep link for its dates is an alternative (or the primary if they ask for a map) — but a request for the storm's DATA FILES is intent download (rule 7), with the report as an alternative.
 - Set minimize=true whenever you navigate or open.
 
 Respond with ONLY a JSON object:
-{{"intent": "navigate|analysis|info|clarify|off_topic", "reply": "…", "actions": [{{"type": "navigate", "path": "/…"}} | {{"type": "open", "url": "https://…"}} | {{"type": "handoff"}}], "alternatives": [{{"title": "…", "url": "https://… or /path", "why": "…"}}], "minimize": true|false}}"""
+{{"intent": "navigate|analysis|info|clarify|off_topic|download", "reply": "…", "actions": [{{"type": "navigate", "path": "/…"}} | {{"type": "open", "url": "https://…"}} | {{"type": "handoff"}}], "alternatives": [{{"title": "…", "url": "https://… or /path", "why": "…"}}], "minimize": true|false, "download": {{"ask": "…", "offer": "…", "hints": {{…}}}} (download intent only)}}"""
 
     # ----- response ---------------------------------------------------------
     def respond(self, message: str, history: list[dict] | None = None, context: dict | None = None) -> dict:
@@ -609,8 +615,41 @@ Respond with ONLY a JSON object:
                 reply = "I could not find that page. Here are the closest places."
             if not alternatives:
                 alternatives = self.fallback(message)["alternatives"]
+        download = None
+        if intent == "download":
+            # The AI-prepared download (13 Oct): always the API page, whatever path the model wrote, and the offer object the
+            # OfferCard shows — the ask as typed, one sentence, the model's hints (checked by the planner, never trusted), and the
+            # catalog's API page URL for the "Requires HCDP API key" line (never hard-coded in the client).
+            actions = [a for a in actions if a["type"] != "navigate"]
+            actions.insert(0, {"type": "navigate", "path": DOWNLOAD_PATH})
+            download = self.download_offer(raw.get("download"), message)
+            if not reply:
+                reply = "Taking you to the API page, where I can prepare these files for download."
         minimize = bool(raw.get("minimize")) or any(a["type"] in ("navigate", "open") for a in actions)
-        return {"intent": intent, "reply": reply or "Here is what I found.", "actions": actions, "alternatives": alternatives, "minimize": minimize}
+        out = {"intent": intent, "reply": reply or "Here is what I found.", "actions": actions, "alternatives": alternatives, "minimize": minimize}
+        if download:
+            out["download"] = download
+        return out
+
+    def api_page_url(self) -> str | None:
+        """The portal's API page (token sign-up) from the catalog's `api` entry — the OfferCard's "Request one here" link."""
+        e = self.entry("api")
+        u = e.get("url") if e else None
+        return u if isinstance(u, str) and self.allowed_url(u) else None
+
+    def download_offer(self, raw, message: str) -> dict:
+        """{ask, offer, hints, api_url}: strings trimmed, hints reduced to the known keys with string/list values."""
+        raw = raw if isinstance(raw, dict) else {}
+        ask = str(raw.get("ask") or "").strip()[:500] or (message or "").strip()[:500]
+        offer = re.sub(r"\s+", " ", str(raw.get("offer") or "")).strip()[:240]
+        hints: dict = {}
+        for k in DOWNLOAD_HINT_KEYS:
+            v = (raw.get("hints") or {}).get(k) if isinstance(raw.get("hints"), dict) else None
+            if isinstance(v, str) and v.strip():
+                hints[k] = v.strip()[:80]
+            elif isinstance(v, list) and all(isinstance(x, str) for x in v):
+                hints[k] = [x.strip()[:40] for x in v if x.strip()][:6]
+        return {"ask": ask, "offer": offer or "I can gather the HCDP files for this into one zip, with a README that says what is inside.", "hints": hints, "api_url": self.api_page_url()}
 
     # ----- the destination of a navigation (the AI summary's grounding and sources, 13 Oct) -----
     def entry(self, entry_id: str) -> dict | None:

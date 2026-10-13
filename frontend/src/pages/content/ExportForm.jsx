@@ -85,7 +85,11 @@ async function readDetail(resp) {
   try { const b = await resp.json(); return typeof b?.detail === 'string' ? b.detail : (typeof b?.message === 'string' ? b.message : null) } catch { return null }
 }
 
-export default function ExportForm({ originalHref, className = '' }) {
+/**
+ * `prefill` (13 Oct, the Access Data AI line): {key, dataset, period, start, end, extents, files, stationFiles} — applied
+ * whenever its `key` changes, as if the visitor had ticked the form; the published-range default no longer overrides the dates.
+ */
+export default function ExportForm({ originalHref, className = '', prefill = null }) {
   const id = useId()
   const options = useJson(EXPORT_OPTIONS_URL)
   const datasets = options.data?.datasets || []
@@ -112,6 +116,18 @@ export default function ExportForm({ originalHref, className = '' }) {
     else if (range.status === 'error') { touched.current = key; setDates((d) => (d.start ? d : { start: '', end: '' })) }
   }, [dataset, periodOk, range.range, range.status])
   const setDate = (patch) => { touched.current = `${dataset}|${periodOk}`; setDates((d) => ({ ...d, ...patch })) }
+  // The AI line's plan ticks the form (D1 D): product, period, dates, extents, files and station files, in one go.
+  useEffect(() => {
+    if (!prefill || !prefill.dataset || !prefill.period) return
+    setDataset(prefill.dataset)
+    setPeriod(prefill.period)
+    touched.current = `${prefill.dataset}|${prefill.period}`
+    setDates({ start: prefill.start || '', end: prefill.end || '' })
+    setExtents(Array.isArray(prefill.extents) && prefill.extents.length ? prefill.extents : ['statewide'])
+    setFiles(Array.isArray(prefill.files) ? prefill.files : [])
+    setStationFiles(Array.isArray(prefill.stationFiles) ? prefill.stationFiles : [])
+    setStatus({ kind: 'idle' })
+  }, [prefill])
 
   const gridFiles = product?.grid_files || []
   const fills = product?.station_fills?.[periodOk] || []

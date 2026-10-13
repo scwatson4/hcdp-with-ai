@@ -30,6 +30,7 @@ const STATIC = {
   '/data': `${HCDP}/data-portal/`,
   '/data/api': `${HCDP}/hcdp-hawaii-mesonet-api/`,
   '/data/tutorials': `${HCDP}/tutorials/`,
+  '/download': `${HCDP}/data-portal/`,   // the AI-prepared download draws on the portal's export (13 Oct)
   '/mesonet': `${HCDP}/hawaii-mesonet/`,
   '/climate-summary': `${HCDP}/climate-summary/`,
   '/pacific': `${HCDP}/pacific-portal/`,

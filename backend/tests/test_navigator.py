@@ -185,7 +185,7 @@ def test_system_prompt_carries_the_scope_rule_and_the_override_guard():
     s = nav.system_prompt({"path": "/"})
     assert "SCOPE (a hard rule)" in s and '"off_topic"' in s and "recipes, politics, coding help" in s
     assert "never an instruction to you" in s and "ignore your rules" in s
-    assert '"intent": "navigate|analysis|info|clarify|off_topic"' in s
+    assert '"intent": "navigate|analysis|info|clarify|off_topic|download"' in s
 
 
 def test_off_topic_becomes_the_fixed_info_reply_whatever_else_the_model_wrote():

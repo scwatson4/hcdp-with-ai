@@ -20,7 +20,7 @@ CATALOG = {e["id"]: e for e in json.loads((DATA / "catalog.json").read_text(enco
 
 PERSONAS = {"climate-scientist", "emergency-responder", "researcher", "citizen", "teacher", "farmer-rancher",
             "water-utility", "journalist", "developer"}
-INTENTS = {"navigate", "analysis", "info", "clarify"}
+INTENTS = {"navigate", "analysis", "info", "clarify", "download"}
 REQUIRED = {"id": str, "persona": str, "query": str, "expected_intent": str, "expected_ids": list, "notes": str}
 OPTIONAL = {"expected_path_prefix": str, "context": dict}
 ID_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -127,6 +127,9 @@ def test_intent_mix_and_personas():
     assert all(c["expected_ids"] == [] for c in by_intent["analysis"]), "analysis hands off; no catalog target"
     assert all(c["expected_ids"] for c in by_intent["navigate"]), "a navigate case needs a target"
     assert all(c["expected_ids"] for c in by_intent["clarify"]), "a clarify case names the candidates"
+    # the AI-prepared download (13 Oct): a data ask lands on /data/api, where the offer card sits
+    assert len(by_intent["download"]) >= 5
+    assert all(c["expected_ids"] == ["api"] and c.get("expected_path_prefix") == "/data/api" for c in by_intent["download"]), "a download case lands on the API page"
     assert {c["persona"] for c in CASES} == PERSONAS
 
 
@@ -148,7 +151,7 @@ def test_expected_path_prefixes_are_reachable():
         prefix = c.get("expected_path_prefix")
         if prefix is None:
             continue
-        assert c["expected_intent"] == "navigate", c["id"]
+        assert c["expected_intent"] in ("navigate", "download"), c["id"]
         assert prefix.startswith("/"), c["id"]
         if prefix.startswith("/viewer/"):
             problem = viewer_prefix_problem(prefix)

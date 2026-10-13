@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Map as MapIcon, Code2, GraduationCap, Download, Layers, ArrowRight, KeyRound, Quote, Eye } from 'lucide-react'
 import { DATASETS, formatViewerPath, describeViewer } from '../../viewer/urlGrammar'
@@ -12,6 +12,9 @@ import { PageShell, Section, FactList } from './PageShell'
 import ExternalLink from './ExternalLink'
 import ExportForm from './ExportForm'
 import AISummary from '../../assistant/AISummary'
+import { prefersReducedMotion } from '../../assistant/AssistantProvider'
+import AccessDataLine from '../../download/AccessDataLine'
+import OfferCard from '../../download/OfferCard'
 import { CodeBlock, CopyBlock } from './CopyButton'
 import { dataRelated, lastCompleteMonth, yesterday } from './contentUtils'
 
@@ -91,11 +94,18 @@ function ExternalButton({ href, children, variant = 'default', size = 'default' 
 export function AccessData() {
   const now = useMemo(() => new Date(), [])
   const maps = useMemo(() => quickMaps(now), [now])
+  // 13 Oct (D1 D): the AI line at the top of the page ticks the Export form from a sentence and scrolls it into view.
+  const [prefill, setPrefill] = useState(null)
+  const onPrefill = useCallback((p) => {
+    setPrefill(p)
+    window.setTimeout(() => document.getElementById('export')?.scrollIntoView?.({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' }), 60)
+  }, [])
   return (
     <PageShell
       title="Access Data"
       icon={MapIcon}
       summary={false}
+      top={<AccessDataLine onPrefill={onPrefill} className="mb-7" />}
       source={PORTAL_PAGE}
       lead={<p>The HCDP data portal maps and downloads Hawaiʻi's gridded climate products (rainfall back to 1920, temperature, drought, humidity, vegetation and fire risk) together with the station data behind them.</p>}
       actions={(
@@ -194,7 +204,7 @@ export function AccessData() {
       <Section id="export" title="Export data" lead={<p>Rainfall and temperature as HCDP packages them: gridded maps (GeoTIFF), their standard-error and anomaly maps, metadata and error metrics, and the station data as CSV, for the dates and extents you choose. Small packages download at once; larger ones are zipped by HCDP and a link is emailed to you.</p>}>
         {/* 13 Oct: on this page the assistant's AI summary sits above the Export form (and the page scrolls to it on arrival). */}
         <AISummary scrollIntoView className="mb-5" />
-        <ExportForm originalHref={`${PORTAL_APP}/?datatype=rainfall&period=month`} />
+        <ExportForm originalHref={`${PORTAL_APP}/?datatype=rainfall&period=month`} prefill={prefill} />
         <p className="mt-3 text-sm text-subtle" data-testid="export-original-link">
           Drought index (SPI), vegetation (NDVI), ignition probability, climate projections and the climatologies are exported from the{' '}
           <ExternalLink href={`${PORTAL_APP}/?datatype=spi&period=month`}>original HCDP data portal app</ExternalLink>.
@@ -310,6 +320,7 @@ export function ApiAccess() {
     <PageShell
       title="HCDP / Hawaiʻi Mesonet API"
       icon={Code2}
+      top={<OfferCard className="mb-7" />}
       source={API_PAGE}
       lead={<p>To download and work with HCDP and Hawaiʻi Mesonet data by writing code, sign up for the HCDP / Hawaiʻi Mesonet API. The documentation is updated as new products and features become available.</p>}
       actions={(

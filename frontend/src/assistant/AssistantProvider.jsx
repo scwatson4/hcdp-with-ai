@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useLocation, useNavigate } from 'react-router-dom'
 import { parseViewerPath } from '../viewer/urlGrammar'
 import { handoffUrl } from '../site/handoff'
+import { clearDownload, currentDownload, noteDownload } from '../download/downloadStore'
 import TravelProxy from './TravelProxy'
 
 // The navigator's client-side brain. Conversation lives in memory only (this
@@ -219,6 +220,9 @@ export function AssistantProvider({ children }) {
       const nav = actions.find((a) => a.type === 'navigate' && typeof a.path === 'string' && a.path.startsWith('/'))
       const id = nextId()
       setMessages((m) => [...m, { id, role: 'assistant', content: data.reply || '', intent: data.intent, actions, alternatives }])
+      // 13 Oct (D1): a data ask carries a download offer for the page it opens (the OfferCard on /data/api); any other answer clears it.
+      if (data.intent === 'download' && data.download && nav) noteDownload(id, data.download, nav.path)
+      else clearDownload()
       if (data.intent === 'analysis') startHandoff(id, actions.find((a) => a.type === 'handoff')?.url || handoffUrl({ question: q, viewerPath: location.pathname }))
       const onLanding = location.pathname === '/' && !opts.docked   // sent from the scroll-docked bar: go at once, like an inner page
       if (nav) {
@@ -244,7 +248,7 @@ export function AssistantProvider({ children }) {
   const reset = useCallback(() => {
     historyRef.current = []
     clearHandoffTimer(); setHandoff(null); clearTravel(); setTravel({ phase: 'idle', path: null }); hideStrip()
-    dismissSummary(); setFollowupsState({})
+    dismissSummary(); setFollowupsState({}); clearDownload()
     setMessages([WELCOME]); setMode(location.pathname === '/' ? 'inline' : 'dock'); setEpoch((n) => n + 1)
   }, [location.pathname, clearTravel, hideStrip, dismissSummary])
 
@@ -262,6 +266,8 @@ export function AssistantProvider({ children }) {
     if (strip && strip.path !== location.pathname) hideStrip()
     // and the summary belongs to the page the assistant opened: a route change it did not cause takes it away
     if (summaryRef.current && summaryRef.current.path !== location.pathname) dismissSummary()
+    const offer = currentDownload()   // the download offer likewise (13 Oct)
+    if (offer && offer.path !== location.pathname) clearDownload()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname])
 

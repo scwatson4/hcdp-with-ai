@@ -17,6 +17,8 @@ Endpoints
   GET  /api/export/options    the products, files, extents and station fills the Export form offers
   POST /api/export/instant    a zip of HCDP files, streamed from HCDP /genzip/instant/content (≤ 150 files, a byte budget, per-IP limit)
   POST /api/export/email      asks HCDP /genzip/email to send the package to an address (validated here; a harder per-IP limit)
+  POST /api/download/plan     the AI-prepared download (13 Oct): a data ask → a verified checklist (gpt-6.1-sol plans, HCDP's file listing confirms)
+  POST /api/download/prepare  the picked items → one zip with an AI README (HCDP genzip with the VISITOR's API key) or 202 for the emailed package
   GET  /api/stations          the Hawaiʻi Mesonet station registry (Mesonet page)
   GET  /api/catalog           the site catalog the navigator reasons over
   GET  /api/health
@@ -39,9 +41,10 @@ from urllib.parse import quote, urlparse
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import Body, FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
+from starlette.background import BackgroundTask
 from starlette.concurrency import run_in_threadpool
 
 ROOT = Path(__file__).resolve().parent
@@ -81,10 +84,14 @@ if not export_valid_email(EXPORT_LOG_EMAIL):
 app = FastAPI(title="HCDP with AI — navigator", docs_url=None, redoc_url=None)
 app.state.llm = NavigatorLLM()
 app.state.navigator = Navigator(app.state.llm, load_catalog(), ai_interface_url=AI_INTERFACE_URL)
-from llm import NarrationLLM, SummaryLLM  # noqa: E402
+from llm import NarrationLLM, PlannerLLM, SummaryLLM  # noqa: E402
 from summary import Summarizer, empty_summary  # noqa: E402
+import download_plan as dl  # noqa: E402
 app.state.narrator = NarrationLLM()
 app.state.summarizer = Summarizer(app.state.navigator, SummaryLLM())
+# The AI-prepared download's planner (13 Oct): gpt-6.1-sol (DOWNLOAD_MODEL) through the navigator's route; its own limiter.
+app.state.planner = dl.DownloadPlanner(PlannerLLM(), app.state.navigator)
+app.state.download_limiter = RateLimiter(per_minute=int(os.environ.get("DOWNLOAD_PER_MINUTE", "6")), per_hour=int(os.environ.get("DOWNLOAD_PER_HOUR", "40")), global_per_day=int(os.environ.get("DOWNLOAD_GLOBAL_PER_DAY", "800")))
 app.state.dates_cache = {}
 app.state.limiter = RateLimiter(per_minute=int(os.environ.get("NAV_PER_MINUTE", "12")), per_hour=int(os.environ.get("NAV_PER_HOUR", "120")),
                                  global_per_day=int(os.environ.get("NAV_GLOBAL_PER_DAY", "5000")))
@@ -204,11 +211,15 @@ async def api_health(request: Request):
     narrator = getattr(request.app.state, "narrator", None)
     summarizer = getattr(request.app.state, "summarizer", None)
     summary_llm = getattr(summarizer, "llm", None)
+    planner_llm = getattr(getattr(request.app.state, "planner", None), "llm", None)
     return {
         "ok": True, "model": llm.model, "model_configured": llm.configured, "llm": llm.stats,
         # the two small gpt-6-luna clients (the wait line, the AI overview): calls, errors, the last error's class and latency
         "narration": {"model": getattr(narrator, "model", None), "stats": getattr(narrator, "stats", None)},
         "summary": {"model": getattr(summary_llm, "model", None), "timeout": getattr(summary_llm, "timeout", None), "stats": getattr(summary_llm, "stats", None)},
+        # the download planner (13 Oct): model, fallback model, timeout, token budget and its client stats
+        "planner": {"model": getattr(planner_llm, "model", None), "fallback_model": getattr(planner_llm, "fallback_model", None), "timeout": getattr(planner_llm, "timeout", None),
+                    "max_completion_tokens": getattr(planner_llm, "max_completion_tokens", None), "stats": getattr(planner_llm, "stats", None)},
         "catalog_entries": len(request.app.state.navigator.catalog),
         "raster_cache_files": len(list(CACHE_DIR.glob("*.tif"))) if CACHE_DIR.exists() else 0,
         "frontend_built": (DIST / "index.html").exists(),
@@ -830,6 +841,187 @@ async def api_export_email(body: ExportBody, request: Request):
     return JSONResponse({"ok": True, "email": req["email"], "files": req["files"],
                          "message": f"HCDP is packaging about {req['files']:,} files and will email a download link to {req['email']}. Large packages can take a while; if nothing arrives within a few hours, check the address and try again or write to hcdp@hawaii.edu."},
                         status_code=202, headers={"Cache-Control": "no-store"})
+
+
+# ----- the AI-prepared download (CONTRACT.md "The AI-prepared download", 13 Oct) ------------------------
+class DownloadPlanBody(BaseModel):
+    ask: str = Field(min_length=1, max_length=500)
+    context: dict = Field(default_factory=dict)
+    hints: dict = Field(default_factory=dict)
+    extra: str = Field(default="", max_length=300)
+    previous: list[dict] = Field(default_factory=list, max_length=dl.MAX_ITEMS)
+
+
+EXPORT_PRODUCT_PERIODS = [(p["id"], per) for p in dl.PRODUCTS for per in p["periods"]]
+
+
+async def product_ranges(request: Request) -> dict:
+    """{(product, period): (first, last)} for every product the export packages, from HCDP's date ranges (cached an hour by
+    /api/dates); a product whose range cannot be read is simply not clamped."""
+    out = {}
+
+    async def one(product: str, period: str) -> None:
+        try:
+            out[(product, period)] = await date_range(request, product, period)
+        except Exception:  # noqa: BLE001 - no range, no clamping
+            pass
+
+    await asyncio.gather(*(one(p, per) for p, per in EXPORT_PRODUCT_PERIODS))
+    return out
+
+
+async def hcdp_file_listing(data: list[dict]) -> list[str] | None:
+    """HCDP GET /files/production/list with the SERVER's token (the same read the viewer's date ranges make): the links of the
+    files a genzip request would zip; None when HCDP does not answer 200."""
+    async with _hcdp_client(dl.LIST_TIMEOUT) as client:
+        r = await client.get("/files/production/list", params={"data": json.dumps(data)})
+    if r.status_code != 200:
+        return None
+    body = r.json()
+    return [str(x) for x in body] if isinstance(body, list) else None
+
+
+def _plan_links(plan: dict, request: Request) -> dict:
+    """The package address (this site's /download?ask=&picks= for the ticked items), the Analyze-with-AI hand-off link and the
+    catalog's API page URL, added to a plan."""
+    nav = request.app.state.navigator
+    picks = [i["id"] for i in plan["items"] if i.get("ticked")]
+    path = dl.package_path(plan["ask"], picks)
+    package_url = f"{site_origin(request.headers.get('host'))}{path}"
+    plan["package_path"] = path
+    plan["package_url"] = package_url
+    plan["analyze_url"] = nav.handoff_url(dl.analyze_ask(plan["ask"], package_url), {"path": plan.get("primary_view")})
+    plan["api_url"] = nav.api_page_url()
+    plan["estimate"] = dl.estimate(plan["items"])
+    return plan
+
+
+@app.post("/api/download/plan")
+async def api_download_plan(body: DownloadPlanBody, request: Request):
+    """A data ask → the verified plan: the plain-English reading, the checklist grouped by kind (gridded maps · station data ·
+    from the storm report) with the AI's first picks ticked, every grid and station item checked against HCDP's file listing
+    (exact counts; unpublished dates trimmed and named; an item that does not exist is in `dropped`, not offered), the
+    primary viewer map, the package address and the Analyze-with-AI link. 429 over the limiter, 503 when the planner is
+    not configured or did not answer in time."""
+    verdict = request.app.state.download_limiter.check(request.client.host if request.client else "?")
+    if verdict:
+        return JSONResponse({"detail": "That is a lot of download plans from one connection in a short time. Wait a minute and try again, or use the Export form below."}, status_code=429)
+    planner = getattr(request.app.state, "planner", None)
+    if planner is None or planner.llm is None or not getattr(planner.llm, "configured", False):
+        return JSONResponse({"detail": "The AI planner is not configured on this server; the Export form still works."}, status_code=503)
+    ranges = await product_ranges(request)
+    plan = await run_in_threadpool(planner.plan, body.ask, ranges, body.hints, body.extra, body.previous[-dl.MAX_ITEMS:], body.context)
+    if plan is None:
+        return JSONResponse({"detail": "The AI planner did not answer in time. Try again in a moment, or tick the Export form yourself."}, status_code=503)
+    if not plan["items"]:
+        plan["reading"] = plan["reading"] or "I could not match this to anything HCDP's export packages (gridded rainfall and temperature maps, and their station data, by day or month)."
+    offered, gone = await dl.verify_items(plan["items"], hcdp_file_listing)
+    plan["items"], plan["dropped"] = offered, (plan.get("dropped") or []) + gone
+    plan["groups"] = [{"id": g, "label": dl.GROUP_LABELS[g]} for g in dl.GROUPS if any(i["group"] == g for i in offered)]
+    return JSONResponse(_plan_links(plan, request), headers={"Cache-Control": "no-store"})
+
+
+def _unlink_quietly(path: Path) -> None:
+    try:
+        path.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+def _prepare_request(raw: dict) -> dict:
+    """The prepare body checked by hand — never through a pydantic model, whose 422 echoes the offending input (and so could
+    echo the API key). Returns {ask, reading, items, api_key, email, picks}; raises HTTPException with plain words."""
+    if not isinstance(raw, dict):
+        raise HTTPException(400, "the request must be a JSON object")
+    api_key = raw.get("api_key")
+    if not isinstance(api_key, str) or not (8 <= len(api_key.strip()) <= 4096) or any(ord(c) < 32 or ord(c) == 127 for c in api_key):
+        raise HTTPException(400, "An HCDP API key is needed to prepare the package: paste yours in the key field, or request one on HCDP's API page.")
+    ask = raw.get("ask")
+    if not isinstance(ask, str) or not ask.strip() or len(ask) > 500:
+        raise HTTPException(400, "the ask is missing")
+    items_raw = raw.get("items")
+    if not isinstance(items_raw, list) or not items_raw or len(items_raw) > dl.MAX_ITEMS:
+        raise HTTPException(400, "tick at least one item to prepare (and at most eight)")
+    try:
+        items, dropped = dl.normalize_items([i for i in items_raw if isinstance(i, dict) and i.get("group") in ("grid", "station")], None, strict=True)
+    except dl.PlanError as e:
+        raise HTTPException(400, str(e)) from None
+    if not items:
+        why = dropped[0]["why"] if dropped else "none of the ticked items is a package HCDP can build"
+        raise HTTPException(400, why)
+    reports = [i for i in items_raw if isinstance(i, dict) and i.get("group") == "report" and isinstance(i.get("url"), str)]
+    email = raw.get("email")
+    email = email.strip() if isinstance(email, str) else ""
+    if email and not export_valid_email(email):
+        raise HTTPException(400, "that does not look like an email address")
+    reading = raw.get("reading")
+    return {"ask": ask.strip(), "reading": dl.clean_text(reading)[:1500] if isinstance(reading, str) else "", "items": items, "reports": reports,
+            "api_key": api_key.strip(), "email": email, "event": str(raw.get("event") or "")[:80] or None, "place": str(raw.get("place") or "")[:60] or None,
+            "primary_view": canonical_viewer_path(raw.get("primary_view")) if isinstance(raw.get("primary_view"), str) else None}
+
+
+def _report_items(nav, reports: list[dict]) -> list[dict]:
+    """Report links the client sent back, kept only when they are catalog URLs (the README never carries a stray link)."""
+    out = []
+    for r in reports[:dl.MAX_REPORT_LINKS]:
+        u = r.get("url")
+        if isinstance(u, str) and nav.allowed_url(u) and any(e.get("url") == u for e in nav.catalog):
+            out.append({"id": str(r.get("id") or "report")[:60], "group": "report", "label": str(r.get("label") or u)[:120], "url": u, "why": dl.clean_text(r.get("why"))[:dl.MAX_WHY_CHARS]})
+    return out
+
+
+@app.post("/api/download/prepare")
+async def api_download_prepare(request: Request, raw: dict = Body(...)):
+    """The picked items → the package. Body {ask, reading?, items: [the plan's items as given], api_key, email?, event?, place?,
+    primary_view?}. The VISITOR's HCDP API key is required: it goes to HCDP as this one request's Authorization header and is
+    never logged, stored or echoed (the server's own token is not used for AI-prepared packages). Up to 150 files (counted from
+    HCDP's listing): the zip streams back with README.md added — Content-Disposition attachment, X-HCDP-Files. Over 150 with an
+    email: HCDP /genzip/email, 202 {ok, email, files, message, readme, package_url, analyze_url} (the README cannot ride in HCDP's
+    own zip, so it comes back for saving). Over 150 without an email: 413. HCDP refusing the key: 401."""
+    req = _prepare_request(raw)
+    nav = request.app.state.navigator
+    counted, gone = await dl.verify_items(req["items"], hcdp_file_listing)
+    if not counted:
+        raise HTTPException(409, gone[0]["why"] if gone else "HCDP has no files for these items any more")
+    files = sum(int(i.get("count") or 0) for i in counted)
+    picks = [i["id"] for i in counted] + [r["id"] for r in req["reports"]]
+    path = dl.package_path(req["ask"], picks)
+    package_url = f"{site_origin(request.headers.get('host'))}{path}"
+    analyze_url = nav.handoff_url(dl.analyze_ask(req["ask"], package_url), {"path": req["primary_view"]})
+    plan = {"ask": req["ask"], "reading": req["reading"], "event": req["event"], "place": req["place"]}
+    readme = dl.readme_text(plan, counted + _report_items(nav, req["reports"]), package_url, analyze_url, site_origin(request.headers.get("host")))
+    headers = {"Authorization": f"Bearer {req['api_key']}"}
+    ip = request.client.host if request.client else "?"
+    if files > INSTANT_MAX_FILES:
+        if not req["email"]:
+            raise HTTPException(413, f"about {files:,} files: HCDP zips at most {INSTANT_MAX_FILES} for a direct download — add your email and HCDP will send the package")
+        if request.app.state.email_limiter.check(ip):
+            return JSONResponse({"detail": "That is a lot of email requests from one connection in a short time. Wait a few minutes and try again."}, status_code=429)
+        try:
+            dl.check_email_size(files)
+            async with httpx.AsyncClient(base_url=HCDP_API_BASE, headers=headers, timeout=60) as client:
+                await dl.email_request(client, dl.genzip_payload(counted, req["email"]))
+        except dl.PrepareError as e:
+            raise HTTPException(e.status, e.detail) from None
+        return JSONResponse({"ok": True, "email": req["email"], "files": files, "readme": readme, "package_url": package_url, "analyze_url": analyze_url,
+                             "message": f"HCDP is packaging about {files:,} files and will email a download link to {req['email']} (the link stays good for three days). The README is here to save beside it."},
+                            status_code=202, headers={"Cache-Control": "no-store"})
+    if request.app.state.export_limiter.check(ip):
+        return JSONResponse({"detail": "That is a lot of downloads from one connection in a short time. Wait a minute and try again, or have the package emailed."}, status_code=429)
+    client = httpx.AsyncClient(base_url=HCDP_API_BASE, headers=headers, timeout=EXPORT_TIMEOUT)
+    try:
+        zip_path = await dl.fetch_zip(client, dl.genzip_payload(counted, req["email"], EXPORT_LOG_EMAIL), EXPORT_MAX_BYTES, CACHE_DIR / "tmp")
+    except dl.PrepareError as e:
+        raise HTTPException(e.status, e.detail) from None
+    finally:
+        await client.aclose()
+    try:
+        await run_in_threadpool(dl.add_readme, zip_path, readme)
+    except Exception:  # noqa: BLE001
+        _unlink_quietly(zip_path)
+        raise HTTPException(502, "the package arrived but the README could not be added to it") from None
+    return FileResponse(zip_path, media_type="application/zip", filename=dl.zip_name(counted, req["event"]), background=BackgroundTask(_unlink_quietly, zip_path),
+                        headers={"Cache-Control": "no-store", "X-HCDP-Files": str(files), "X-Package-Path": quote(path, safe="/?=&,%")})
 
 
 @app.on_event("startup")

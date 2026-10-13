@@ -1009,3 +1009,15 @@
 @media (prefers-reduced-motion: reduce) {
   .hcdp-ai-chunk { animation: none; }
 }
+
+/* 13 Oct: the AI-prepared download's checklist (download/DownloadChecklist.jsx). Each row opens with the small comet ring
+   (.hcdp-verify, state pending) and resolves into its mark — a check for confirmed, a triangle for partly published, a dashed
+   circle for unchecked — one row at a time, 120 ms apart (the stagger is a timer in the component); the mark pops in
+   (.hcdp-verify-ok) and the row fades up. Reduced motion: no pop, no fade; the component reveals every row at once. */
+.hcdp-verify { display: inline-grid; place-items: center; flex: none; width: 18px; height: 18px; margin-top: 1px; }
+.hcdp-verify-ok { animation: hcdp-verify-pop 320ms cubic-bezier(.22, 1, .36, 1) both; }
+@keyframes hcdp-verify-pop { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: scale(1); } }
+.hcdp-dl-row { animation: hcdp-ai-chunk-in 300ms ease both; }
+@media (prefers-reduced-motion: reduce) {
+  .hcdp-verify-ok, .hcdp-dl-row { animation: none; }
+}

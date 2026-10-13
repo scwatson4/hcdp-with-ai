@@ -15,6 +15,7 @@ import ClimateSummary from './pages/content/ClimateSummary'
 import Pacific from './pages/content/Pacific'
 import ExtremeEvents from './pages/content/ExtremeEvents'
 import ClimateTools from './pages/content/ClimateTools'
+import DownloadPage from './download/DownloadPage'
 import NotFound from './pages/NotFound'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -41,6 +42,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
               <Route path="extreme-events/:slug" element={<ExtremeEvents />} />
               <Route path="tools" element={<ClimateTools />} />
               <Route path="tools/:slug" element={<ClimateTools />} />
+              <Route path="download" element={<DownloadPage />} />
               <Route path="viewer/*" element={<ViewerPage />} />
               <Route path="*" element={<NotFound />} />
             </Route>

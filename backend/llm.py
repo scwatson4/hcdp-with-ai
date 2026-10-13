@@ -126,7 +126,8 @@ class NarrationLLM:
         msgs = [{"role": "system", "content": NARRATION_SYSTEM}, {"role": "user", "content": message.strip()[:500]}]
         t0 = time.monotonic()
         self.stats["calls"] += 1
-        for kw in (dict(model=self.model, messages=msgs, max_completion_tokens=24, reasoning_effort="low"), dict(model=self.model, messages=msgs, max_completion_tokens=24), dict(model=self.model, messages=msgs)):
+        # gpt-6-luna spends 25–60 reasoning tokens before the line, so the budget must leave room for them (80).
+        for kw in (dict(model=self.model, messages=msgs, max_completion_tokens=80, reasoning_effort="low"), dict(model=self.model, messages=msgs, max_completion_tokens=80), dict(model=self.model, messages=msgs)):
             try:
                 resp = self._client.chat.completions.create(**kw)
                 self.stats["last_ms"] = int((time.monotonic() - t0) * 1000)

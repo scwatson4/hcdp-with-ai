@@ -2,6 +2,9 @@
 
 Endpoints
   POST /api/navigate          the navigator (see CONTRACT.md for the protocol)
+  POST /api/narrate           one short wait line from gpt-6-luna while the answer is worked out
+  POST /api/summary           the AI summary of a destination (sources from the catalog, sentences + follow-ups from gpt-6-luna)
+  POST /api/followups         three follow-up asks for a page, without a summary (reserved; not yet called by the client)
   GET  /api/raster            GeoTIFF proxy to the HCDP API (token stays here; disk cache; ETag + Range)
   GET  /api/dates             available date range for a dataset (proxy, memory cache)
   GET  /api/map.png|webp      a map rendered with a viewer ramp (landing backdrops)
@@ -78,14 +81,19 @@ if not export_valid_email(EXPORT_LOG_EMAIL):
 app = FastAPI(title="HCDP with AI — navigator", docs_url=None, redoc_url=None)
 app.state.llm = NavigatorLLM()
 app.state.navigator = Navigator(app.state.llm, load_catalog(), ai_interface_url=AI_INTERFACE_URL)
-from llm import NarrationLLM  # noqa: E402
+from llm import NarrationLLM, SummaryLLM  # noqa: E402
+from summary import EMPTY as EMPTY_SUMMARY, Summarizer  # noqa: E402
 app.state.narrator = NarrationLLM()
+app.state.summarizer = Summarizer(app.state.navigator, SummaryLLM())
 app.state.dates_cache = {}
 app.state.limiter = RateLimiter(per_minute=int(os.environ.get("NAV_PER_MINUTE", "12")), per_hour=int(os.environ.get("NAV_PER_HOUR", "120")),
                                  global_per_day=int(os.environ.get("NAV_GLOBAL_PER_DAY", "5000")))
 # Short links are cheap but write files: a second limiter keeps one visitor from filling the disk.
 # The wait line: one tiny gpt-6-luna call per question, in parallel with the answer; its own limiter mirrors the navigator's.
 app.state.narrate_limiter = RateLimiter(per_minute=int(os.environ.get("NAV_PER_MINUTE", "12")), per_hour=int(os.environ.get("NAV_PER_HOUR", "120")), global_per_day=int(os.environ.get("NARRATE_GLOBAL_PER_DAY", "5000")))
+# The AI summary (one gpt-6-luna call per navigation) and the stand-alone follow-ups each get the navigator's numbers too.
+app.state.summary_limiter = RateLimiter(per_minute=int(os.environ.get("NAV_PER_MINUTE", "12")), per_hour=int(os.environ.get("NAV_PER_HOUR", "120")), global_per_day=int(os.environ.get("SUMMARY_GLOBAL_PER_DAY", "5000")))
+app.state.followups_limiter = RateLimiter(per_minute=int(os.environ.get("NAV_PER_MINUTE", "12")), per_hour=int(os.environ.get("NAV_PER_HOUR", "120")), global_per_day=int(os.environ.get("FOLLOWUPS_GLOBAL_PER_DAY", "5000")))
 app.state.short_limiter = RateLimiter(per_minute=int(os.environ.get("SHORT_PER_MINUTE", "30")), per_hour=int(os.environ.get("SHORT_PER_HOUR", "300")), global_per_day=200000)
 # Exports cost HCDP real work: a limiter per visitor for downloads, a harder one for emailed packages.
 app.state.export_limiter = RateLimiter(per_minute=int(os.environ.get("EXPORT_PER_MINUTE", "6")), per_hour=int(os.environ.get("EXPORT_PER_HOUR", "40")), global_per_day=int(os.environ.get("EXPORT_GLOBAL_PER_DAY", "2000")))
@@ -136,6 +144,50 @@ async def api_narrate(body: NarrateBody, request: Request):
         return {"line": None}
     line = await run_in_threadpool(narrator.narrate, body.message)
     return {"line": line}
+
+
+class SummaryBody(BaseModel):
+    message: str = Field(default="", max_length=500)
+    reply: str = Field(default="", max_length=1000)
+    path: str = Field(default="", max_length=1000)
+    intent: str = Field(default="navigate", max_length=40)
+
+
+def _empty_summary() -> dict:
+    return {k: (list(v) if isinstance(v, list) else v) for k, v in EMPTY_SUMMARY.items()}
+
+
+@app.post("/api/summary")
+async def api_summary(body: SummaryBody, request: Request):
+    """The AI summary for the page the navigator just opened (13 Oct): {summary, chunks, sources, followups}. The
+    sources come from the catalog, the sentences and follow-ups from gpt-6-luna. Everything is empty — a 200, never an
+    error — for an off-topic or analysis answer, an address this site does not have, a spent limiter, or a model that
+    failed or timed out; the client then shows its reply strip instead."""
+    if body.intent in ("off_topic", "analysis") or not body.path.startswith("/"):
+        return _empty_summary()
+    if request.app.state.summary_limiter.check(request.client.host if request.client else "?"):
+        return _empty_summary()
+    summarizer = getattr(request.app.state, "summarizer", None)
+    if summarizer is None:
+        return _empty_summary()
+    return await run_in_threadpool(summarizer.summarize, body.message, body.reply, body.path, body.intent)
+
+
+class FollowupsBody(BaseModel):
+    path: str = Field(default="", max_length=1000)
+    context: dict = Field(default_factory=dict)
+
+
+@app.post("/api/followups")
+async def api_followups(body: FollowupsBody, request: Request):
+    """Three follow-up asks for a page, without a summary: {followups}. Reserved for the follow-ups-that-follow-the-view
+    feature (the client does not call it yet); its own limiter; empty on any failure."""
+    if not body.path.startswith("/") or request.app.state.followups_limiter.check(request.client.host if request.client else "?"):
+        return {"followups": []}
+    summarizer = getattr(request.app.state, "summarizer", None)
+    if summarizer is None:
+        return {"followups": []}
+    return {"followups": await run_in_threadpool(summarizer.followups_for, body.path, body.context)}
 
 
 @app.get("/api/stations")

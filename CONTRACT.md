@@ -279,7 +279,8 @@ assistant did not cause takes it away. Nothing is persisted.
   Data, the portal page framing HCDP's map tool), then up to two related entries (rare shared tags weigh more; a tag naming
   the destination itself adds a bonus). At most three; always real catalog URLs.
 - the sentences come from gpt-6-luna (`SUMMARY_MODEL`, default gpt-6-luna, through the navigator's route; 6 s timeout
-  (`SUMMARY_TIMEOUT`); 480 completion tokens (`SUMMARY_MAX_TOKENS`) with room for reasoning; `llm.SummaryLLM`). The model
+  (`SUMMARY_TIMEOUT`; the live route answers in 2.8–4.4 s); 800 completion tokens (`SUMMARY_MAX_TOKENS`; the answer runs 290–450, 110–270 of them
+  reasoning, so less truncates the JSON); `llm.SummaryLLM`; `/api/health` shows its stats under `summary`). The model
   sees the ask, the navigator's reply, the destination's catalog title, summary and when-to-use, the page kind (for a map, what
   it shows) and the numbered source titles — never URLs. `summary`: 2–3 plain sentences, ≤ 60 words, why you were brought
   here · what the page shows · what to do next; `more`: 2–4 sentences, ≤ 80 words, what else is on the page and how to use it;

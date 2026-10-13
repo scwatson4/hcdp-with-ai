@@ -183,16 +183,18 @@ FOLLOWUPS_SYSTEM = (
 
 class SummaryLLM:
     """The AI summary and follow-ups (13 Oct): always gpt-6-luna through the navigator's route, like the narration,
-    with a 6-second timeout. `complete` returns the parsed JSON object or None; any failure means the caller answers
-    empty (the client then keeps its reply strip). The token budget (480) covers the summary, the "more" sentences and
-    the follow-ups with room for the model's reasoning tokens."""
+    with a 6-second timeout (the live route answers in 2.8–4.4 s). `complete` returns the parsed JSON object or None; any
+    failure means the caller answers empty (the client then keeps its reply strip). The token budget (800) covers the
+    summary, the "more" sentences and the follow-ups with room for the model's reasoning tokens."""
 
     def __init__(self, base_url=None, api_key=None, model=None, timeout=None, max_completion_tokens=None):
         self.base_url = base_url or os.environ.get("NAVIGATOR_API_BASE") or DEFAULT_BASE
         self.api_key = api_key if api_key is not None else (os.environ.get("NAVIGATOR_API_KEY") or os.environ.get("AZURE_OPENAI_API_KEY", ""))
         self.model = model or os.environ.get("SUMMARY_MODEL") or os.environ.get("NARRATION_MODEL") or "gpt-6-luna"
         self.timeout = float(timeout if timeout is not None else os.environ.get("SUMMARY_TIMEOUT", "6"))
-        self.max_completion_tokens = int(max_completion_tokens or os.environ.get("SUMMARY_MAX_TOKENS", "480"))
+        # Measured on the live route (13 Oct): the answer runs 290–450 completion tokens, 110–270 of them reasoning, so a 480
+        # cap truncated the JSON now and then (a ValueError, an empty overview). 800 leaves room for a long think.
+        self.max_completion_tokens = int(max_completion_tokens or os.environ.get("SUMMARY_MAX_TOKENS", "800"))
         self._client = OpenAI(base_url=self.base_url, api_key=self.api_key, timeout=self.timeout, max_retries=0) if self.api_key else None
         self.stats = {"calls": 0, "errors": 0, "last_ms": None, "last_error": None}
 
@@ -219,7 +221,9 @@ class SummaryLLM:
             try:
                 resp = self._client.chat.completions.create(**kw)
                 self.stats["last_ms"] = int((time.monotonic() - t0) * 1000)
-                return parse_json(resp.choices[0].message.content or "")
+                out = parse_json(resp.choices[0].message.content or "")
+                self.stats["last_error"] = None
+                return out
             except Exception as e:  # noqa: BLE001 - a 400 means "drop a parameter"; anything else means give up
                 last = e
                 if not _is_bad_request(e):

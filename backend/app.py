@@ -201,8 +201,14 @@ async def api_catalog(request: Request):
 @app.get("/api/health")
 async def api_health(request: Request):
     llm = request.app.state.llm
+    narrator = getattr(request.app.state, "narrator", None)
+    summarizer = getattr(request.app.state, "summarizer", None)
+    summary_llm = getattr(summarizer, "llm", None)
     return {
         "ok": True, "model": llm.model, "model_configured": llm.configured, "llm": llm.stats,
+        # the two small gpt-6-luna clients (the wait line, the AI overview): calls, errors, the last error's class and latency
+        "narration": {"model": getattr(narrator, "model", None), "stats": getattr(narrator, "stats", None)},
+        "summary": {"model": getattr(summary_llm, "model", None), "timeout": getattr(summary_llm, "timeout", None), "stats": getattr(summary_llm, "stats", None)},
         "catalog_entries": len(request.app.state.navigator.catalog),
         "raster_cache_files": len(list(CACHE_DIR.glob("*.tif"))) if CACHE_DIR.exists() else 0,
         "frontend_built": (DIST / "index.html").exists(),

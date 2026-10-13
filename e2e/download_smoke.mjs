@@ -20,6 +20,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
   page.on('pageerror', (e) => errors.push(`pageerror: ${String(e)}`))
   page.on('console', (m) => { if (m.type() === 'error') errors.push(`console.error: ${m.text()}`) })
+  page.on('response', (r) => { if (r.status() >= 500) errors.push(`${r.status()} from ${r.url()}`) })   // name the resource behind a "Failed to load resource"
 
   // 1. the landing ask → /data/api with the offer card
   await page.goto(BASE + '/', { waitUntil: 'networkidle' })

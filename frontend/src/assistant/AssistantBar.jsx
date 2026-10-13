@@ -12,11 +12,15 @@ import { cn } from '../lib/utils'
 //     seconds (hover/focus holds it; clicking it opens the dropdown);
 //   • the dropdown — the conversation (questions and plain answers, about twenty lines, scrolling),
 //     opened by focusing the bar (once a conversation exists) or clicking the strip, closed by Esc,
-//     a click outside, or the next navigation.
+//     a click outside, or the next navigation;
+//   • the wait line (13 Oct) — while the AI works, the same comet ring and narration line as under
+//     the landing bar ("Working on that…" until gpt-6-luna's line arrives): small, centred, no
+//     background. After a navigation the destination's AI summary explains the answer (AISummary.jsx);
+//     the strip shows only when no summary came.
 // Not on the landing page (there the hero bar is the assistant) — except invisibly during the
 // ride-up, so the travelling bar has a rectangle to arrive at.
 export default function AssistantBar() {
-  const { mode, setMode, minimize, reset, travel, strip, epoch, holdStrip, releaseStrip, hideStrip, heroOut } = useAssistant()
+  const { mode, setMode, minimize, reset, travel, strip, epoch, holdStrip, releaseStrip, hideStrip, heroOut, busy, narration } = useAssistant()
   const { pathname } = useLocation()
   const onLanding = pathname === '/' && !heroOut   // L4 E: once the hero has scrolled away the bar docks here too
   const measuring = onLanding && travel.phase === 'travel'
@@ -43,7 +47,13 @@ export default function AssistantBar() {
       <div className="mx-auto flex h-14 w-full max-w-[720px] items-center px-4">
         <div className="w-full"><AskBar key={epoch} docked /></div>
       </div>
-      {strip && !open && !measuring && (
+      {busy && !open && !measuring && (
+        <div role="status" aria-live="polite" data-testid="docked-working" className="pointer-events-none absolute inset-x-0 top-full z-10 flex items-center justify-center gap-2 px-4 pt-1.5 text-center text-[13px] text-foreground/85">
+          <span className="hcdp-comet-ring hcdp-comet-ring-sm" aria-hidden="true" />
+          <span key={narration || ''} className="hcdp-status-in" data-testid="docked-status">{narration || 'Working on that…'}</span>
+        </div>
+      )}
+      {strip && !open && !measuring && !busy && (
         <div role="status" data-testid="reply-strip" onMouseEnter={holdStrip} onMouseLeave={releaseStrip} onFocus={holdStrip} onBlur={releaseStrip}
           className="absolute inset-x-0 top-full z-10 border-b border-border bg-surface/95 shadow-md backdrop-blur">
           <div className="mx-auto flex w-full max-w-[720px] items-center gap-2 px-4 py-1 text-[13px]">

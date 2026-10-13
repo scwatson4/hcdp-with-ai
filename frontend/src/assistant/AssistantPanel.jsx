@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { ArrowUp, ExternalLink, Link2 } from 'lucide-react'
 import { useAssistant } from './AssistantProvider'
 import { cn } from '../lib/utils'
@@ -73,25 +73,43 @@ function HandoffReply({ m }) {
  * shows only while the field has focus; reduced motion shows one still example. Once a conversation exists
  * the docked bar says "Ask for another page or map…" and focusing it opens the dropdown. On the landing
  * page the question stays in the bar after sending — the answer card does not echo it.
+ * 13 Oct: on an inner page whose address has follow-up asks (from the destination's AI summary) the docked
+ * bar's ghost cycles THOSE instead, with the same typing, hold and fade, a fresh random order per set,
+ * frozen while the field has focus; Tab or a tap on the ghost text inserts one. A new set takes over as soon
+ * as the field is empty and unfocused — a visitor who is typing is never interrupted. Without follow-ups the
+ * docked bar behaves as before.
  */
 export function AskBar({ docked = false, glass = false }) {
-  const { messages, busy, travelling, send, setMode } = useAssistant()
+  const { messages, busy, travelling, send, setMode, followupsFor } = useAssistant()
+  const { pathname, search } = useLocation()
   const [text, setText] = useState('')
   const hasConversation = messages.length > 1
-  const ghostActive = !text && !busy && !travelling && !hasConversation
+  // The ghost's pool: this address's follow-ups when docked; the examples before any conversation; else nothing.
+  const followups = docked && followupsFor ? followupsFor(pathname, search) : null
+  const pool = followups && followups.length ? followups : (!hasConversation ? EXAMPLES : null)
+  const poolKind = followups && followups.length ? 'followups' : 'examples'
+  const poolKey = pool ? `${poolKind}:${pool.join('\u0001')}` : 'none'
+  const ghostActive = !text && !busy && !travelling && !!pool
   const reduceMotion = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-  // A fresh random order on every mount (Fisher–Yates), so a refresh almost never starts on the same example.
-  const orderRef = useRef(null)
-  if (!orderRef.current) orderRef.current = shuffledOrder(EXAMPLES.length)
-  const exampleAt = (i) => EXAMPLES[orderRef.current[i % orderRef.current.length]]
+  // A fresh random order per pool (Fisher–Yates), so a refresh almost never starts on the same example.
+  const orderRef = useRef({ key: null, order: [] })
+  if (orderRef.current.key !== poolKey) orderRef.current = { key: poolKey, order: shuffledOrder(pool ? pool.length : 0) }
+  const exampleAt = (i) => (pool && orderRef.current.order.length ? pool[orderRef.current.order[i % orderRef.current.order.length]] : '')
   const [typed, setTyped] = useState(reduceMotion ? exampleAt(0) : '')
   const [ghostShown, setGhostShown] = useState(true)
   const [focused, setFocused] = useState(false)
   const idxRef = useRef(0)
+  const lastPoolRef = useRef(poolKey)
   const hoverRef = useRef(false)
   const focusRef = useRef(false)   // a click into the field freezes the carousel where it is; typing stops it altogether
   const inputRef = useRef(null)
   useEffect(() => {
+    if (lastPoolRef.current !== poolKey) {   // a new set: start it from the top, with nothing left of the old one
+      lastPoolRef.current = poolKey
+      idxRef.current = 0
+      setTyped(reduceMotion && pool ? exampleAt(0) : '')
+      setGhostShown(true)
+    }
     if (!ghostActive || reduceMotion) return undefined
     let cancelled = false; let timer = null; let wake = null
     const sleep = (ms) => new Promise((resolve) => { wake = resolve; timer = setTimeout(resolve, ms) })
@@ -112,8 +130,10 @@ export function AskBar({ docked = false, glass = false }) {
       }
     })()
     return () => { cancelled = true; if (timer) clearTimeout(timer); if (wake) wake() }
-  }, [ghostActive, reduceMotion])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ghostActive, reduceMotion, poolKey])
   const ghostQuery = ghostActive ? exampleAt(idxRef.current) : null
+  const insertGhost = () => { if (ghostQuery) { setText(ghostQuery); inputRef.current?.focus() } }
   // The field wraps long questions and grows to three lines; beyond that it scrolls inside (Enter sends, Shift+Enter breaks a line).
   const lineHeight = docked ? 24 : (typeof window !== 'undefined' && window.matchMedia?.('(min-width: 640px)').matches ? 28 : 24)
   const [lines, setLines] = useState(1)
@@ -126,7 +146,9 @@ export function AskBar({ docked = false, glass = false }) {
     setLines(n)
     el.style.height = `${n * lineHeight}px`
   }, [text, lineHeight])
-  const submit = (e) => { e?.preventDefault(); const t = text; if (docked) setText(''); send(t, { docked }) }
+  // Sending from the docked bar empties the field and lets go of it (the page is about to change; on phones the keyboard
+  // goes), so the destination's follow-ups can start cycling with no user action; a click back in freezes them again.
+  const submit = (e) => { e?.preventDefault(); const t = text; if (docked) { setText(''); inputRef.current?.blur() } send(t, { docked }) }
   const placeholder = ghostQuery ? '' : docked && hasConversation ? 'Ask for another page or map…' : 'What are you looking for?'
   return (
     <form onSubmit={submit} onMouseEnter={() => { hoverRef.current = true }} onMouseLeave={() => { hoverRef.current = false }} data-testid={docked ? 'docked-ask-bar' : 'ask-bar'}>
@@ -143,9 +165,10 @@ export function AskBar({ docked = false, glass = false }) {
             style={{ height: `${lines * lineHeight}px` }} />
           {ghostQuery && (
             <>
-              <span id="ask-ghost-hint" className="sr-only">Press Tab to insert the suggested example question.</span>
-              <div aria-hidden="true" data-testid="composer-ghost" className={cn('pointer-events-none absolute top-1/2 -translate-y-1/2 truncate text-[16px] transition-opacity duration-300 motion-reduce:transition-none', docked ? 'left-4 right-12 text-subtle sm:right-28' : 'left-6 right-14 text-foreground/70 sm:right-32 sm:text-[18px]')} style={{ opacity: ghostShown ? 1 : 0 }}>
-                {typed}<span className={cn('ml-px inline-block h-[1.1em] w-px translate-y-[3px] bg-subtle align-baseline', reduceMotion || typed.length >= ghostQuery.length ? 'opacity-0' : 'hcdp-caret')} />
+              <span id="ask-ghost-hint" className="sr-only">{poolKind === 'followups' ? 'Press Tab to insert the suggested follow-up question.' : 'Press Tab to insert the suggested example question.'}</span>
+              <div aria-hidden="true" data-testid="composer-ghost" data-pool={poolKind} className={cn('pointer-events-none absolute top-1/2 -translate-y-1/2 truncate text-[16px] transition-opacity duration-300 motion-reduce:transition-none', docked ? 'left-4 right-12 text-subtle sm:right-28' : 'left-6 right-14 text-foreground/70 sm:right-32 sm:text-[18px]')} style={{ opacity: ghostShown ? 1 : 0 }}>
+                {/* a tap on the follow-up's text drops it into the field (the rest of the field still just focuses) */}
+                <span data-testid="composer-ghost-text" onClick={poolKind === 'followups' ? insertGhost : undefined} className={cn(poolKind === 'followups' && 'pointer-events-auto cursor-text')}>{typed}</span><span className={cn('ml-px inline-block h-[1.1em] w-px translate-y-[3px] bg-subtle align-baseline', reduceMotion || typed.length >= ghostQuery.length ? 'opacity-0' : 'hcdp-caret')} />
               </div>
             </>
           )}

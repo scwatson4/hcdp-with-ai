@@ -46,18 +46,24 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.useRealTimers() })
 
 describe('the typeahead listbox', () => {
-  it('appears under the landing bar from three characters, 80 ms after the last keystroke, with titles and grey kind words; never while the ghost shows', async () => {
+  it('appears under the landing bar from two characters (QB-Q4 B), 80 ms after the last keystroke: "Ask AI: {typed}" first, then up to five matches with grey kind words; never while the ghost shows', async () => {
     renderApp('/')
     expect(screen.queryByTestId('typeahead')).toBeNull()
-    fireEvent.change(input(), { target: { value: 'Lo' } })
+    fireEvent.change(input(), { target: { value: 'L' } })
     await tick(200)
-    expect(screen.queryByTestId('typeahead')).toBeNull()                 // two characters: nothing
+    expect(screen.queryByTestId('typeahead')).toBeNull()                 // one character: nothing
+    fireEvent.change(input(), { target: { value: 'Lo' } })
+    await tick(DEBOUNCE_MS + 20)
+    expect(screen.getByTestId('typeahead')).toBeInTheDocument()          // two: the list is up
+    expect(screen.getByTestId('typeahead-ask')).toHaveTextContent('Ask AI:Lo')
     fireEvent.change(input(), { target: { value: 'Lowe' } })
     await tick(DEBOUNCE_MS - 20)
-    expect(screen.queryByTestId('typeahead')).toBeNull()                 // the debounce
+    expect(screen.getByTestId('typeahead-ask')).toHaveTextContent('Ask AI:Lowe')   // the Ask AI row follows the text at once
     await tick(30)
     const list = screen.getByTestId('typeahead')
     expect(list).toHaveAttribute('role', 'listbox')
+    expect(screen.getByTestId('typeahead-ask')).toHaveAttribute('role', 'option')
+    expect(list.firstElementChild).toBe(screen.getByTestId('typeahead-ask'))      // always the first row
     expect(rows().length).toBeGreaterThanOrEqual(2); expect(rows().length).toBeLessThanOrEqual(5)
     expect(rows()[0]).toHaveTextContent('Hurricane Lowell report')
     expect(within(rows()[0]).getByTestId('typeahead-kind')).toHaveTextContent('report')
@@ -68,10 +74,14 @@ describe('the typeahead listbox', () => {
     expect(input()).toHaveAttribute('aria-controls', list.id)
     expect(screen.queryByTestId('composer-ghost')).toBeNull()           // text present: no ghost typewriter
     expect(navigateCalls()).toHaveLength(0)                             // no AI call
-    // below three characters again: the list goes
-    fireEvent.change(input(), { target: { value: 'Lo' } })
+    // below two characters again: the list goes
+    fireEvent.change(input(), { target: { value: 'L' } })
     await tick(100)
     expect(screen.queryByTestId('typeahead')).toBeNull()
+    // a dated row: the viewer template filled with the latest available date, named in the row
+    fireEvent.change(input(), { target: { value: 'daily rainfall' } })
+    await tick(DEBOUNCE_MS + 20)
+    expect(rows()[0]).toHaveTextContent(/Daily rainfall map · \d{1,2} \w{3} \d{4}/)
   })
 
   it('and under the docked bar too', async () => {
@@ -81,19 +91,24 @@ describe('the typeahead listbox', () => {
     expect(rows()[0]).toHaveTextContent('Hurricane Lowell report')
   })
 
-  it('↑/↓ move the active row (aria-activedescendant on the field), Esc closes until the text changes, a click outside closes', async () => {
+  it('↑/↓ move through all rows starting on the Ask AI row (aria-activedescendant on the field), Esc closes until the text changes, a click outside closes', async () => {
     renderApp('/')
     await type('Lowe')
     const list = screen.getByTestId('typeahead')
-    expect(input()).not.toHaveAttribute('aria-activedescendant')
+    const askRow = screen.getByTestId('typeahead-ask')
+    expect(askRow).toHaveAttribute('aria-selected', 'true')                      // the highlight starts on Ask AI
+    expect(input()).toHaveAttribute('aria-activedescendant', askRow.id)
+    expect(askRow.id).toBe(`${list.id}-0`)
     fireEvent.keyDown(input(), { key: 'ArrowDown' })
-    expect(rows()[0]).toHaveAttribute('aria-selected', 'true')
+    expect(rows()[0]).toHaveAttribute('aria-selected', 'true'); expect(askRow).toHaveAttribute('aria-selected', 'false')
     expect(input()).toHaveAttribute('aria-activedescendant', rows()[0].id)
-    expect(rows()[0].id).toBe(`${list.id}-0`)
+    expect(rows()[0].id).toBe(`${list.id}-1`)
     fireEvent.keyDown(input(), { key: 'ArrowDown' })
     expect(rows()[1]).toHaveAttribute('aria-selected', 'true'); expect(rows()[0]).toHaveAttribute('aria-selected', 'false')
     fireEvent.keyDown(input(), { key: 'ArrowUp' })
     expect(rows()[0]).toHaveAttribute('aria-selected', 'true')
+    fireEvent.keyDown(input(), { key: 'ArrowUp' })
+    expect(askRow).toHaveAttribute('aria-selected', 'true')
     fireEvent.keyDown(input(), { key: 'ArrowUp' })
     expect(rows()[rows().length - 1]).toHaveAttribute('aria-selected', 'true')   // wraps
     fireEvent.keyDown(input(), { key: 'Escape' })
@@ -107,7 +122,7 @@ describe('the typeahead listbox', () => {
     expect(screen.queryByTestId('typeahead')).toBeNull()
   })
 
-  it('Enter asks the AI as today unless a row has been arrow-keyed to', async () => {
+  it('Enter (or a tap on the Ask AI row) asks the AI as today unless a match has been arrow-keyed to', async () => {
     renderApp('/data')
     await type('Lowe')
     fireEvent.keyDown(input(), { key: 'Enter' })
@@ -116,6 +131,13 @@ describe('the typeahead listbox', () => {
     expect(navigateCalls()[0].body.message).toBe('Lowe')
     await tick(HOLD_MS + 50)
     expect(screen.queryByTestId('typeahead')).toBeNull()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await type('Lowell re')
+    fireEvent.click(screen.getByTestId('typeahead-ask'))              // a tap on the Ask AI row sends too
+    await tick(30)
+    expect(navigateCalls()).toHaveLength(2)
+    expect(navigateCalls()[1].body.message).toBe('Lowell re')
+    await tick(HOLD_MS + 50)
     // a second time, with ↓ first: the row is chosen, the AI is not asked
     fireEvent.keyDown(window, { key: 'Escape' })   // close the dropdown the info reply opened
     await type('Lowell rep')
@@ -123,7 +145,7 @@ describe('the typeahead listbox', () => {
     fireEvent.keyDown(input(), { key: 'ArrowDown' })
     fireEvent.keyDown(input(), { key: 'Enter' })
     await tick(10)
-    expect(navigateCalls()).toHaveLength(1)
+    expect(navigateCalls()).toHaveLength(2)
     expect(screen.getByTestId('docked-status')).toHaveTextContent('Opening Hurricane Lowell report…')
   })
 

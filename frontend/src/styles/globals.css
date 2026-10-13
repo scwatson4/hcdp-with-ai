@@ -1031,3 +1031,6 @@
   .hcdp-ghost-in, .hcdp-ghost-out { animation: none; }
   .hcdp-ghost-out { display: none; }
 }
+
+/* QB-Q1 B (13 Oct): the send arrow is solid the moment there is text (greyed by disabled:opacity-40 when empty). */
+.hcdp-send[data-solid="true"]:not(:disabled) { background: hsl(var(--accent) / 0.92); }

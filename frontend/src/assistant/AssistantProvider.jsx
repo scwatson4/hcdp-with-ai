@@ -90,6 +90,9 @@ export function AssistantProvider({ children }) {
   const [followups, setFollowupsState] = useState({})
   const wrongPage = useRef(null)             // { id, until, skip }: the open "Wrong page?" report awaiting the visitor's next page (P4 A)
   const assistantPath = useRef(null)         // the last path the assistant itself navigated to (the viewer's follow-ups skip it, N4 A)
+  // QB-Q5 B: the chip the visitor clicked under the hero bar — { template, blanks, seq }; the landing bar fills itself from it.
+  const [chipTemplate, setChipTemplate] = useState(null)
+  const pickChip = useCallback((chip) => { if (chip?.template) setChipTemplate({ template: chip.template, blanks: chip.blanks || [], seq: Date.now() + Math.random() }) }, [])
   const [epoch, setEpoch] = useState(0)      // bumped by reset(): the bars remount empty (item 13)
   const historyRef = useRef([])
   const seq = useRef(0)
@@ -427,9 +430,9 @@ export function AssistantProvider({ children }) {
   const value = useMemo(() => ({
     messages, mode, busy, travelling, travel, strip, wait: waitLine, heroOut, setHeroOut, epoch, send, choose, open, minimize, setMode, reset,
     handoff, stayHere, settleHandoff, holdStrip, releaseStrip, hideStrip,
-    summary, dismissSummary, followups, followupsFor, setFollowups, reportWrongPage, noteNavigation, wasAssistantNavigation,
+    summary, dismissSummary, followups, followupsFor, setFollowups, reportWrongPage, noteNavigation, wasAssistantNavigation, chipTemplate, pickChip,
   }), [messages, mode, busy, travelling, travel, strip, waitLine, heroOut, epoch, send, choose, open, minimize, reset, handoff, stayHere, settleHandoff, holdStrip, releaseStrip, hideStrip,
-    summary, dismissSummary, followups, followupsFor, setFollowups, reportWrongPage, noteNavigation, wasAssistantNavigation])
+    summary, dismissSummary, followups, followupsFor, setFollowups, reportWrongPage, noteNavigation, wasAssistantNavigation, chipTemplate, pickChip])
   return (
     <Ctx.Provider value={value}>
       {children}

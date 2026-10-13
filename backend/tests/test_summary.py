@@ -194,3 +194,20 @@ def test_followups_endpoint_is_reserved_but_works():
     assert c.post("/api/followups", json={"path": "/data"}).json() == {"followups": []}
     # the summary limiter is separate from the follow-ups limiter and from the navigator's
     assert appmod.app.state.summary_limiter is not appmod.app.state.followups_limiter is not appmod.app.state.limiter
+
+
+def test_the_model_is_told_the_latest_dates_for_dated_followups():
+    """The date rule (13 Oct): a follow-up that names a date uses yesterday (daily) or the last complete month (monthly)."""
+    import datetime as dt
+    llm = FakeLLM({"summary": THREE, "followups": FOLLOWUPS})
+    nav = Navigator(None, load_catalog(), today=dt.date(2026, 10, 13))
+    s = Summarizer(nav, llm)
+    s.summarize("rain", "Taking you there.", "/viewer/rainfall/day/2026-10-12/kauai", "navigate")
+    system, user, _ = llm.calls[0]
+    assert "Dates: today is 2026-10-13; the newest daily map is 2026-10-12 (yesterday); the newest monthly map and summary are for September 2026 (2026-09, the last complete month)." in user
+    assert "yesterday for a daily map, the last complete month" in system
+    s.followups_for("/data")
+    assert "the newest daily map is 2026-10-12" in llm.calls[1][1] and "last complete month" in FOLLOWUPS_SYSTEM
+    # the month boundary and New Year
+    assert Summarizer(Navigator(None, load_catalog(), today=dt.date(2026, 1, 1)), llm).dates_line() == "Dates: today is 2026-01-01; the newest daily map is 2025-12-31 (yesterday); the newest monthly map and summary are for December 2025 (2025-12, the last complete month)."
+    assert "2026-02-28 (yesterday)" in Summarizer(Navigator(None, load_catalog(), today=dt.date(2026, 3, 1)), llm).dates_line()

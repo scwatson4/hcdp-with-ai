@@ -2,12 +2,15 @@
 // — no AI call — from the index scripts/catalog-index.mjs builds at build time (catalog.index.json, committed).
 // Ranking: a title that starts with the typed text, then a title word that does, then a tag, then an example
 // ask; every typed word must match somewhere. At most MAX_MATCHES rows. Diacritics and the ʻokina are folded
-// ("kauai" finds "Kauaʻi"). A viewer template's {date} and {extent} are filled with yesterday (daily) or the
-// last complete month (monthly) in Hawaiʻi time, and statewide.
+// ("kauai" finds "Kauaʻi"). QB-Q4 B / the date rule (13 Oct): suggestions start from the SECOND character; a
+// viewer template's {date} and {extent} are filled at match time with the latest available date — yesterday for a
+// daily product, the last complete month for a monthly one, in Hawaiʻi time — and statewide, and the row's title
+// names that date ("Daily rainfall map · 12 Oct 2026", "Drought index SPI-3 map · September 2026"), never a
+// hard-coded one.
 import INDEX from './catalog.index.json'
-import { hawaiiToday, lastCompleteMonth, yesterday } from '../pages/content/contentUtils'
+import { formatDate, hawaiiToday, lastCompleteMonth, yesterday } from '../pages/content/contentUtils'
 
-export const MIN_CHARS = 3
+export const MIN_CHARS = 2
 export const MAX_MATCHES = 5
 export const DEBOUNCE_MS = 80
 
@@ -31,12 +34,24 @@ export function shortTitle(title) {
   return t || String(title || '').trim()
 }
 
+/** The latest available date for a viewer template: yesterday (daily) or the last complete month (monthly), Hawaiʻi time. */
+export const latestDateFor = (path, now = new Date()) => (/\/month\//.test(path || '') ? lastCompleteMonth(now) : yesterday(now))
+
+/** "12 Oct 2026" for a day, "September 2026" for a month. */
+export function dateLabel(iso) {
+  const [y, m, d] = String(iso || '').split('-').map(Number)
+  if (!y || !m) return String(iso || '')
+  return d ? `${d} ${formatDate(iso, { short: true }).split(' ')[1]} ${y}` : formatDate(iso)
+}
+
 /** A viewer template with its {date} and {extent} filled: yesterday or the last complete month, statewide. */
 export function fillTemplate(path, now = new Date()) {
   if (!path || !path.includes('{')) return path
-  const monthly = /\/month\//.test(path)
-  return path.replace('{date}', monthly ? lastCompleteMonth(now) : yesterday(now)).replace('{extent}', 'statewide')
+  return path.replace('{date}', latestDateFor(path, now)).replace('{extent}', 'statewide')
 }
+
+/** A dated row title for a viewer template: "Daily rainfall map · 12 Oct 2026". */
+export const datedTitle = (title, path, now = new Date()) => `${shortTitle(title)} · ${dateLabel(latestDateFor(path, now))}`
 
 const words = (s) => fold(s).split(/[^a-z0-9]+/).filter(Boolean)
 
@@ -73,8 +88,10 @@ export function localMatch(query, { index = INDEX, limit = MAX_MATCHES, now = ne
   scored.sort((a, b) => b.score - a.score || a.i - b.i)
   return scored.slice(0, limit).map(({ e }) => {
     const row = { id: e.id, title: e.title, kind: e.kind, kindWord: kindWord(e) }
-    if (e.path) row.path = fillTemplate(e.path, now)
-    else row.url = e.url
+    if (e.path) {
+      row.path = fillTemplate(e.path, now)
+      if (e.path.includes('{date}')) { row.title = datedTitle(e.title, e.path, now); row.date = latestDateFor(e.path, now) }
+    } else row.url = e.url
     return row
   })
 }

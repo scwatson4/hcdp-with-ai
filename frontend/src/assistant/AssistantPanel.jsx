@@ -1,10 +1,11 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { ArrowUp, ExternalLink, Link2 } from 'lucide-react'
+import { ArrowUp, ExternalLink, Link2, Search, X } from 'lucide-react'
 import { useAssistant } from './AssistantProvider'
 import { cn } from '../lib/utils'
 import { handoffUrl } from '../site/handoff'
 import { DEBOUNCE_MS, MIN_CHARS, fold, localMatch } from './localMatch'
+import { formatDate, lastCompleteMonth } from '../pages/content/contentUtils'
 import TileChoice from './TileChoice'
 
 // T2 pick B (2026-10-08): the hand-off moment. The sentence is fixed (the backend writes the
@@ -17,19 +18,33 @@ export const MAX_LINES = 3
 export const QUIET_HOLD_MS = 3500   // N3 B: how long the docked bar's still ghost holds an example
 export const GHOST_FADE_MS = 500    // N3 B: the crossfade between two examples
 
-export const EXAMPLES = [
-  'How do I download Hurricane Lowell rainfall data?',
-  'Which stations are on Kauai?',
-  'Show me the Tropical Storm Nolo tracker',
-  'How do I get station data through the API?',
-  'Show me the drought map for August 2026',
-  'Show me daily rainfall on Kauaʻi during Hurricane Lowell',
-  'Take me to the Hurricane Lowell report',
-  'Take me to the Hawaiʻi Mesonet live data',
-  'Take me to the monthly climate summary',
-  'Where is the fire risk map',
-  'Where is the station data API',
-  'Where are the rainfall downloads',
+/** The landing examples; the one that names a month names the last complete month in Hawaiʻi at render time (the date
+ *  rule, 13 Oct) — never a hard-coded one. */
+export function examplesFor(now = new Date()) {
+  return [
+    'How do I download Hurricane Lowell rainfall data?',
+    'Which stations are on Kauai?',
+    'Show me the Tropical Storm Nolo tracker',
+    'How do I get station data through the API?',
+    `Show me the drought map for ${formatDate(lastCompleteMonth(now))}`,
+    'Show me daily rainfall on Kauaʻi during Hurricane Lowell',
+    'Take me to the Hurricane Lowell report',
+    'Take me to the Hawaiʻi Mesonet live data',
+    'Take me to the monthly climate summary',
+    'Where is the fire risk map',
+    'Where is the station data API',
+    'Where are the rainfall downloads',
+  ]
+}
+export const EXAMPLES = examplesFor()
+
+// QB-Q5 B (13 Oct): the four chips under the hero bar. A chip puts a fill-in template into the field with its first
+// blank selected; the blank words are plain words the navigator reads as "choose a sensible default".
+export const CHIPS = [
+  { label: 'Rainfall maps', template: 'Rainfall map for island on date', blanks: ['island', 'date'] },
+  { label: 'Live stations', template: 'Live station data for place', blanks: ['place'] },
+  { label: 'Storm reports', template: 'The storm report for storm', blanks: ['storm'] },
+  { label: 'Climate summary', template: 'Climate summary for month', blanks: ['month'] },
 ]
 
 /** A random permutation of 0..n-1 (Fisher–Yates). Exported for tests. */
@@ -95,10 +110,11 @@ function HandoffReply({ m }) {
  * choosing a row calls the provider's choose(): the field keeps the typed text, the wait line says "Opening {title}…"
  * for one hold, then the page opens (an external one in a new tab) and the overview flow runs.
  */
-export function AskBar({ docked = false, glass = false }) {
-  const { messages, busy, travelling, send, choose, followupsFor } = useAssistant()
+export function AskBar({ docked = false, glass = false, onChipsState = null }) {
+  const { messages, busy, travelling, send, choose, followupsFor, chipTemplate } = useAssistant()
   const { pathname, search } = useLocation()
   const [text, setText] = useState('')
+  const EXAMPLES = useMemo(() => examplesFor(new Date()), [])   // the date rule: the dated example is computed at render time
   // ── the typeahead (R6 D) ──
   const listId = useId().replace(/:/g, '')
   const formRef = useRef(null)
@@ -107,12 +123,14 @@ export function AskBar({ docked = false, glass = false }) {
   const [dismissed, setDismissed] = useState(false)   // Esc or a click outside closed it, until the text changes
   const canList = fold(text).trim().length >= MIN_CHARS
   useEffect(() => {
-    setDismissed(false); setActive(-1)
+    setDismissed(false); setActive(0)   // QB-Q4 B: the highlight starts on the "Ask AI" row
     if (!canList) { setMatches([]); return undefined }
     const t = setTimeout(() => setMatches(localMatch(text)), DEBOUNCE_MS)
     return () => clearTimeout(t)
   }, [text, canList])
-  const listOpen = canList && !dismissed && matches.length > 0 && !busy && !travelling
+  // QB-Q4 B: from the second character the list is up, its first row always "Ask AI: {typed}", then the matches.
+  const listOpen = canList && !dismissed && !busy && !travelling
+  const rowCount = 1 + matches.length
   useEffect(() => {
     if (!listOpen) return undefined
     const onDown = (e) => { if (formRef.current && !formRef.current.contains(e.target)) setDismissed(true) }
@@ -152,6 +170,8 @@ export function AskBar({ docked = false, glass = false }) {
   const hoverRef = useRef(false)
   const focusRef = useRef(false)   // a click into the field freezes the carousel where it is; typing stops it altogether
   const inputRef = useRef(null)
+  const seenChip = useRef(null)
+  const selectRef = useRef(null)
   useEffect(() => {
     const fresh = lastPoolRef.current !== inUse.key
     if (fresh) {   // a new set: start it from the top (the quiet variant crossfades from whatever was showing)
@@ -222,19 +242,43 @@ export function AskBar({ docked = false, glass = false }) {
   // Sending from the docked bar empties the field and lets go of it (the page is about to change; on phones the keyboard
   // goes), so the destination's follow-ups can start cycling with no user action; a click back in freezes them again.
   const submit = (e) => { e?.preventDefault(); const t = text; if (docked) { setText(''); inputRef.current?.blur() } send(t, { docked }) }
+  const clear = () => { setText(''); inputRef.current?.focus() }
   const onKeyDown = (e) => {
-    if (listOpen && e.key === 'ArrowDown') { e.preventDefault(); setActive((a) => (a + 1) % matches.length); return }
-    if (listOpen && e.key === 'ArrowUp') { e.preventDefault(); setActive((a) => (a <= 0 ? matches.length - 1 : a - 1)); return }
-    if (listOpen && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setDismissed(true); return }
-    if (e.key === 'Enter' && !e.shiftKey) { if (listOpen && active >= 0 && matches[active]) { e.preventDefault(); pick(matches[active]) } else submit(e); return }
+    if (listOpen && e.key === 'ArrowDown') { e.preventDefault(); setActive((a) => (a + 1) % rowCount); return }
+    if (listOpen && e.key === 'ArrowUp') { e.preventDefault(); setActive((a) => (a <= 0 ? rowCount - 1 : a - 1)); return }
+    // QB-Q1 B: Esc closes the typeahead first; the next press clears the field
+    if (e.key === 'Escape' && listOpen) { e.preventDefault(); e.stopPropagation(); setDismissed(true); return }
+    if (e.key === 'Escape' && text) { e.preventDefault(); e.stopPropagation(); clear(); return }
+    if (e.key === 'Enter' && !e.shiftKey) { if (listOpen && active >= 1 && matches[active - 1]) { e.preventDefault(); pick(matches[active - 1]) } else submit(e); return }
     if (e.key === 'Tab' && !e.shiftKey && ghostQuery) { e.preventDefault(); setText(ghostQuery) }
   }
+  // QB-Q5 B: a chip's template lands in the field with its first blank selected, so typing replaces it (the selection is
+  // applied once the new value has been committed).
+  useEffect(() => {
+    if (!chipTemplate || docked) return undefined
+    const { template, blanks, seq } = chipTemplate
+    if (!template || seenChip.current === seq) return undefined
+    seenChip.current = seq
+    const at = blanks?.length ? template.indexOf(blanks[0]) : -1
+    selectRef.current = at >= 0 ? { start: at, end: at + blanks[0].length } : { start: template.length, end: template.length }
+    setText(template)
+    return undefined
+  }, [chipTemplate, docked])
+  useLayoutEffect(() => {
+    const sel = selectRef.current
+    if (!sel) return
+    selectRef.current = null
+    const el = inputRef.current
+    if (el) { el.focus(); try { el.setSelectionRange(sel.start, sel.end) } catch { /* not focusable yet */ } }
+  }, [text])
   const placeholder = ghostQuery ? '' : docked && hasConversation ? 'Ask for another page or map…' : 'What are you looking for?'
   return (
     <form ref={formRef} onSubmit={submit} onMouseEnter={() => { hoverRef.current = true }} onMouseLeave={() => { hoverRef.current = false }} data-testid={docked ? 'docked-ask-bar' : 'ask-bar'} className="relative">
       <div className={cn('hcdp-ask', lines > 1 ? 'rounded-3xl' : 'rounded-full', docked ? 'min-h-11' : 'min-h-14 shadow-lg', busy && 'hcdp-ask-busy')} data-testid="ask-field" data-busy={busy ? 'true' : 'false'} data-lines={lines} data-hero={docked ? undefined : 'true'}>
         <span aria-hidden="true" className="hcdp-ask-ring" />
-        <div className={cn('hcdp-ask-field relative flex min-h-[inherit] items-end', docked ? 'py-1 pl-4 pr-1' : 'py-2 pl-6 pr-2', glass && 'hcdp-ask-glass')}>
+        <div className={cn('hcdp-ask-field relative flex min-h-[inherit] items-end', docked ? 'py-1 pl-3 pr-1' : 'py-2 pl-4 pr-2', glass && 'hcdp-ask-glass')}>
+          {/* QB-Q1 B: an 18 px grey magnifier at the left edge; the ghost and the typeahead sit to its right */}
+          <Search className="my-auto mr-2 h-[18px] w-[18px] shrink-0 text-subtle" aria-hidden="true" data-testid="ask-magnifier" />
           <textarea ref={inputRef} value={text} rows={1} onChange={(e) => setText(e.target.value.slice(0, 500))} autoComplete="off" enterKeyHint="send"
             onKeyDown={onKeyDown}
             onFocus={() => { setFocused(true); focusRef.current = true }} onBlur={() => { setFocused(false); focusRef.current = false }}
@@ -248,7 +292,7 @@ export function AskBar({ docked = false, glass = false }) {
           {ghostQuery && (
             <>
               <span id="ask-ghost-hint" className="sr-only">{activeKind === 'followups' ? 'Press Tab to insert the suggested follow-up question.' : 'Press Tab to insert the suggested example question.'}</span>
-              <div aria-hidden="true" data-testid="composer-ghost" data-pool={activeKind} data-variant={quiet ? 'quiet' : 'typewriter'} className={cn('pointer-events-none absolute top-1/2 -translate-y-1/2 truncate text-[16px] transition-opacity duration-300 motion-reduce:transition-none', docked ? 'left-4 right-12 text-subtle sm:right-28' : 'left-6 right-14 text-foreground/70 sm:right-32 sm:text-[18px]')} style={{ opacity: ghostShown ? 1 : 0 }}>
+              <div aria-hidden="true" data-testid="composer-ghost" data-pool={activeKind} data-variant={quiet ? 'quiet' : 'typewriter'} className={cn('pointer-events-none absolute top-1/2 -translate-y-1/2 truncate text-[16px] transition-opacity duration-300 motion-reduce:transition-none', docked ? 'left-[38px] right-12 text-subtle sm:right-28' : 'left-[42px] right-14 text-foreground/70 sm:right-32 sm:text-[18px]')} style={{ opacity: ghostShown ? 1 : 0 }}>
                 {/* a tap on the follow-up's text drops it into the field (the rest of the field still just focuses) */}
                 <span key={quiet ? typed : 'typed'} data-testid="composer-ghost-text" onClick={activeKind === 'followups' ? insertGhost : undefined} className={cn(activeKind === 'followups' && 'pointer-events-auto cursor-text', quiet && 'hcdp-ghost-in inline-block')}>{typed}</span>
                 {!quiet && <span className={cn('ml-px inline-block h-[1.1em] w-px translate-y-[3px] bg-subtle align-baseline', reduceMotion || typed.length >= ghostQuery.length ? 'opacity-0' : 'hcdp-caret')} />}
@@ -257,16 +301,28 @@ export function AskBar({ docked = false, glass = false }) {
             </>
           )}
           {ghostQuery && focused && <kbd className="mr-2 hidden shrink-0 rounded-md border border-border bg-surface px-1.5 py-px font-mono text-[11px] text-foreground sm:inline-block" data-testid="ask-tab-hint">Tab ↹</kbd>}
-          <button type="submit" disabled={!text.trim() || busy || travelling} aria-label="Send" className={cn('hcdp-send grid shrink-0 place-items-center rounded-full text-accent-foreground disabled:opacity-40', docked ? 'h-9 w-9' : 'h-10 w-10')}><ArrowUp className="h-4 w-4" /></button>
+          {/* QB-Q1 B: a round × that empties the field, only while there is text (44 px hit on coarse pointers) */}
+          {text && (
+            <button type="button" onClick={clear} aria-label="Clear" data-testid="ask-clear"
+              className="my-auto mr-1 grid h-7 w-7 shrink-0 place-items-center rounded-full text-subtle hover:bg-muted hover:text-foreground [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11">
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
+          <button type="submit" disabled={!text.trim() || busy || travelling} aria-label="Send" data-solid={text.trim() ? 'true' : 'false'} className={cn('hcdp-send grid shrink-0 place-items-center rounded-full text-accent-foreground disabled:opacity-40', docked ? 'h-9 w-9' : 'h-10 w-10')}><ArrowUp className="h-4 w-4" /></button>
         </div>
       </div>
       {listOpen && (
         <ul role="listbox" id={listId} aria-label="Pages that match what you typed" data-testid="typeahead"
           className={cn('absolute inset-x-0 top-full z-20 overflow-hidden rounded-xl border border-border bg-card py-1 shadow-lg', docked ? 'mt-1' : 'mt-2')}>
+          <li id={`${listId}-0`} role="option" aria-selected={active === 0} data-testid="typeahead-ask"
+            onPointerDown={(e) => e.preventDefault()} onClick={() => submit()} onMouseEnter={() => setActive(0)}
+            className={cn('flex cursor-pointer items-center gap-2 px-4 py-2 text-left text-[14px] text-foreground [@media(pointer:coarse)]:min-h-11', active === 0 ? 'bg-muted' : 'hover:bg-muted/60')}>
+            <span className="shrink-0 text-subtle">Ask AI:</span><span className="min-w-0 truncate">{text}</span>
+          </li>
           {matches.map((row, i) => (
-            <li key={row.id} id={`${listId}-${i}`} role="option" aria-selected={i === active} data-testid="typeahead-row" data-kind={row.kindWord}
-              onPointerDown={(e) => e.preventDefault()} onClick={() => pick(row)} onMouseEnter={() => setActive(i)}
-              className={cn('flex cursor-pointer items-center justify-between gap-3 px-4 py-2 text-left text-[14px] text-foreground [@media(pointer:coarse)]:min-h-11', i === active ? 'bg-muted' : 'hover:bg-muted/60')}>
+            <li key={row.id} id={`${listId}-${i + 1}`} role="option" aria-selected={i + 1 === active} data-testid="typeahead-row" data-kind={row.kindWord}
+              onPointerDown={(e) => e.preventDefault()} onClick={() => pick(row)} onMouseEnter={() => setActive(i + 1)}
+              className={cn('flex cursor-pointer items-center justify-between gap-3 px-4 py-2 text-left text-[14px] text-foreground [@media(pointer:coarse)]:min-h-11', i + 1 === active ? 'bg-muted' : 'hover:bg-muted/60')}>
               <span className="min-w-0 truncate font-medium">{row.title}</span>
               <span className="shrink-0 text-xs text-subtle" data-testid="typeahead-kind">{row.kindWord}{row.kindWord === 'external' && <span aria-hidden="true"> ↗</span>}{row.kindWord === 'external' && <span className="sr-only"> (opens in a new tab)</span>}</span>
             </li>
@@ -313,10 +369,28 @@ export function Conversation({ compact = false, hideUser = false, latestOnly = f
   )
 }
 
+/** QB-Q5 B (13 Oct): the four chips under the hero bar — the portal's chip style (white, a 1 px border, 44 px tall on
+ *  coarse pointers), centred, wrapping on phones. The typewriter keeps cycling until a chip is clicked; the click puts
+ *  the chip's fill-in template into the field with its first blank selected. Landing page only. */
+export function Chips({ onPick }) {
+  return (
+    <ul role="list" aria-label="Quick starts" data-testid="ask-chips" className="mt-3 flex flex-wrap justify-center gap-2 px-2">
+      {CHIPS.map((c) => (
+        <li key={c.label}>
+          <button type="button" onClick={() => onPick(c)} data-testid="ask-chip"
+            className="inline-flex h-9 items-center rounded-full border border-border bg-card px-3.5 text-[13px] font-medium text-foreground shadow-sm hover:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:h-11">
+            {c.label}
+          </button>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 /** The landing page's assistant: the hero bar and, once there is something to say, the answer card
  *  under it (the AI's bubbles only — the question is in the bar). */
 export default function AssistantPanel({ glass = false }) {
-  const { messages, busy, travelling, wait, epoch } = useAssistant()
+  const { messages, busy, travelling, wait, epoch, pickChip } = useAssistant()
   const last = messages[messages.length - 1]
   const lastIsNavigate = last?.role === 'assistant' && (last.actions || []).some((a) => a.type === 'navigate')
   // 13 Oct: while the AI works, and while a navigation answer is held before the travel, only a rainbow comet
@@ -326,9 +400,11 @@ export default function AssistantPanel({ glass = false }) {
   // clarify, the hand-off) once their line has ended.
   const working = wait != null
   const showCard = !busy && !travelling && !working && messages.length > 1 && !lastIsNavigate
+  const showChips = !working && messages.length <= 1   // QB-Q5 B: with the examples carousel, before the first conversation
   return (
     <div className="flex flex-col" data-testid="assistant-panel">
       <AskBar key={epoch} glass={glass} />
+      {showChips && <Chips onPick={pickChip} />}
       {working && (
         <div className="mt-4 flex items-center justify-center gap-3 px-2 text-center text-[15px] text-foreground/85 sm:text-[16px]" role="status" aria-live="polite" data-testid="landing-working">
           <span className="hcdp-comet-ring" aria-hidden="true" />

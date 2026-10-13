@@ -160,7 +160,9 @@ SUMMARY_SYSTEM = (
     "it (its sections, controls, links or downloads) — only what the description supports.\n"
     "3. followups: 3 short follow-up questions a visitor might ask next about THIS page, phrased as asks the navigator can "
     "act on (for example 'Show me the daily rainfall map for 7 September', 'Where can I download these station totals?', "
-    "'Take me to the Lowell Mesonet viewer'), each under 90 characters, each about HCDP, its data or Hawaiʻi's climate.\n"
+    "'Take me to the Lowell Mesonet viewer'), each under 90 characters, each about HCDP, its data or Hawaiʻi's climate. "
+    "A follow-up that names a date uses the latest available one given below: yesterday for a daily map, the last complete "
+    "month for a monthly map or summary — never a day or month after those.\n"
     "Rules for the sentences: address the visitor as 'you'; plain words only — no markdown, no lists, no URLs, no "
     "quotation marks, no first person ('I think', 'I brought you'); use only facts from the description and the sources; "
     "never invent numbers, dates or features. End each sentence with the number(s) of the source(s) it rests on, in square "
@@ -176,7 +178,8 @@ FOLLOWUPS_SYSTEM = (
     "shows. Write 3 short follow-up questions a visitor might ask next about THIS page, phrased as asks the site's "
     "navigator can act on (for example 'Show me the daily rainfall map for 7 September', 'Where can I download these "
     "station totals?', 'Take me to the Lowell Mesonet viewer'), each under 90 characters, each about HCDP, its data or "
-    "Hawaiʻi's climate. Plain words, no markdown, no URLs.\n"
+    "Hawaiʻi's climate. A follow-up that names a date uses the latest available one given: yesterday for a daily map, the "
+    "last complete month for a monthly map or summary — never a later one. Plain words, no markdown, no URLs.\n"
     'Respond with ONLY a JSON object: {"followups": ["…", "…", "…"]}'
 )
 

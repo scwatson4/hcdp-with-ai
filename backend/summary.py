@@ -12,6 +12,7 @@ back to its reply strip.
 """
 from __future__ import annotations
 
+import datetime as dt
 import re
 
 from llm import FOLLOWUPS_SYSTEM, SUMMARY_SYSTEM
@@ -152,9 +153,16 @@ class Summarizer:
         self.llm = llm
 
     # ----- grounding --------------------------------------------------------
+    def dates_line(self) -> str:
+        """The latest available dates, so a follow-up that names one uses yesterday (daily) or the last complete month (monthly)."""
+        today = self.nav.today()
+        yesterday = today - dt.timedelta(days=1)
+        last_month = (today.replace(day=1) - dt.timedelta(days=1))
+        return f"Dates: today is {today.isoformat()}; the newest daily map is {yesterday.isoformat()} (yesterday); the newest monthly map and summary are for {last_month.strftime('%B %Y')} ({last_month.strftime('%Y-%m')}, the last complete month)."
+
     def describe_destination(self, path: str, context: dict | None = None) -> tuple[dict | None, str]:
         entry = self.nav.destination(path)
-        lines = [f"Destination on this site: {path}", f"Page kind: {page_hint(path, entry)}"]
+        lines = [f"Destination on this site: {path}", f"Page kind: {page_hint(path, entry)}", self.dates_line()]
         v = parse_viewer_path(path)
         if v:
             lines.append(f"The map shows: {describe_view(v)}")

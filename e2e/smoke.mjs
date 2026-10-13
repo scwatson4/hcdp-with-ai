@@ -41,10 +41,9 @@ try {
     await page.screenshot({ path: `${OUT}/after-navigate-${label}.png`, fullPage: false })
     if (docked) {
       await page.locator('[data-testid="assistant-bar"] [data-testid="assistant-input"]').focus()
-      check(`${label}: focusing the docked bar opens the conversation dropdown`, await page.locator('[data-testid="assistant-dropdown"]').isVisible())
-      await page.screenshot({ path: `${OUT}/dropdown-${label}.png` })
-      await page.keyboard.press('Escape')
-      check(`${label}: Esc closes the dropdown`, (await page.locator('[data-testid="assistant-dropdown"]').count()) === 0)
+      await page.waitForTimeout(300)
+      check(`${label}: focusing the docked bar shows no history (no dropdown)`, (await page.locator('[data-testid="assistant-dropdown"]').count()) === 0)   // 12 Oct: never the history on a click
+      await page.screenshot({ path: `${OUT}/docked-focus-${label}.png` })
     }
     // Deep link direct load
     await page.goto(BASE + '/viewer/rainfall/day/2026-09-07/kauai', { waitUntil: 'networkidle' })

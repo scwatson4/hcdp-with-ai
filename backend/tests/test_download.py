@@ -263,7 +263,7 @@ def test_planner_grounds_the_model_and_validates_everything_it_answers():
     assert reports[0]["url"] == "https://www.hawaii.edu/climate-data-portal/hurricane-lowell/" and reports[0]["ticked"] is True and reports[0]["count"] == 0
     assert all(r["url"].startswith("https://") and not r["ticked"] for r in reports[1:]) and "lowell" in reports[1]["label"].lower()
     assert all(len(r["why"]) <= 120 and (not r["why"].endswith("…") or r["why"][-2] != " ") for r in reports[1:])   # cut at a word, never mid-word
-    assert dl.shorten("Station tracker for Hurricane Lowell from 7 September 2026, 12 am HST: rainfall accumulation, maximum wind and gusts at every reporting Mesonet station", 120) == "Station tracker for Hurricane Lowell from 7 September 2026, 12 am HST: rainfall accumulation, maximum wind and gusts at…"
+    assert dl.shorten("Station tracker for Hurricane Lowell from 7 September 2026, 12 am HST: rainfall accumulation, maximum wind and gusts at every reporting Mesonet station", 120) == "Station tracker for Hurricane Lowell from 7 September 2026, 12 am HST: rainfall accumulation, maximum wind and gusts…"
     assert dl.shorten("short", 120) == "short"
     assert plan["primary_view"] == "/viewer/rainfall/day/2026-09-07/kauai" and plan["primary_view_label"] == "Rainfall, September 7, 2026, Kauaʻi"
     assert [g["id"] for g in plan["groups"]] == ["grid", "station", "report"] and plan["instant_max_files"] == 150

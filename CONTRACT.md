@@ -38,7 +38,9 @@ the logo's spectrum (`.hcdp-rainbow-border`, 1.5 px) rather than a solid portal 
 There is no entry in the header menu (item 12).
 
 ## The assistant's states (R1 picks A + D, 2026-10-08)
-- **inline** — on the landing page the assistant is the bar in the hero (56 px; L2 A/C + L3 A: the field is
+- **inline** — on the landing page the assistant is the bar in the hero (56 px; QB-Q1 B, 13 Oct: an 18 px grey magnifier
+  at the left edge, a round × "Clear" (28 px, 44 px hit on coarse pointers) only while there is text, Esc closes the
+  typeahead first and clears on the next press, the send arrow solid the moment there is text; L2 A/C + L3 A: the field is
   frosted glass over the map carousel — the canvas at 86 % with a 12 px backdrop blur, measured to keep the
   ghost example at ≥ 4.5:1 over the darkest carousel map — and the wrapper wears the logo's spectrum as a
   1.5 px ring: `--hcdp-rainbow-soft` at rest, the full `--hcdp-rainbow` with focus (plus the 4 px halo), and
@@ -46,18 +48,27 @@ There is no entry in the header menu (item 12).
   square rotating 360° per 1.1 s with transform only; reduced motion shows a static full ring instead). There
   is no white glow behind the bar and no heading over the map (an sr-only h1 names the portal); the bar sits
   at about 45 % of the hero's height. Answers show in a card under the bar: the AI's bubbles only — the
-  question stays in the bar and is never echoed.
+  question stays in the bar and is never echoed. QB-Q5 B (13 Oct): under the bar, before the first conversation, four
+  chips in the portal's chip style (white, 1 px border, 44 px tall on coarse pointers, centred, wrapping) — Rainfall
+  maps · Live stations · Storm reports · Climate summary. The typewriter keeps cycling until a chip is clicked; the
+  click stops it and puts the chip's fill-in template in the field — "Rainfall map for island on date", "Live station
+  data for place", "The storm report for storm", "Climate summary for month" — with the first blank selected so typing
+  replaces it. Enter with a blank still present sends the sentence as is; the navigator's prompt reads a blank word
+  (island, date, place, storm, month) as "choose a sensible default" (statewide, yesterday / the last complete month,
+  the Mesonet overview, the newest storm). Landing only — the docked bar has the follow-ups.
 - **answer first, then travel** — a navigation from the landing page does not jump: the reply shows under the
   bar for 700 ms (`HOLD_MS`); then the hero lifts away (−26 px + fade, 400 ms) while the bar rides up to the
   header row (a shared-element move, transform only, 450 ms ease-in, `TravelProxy.jsx`), and the page
   changes. Reduced motion: a cut after the hold, same end state.
 - **dock** — on every inner page the bar is docked directly under the header as a full-width row (44 px
   field, max 720 px, centred; the sticky block is header + bar and nothing more; `AssistantBar.jsx`). The same
-  conversation lives there; the typewriter ghost stops once a conversation exists and the placeholder reads
+  conversation lives there; the ghost stops once a conversation exists and the placeholder reads
   "Ask for another page or map…" — unless the address has **follow-up asks** (below), which the ghost cycles
-  instead. While the AI works the docked bar shows the same **wait line** as the landing bar under it (the comet
-  ring and gpt-6-luna's line, "Working on that…" until it arrives; small, centred, no background; the strip and the
-  dropdown yield to it). After a navigation the destination opens with its **AI overview** (below); the one-line
+  instead. N3 B (13 Oct): the DOCKED bar's ghost is the quiet variant — no typewriter, no caret: the example sits
+  still as the grey ghost, holds 3.5 s, then crossfades (500 ms) into the next, a random order per set, the same
+  freeze on focus and Tab/tap insert; the hero bar keeps its typewriter (L1 B). While the AI works the docked bar
+  shows the same **wait line** as the landing bar under it (the comet ring and the staged line, "The wait line"
+  below; small, centred, no background; the strip and the dropdown yield to it). After a navigation the destination opens with its **AI overview** (below); the one-line
   **reply strip** under the bar — the reply with "Also: a · b" for five seconds (hover/focus holds it; clicking it
   opens the dropdown) — shows only when no overview came (the call failed, timed out or returned nothing).
 - **panel** — the docked bar's dropdown: the conversation (questions and plain answers, about twenty lines,
@@ -310,12 +321,91 @@ view), offers **Visualize** (the plan's `primary_view`) and "Prepare the full pa
 `/opt/hcdp/src/deploy/.env` — carries it; three real small plans through HCDP; the email case only with `HCDP_TEST_EMAIL`; run
 `python -m pytest -q -s -m e2e backend/tests/test_download_e2e.py`). The browser check is `node e2e/download_smoke.mjs <base>` (never a real prepare).
 
-## The wait line (13 Oct)
-`POST /api/narrate` body `{ "message": str }` → `{ "line": str | null }`: one short present-progressive line from gpt-6-luna
-(`NARRATION_MODEL`, default gpt-6-luna, through the navigator's route, 3 s timeout, its own limiter) shown beside the comet ring
-under the landing bar — and, since 13 Oct, under the docked bar too — while the answer is being worked out; null → the page
-shows "Working on that…". Fired in parallel with `/api/navigate` and never delays it. For an ask outside HCDP's scope the model
-answers `OFF_TOPIC` and the endpoint returns null.
+## The wait line (R6 C, 13 Oct)
+Both wait lines — under the hero bar on the landing and under the docked bar — are **staged**, beside the comet ring:
+"Thinking…" the moment a question is sent; after 1.4 s (`THINKING_MS`) without an answer, "Finding the right page…"; when the
+answer arrives with a navigate action, "Opening {destination title}…" for the hold and the travel (the landing's 700 ms hold
+and 450 ms ride-up; the docked bar goes at once); an open action says "Opening {title} in a new tab…" and a hand-off "Opening
+the AI data analysis tool…", each for one hold (`HOLD_MS`) before the card or dropdown shows; an info or clarify reply ends the
+line as its card shows. Each change of line fades in (`hcdp-status-in`; reduced motion: none). The question stays in the field
+through the whole wait. The title is resolved **server-side**: `/api/navigate` answers `destination: {title, path}` for a
+navigate action (`Navigator.destination` — the best catalog entry's title without its trailing parenthetical, "Daily rainfall
+map"; a viewer address no template covers is described as the viewer does, "Maximum temperature, September 7, 2026, Oʻahu")
+or `{title, url}` for an open action (the catalog entry whose url it is, else the host); none for info, clarify, analysis or
+the scope guard. The client no longer calls `/api/narrate`: `NARRATION = false` in `AssistantProvider.jsx` ("R6 C replaced it
+(13 Oct); flip to try it again"); the endpoint and `NarrationLLM` stay as they were — `POST /api/narrate` `{ "message": str }` →
+`{ "line": str | null }`, gpt-6-luna (`NARRATION_MODEL`), 3 s timeout, its own limiter, `OFF_TOPIC` → null.
+
+## The date rule (13 Oct)
+Anything the site suggests that implies a date uses the **latest available one, computed at runtime in Hawaiʻi time**: daily
+products → yesterday, monthly products → the last complete month — never a hard-coded date. It applies to the typeahead's
+viewer rows (title and path: "Daily rainfall map · 12 Oct 2026" → `/viewer/rainfall/day/2026-10-12/statewide`; "Monthly
+rainfall map · September 2026"), to the did-you-mean tiles' viewer options (filled server-side the same way,
+`Navigator.fill_template`), to the landing example that names a month (`examplesFor(now)` in `AssistantPanel.jsx`), to the
+chips' blanks (the navigator fills "date"/"month" with those dates) and to the follow-ups (the summary and follow-up prompts
+carry "today is …; the newest daily map is … (yesterday); the newest monthly map and summary are for … (the last complete
+month)" and the rule that a dated follow-up never names a later day or month). `frontend/src/pages/content/contentUtils.js`
+(`hawaiiToday`, `yesterday`, `lastCompleteMonth`) and `localMatch.js` (`latestDateFor`, `dateLabel`, `datedTitle`) are the
+frontend's one place for it; `Navigator.today()` the backend's.
+
+## The typeahead (R6 D + QB-Q4 B, 13 Oct)
+While the visitor types, the catalogue is matched **locally — no AI call**. A build-time index,
+`frontend/scripts/catalog-index.mjs` → `frontend/src/assistant/catalog.index.json` (committed; `npm run build` / `npm run dev`
+rebuild it first through `prebuild` / `predev`; when the catalog is out of reach, as in the Docker web stage, the committed file
+is kept; a test asserts it is in step with `backend/data/catalog.json`), holds one record per catalog entry that leads somewhere:
+`{ id, title, kind, path | url, tags, examples }` — `path` is this site's address (a viewer template keeps its `{date}`/`{extent}`,
+filled at match time by the date rule and statewide; a template with another placeholder falls back to its page; the question
+link is left out), `url` the HCDP page for an entry this site does not replicate; tags shared by 12 or more entries are left
+out, the rest capped at 8, three example asks; about 42 KB raw, 10 KB gzipped. `localMatch(query)` (`localMatch.js`): from
+**two** typed characters, diacritics and the ʻokina folded, every typed word must match, ranked title prefix (4) > title word
+(3) > tag (2) > example (1), ties in catalog order, at most 5 rows, 80 ms after the last keystroke.
+
+The listbox (`role=listbox` under the bar — both the hero bar and the docked bar — `aria-activedescendant` on the field, 44 px
+rows on coarse pointers) is up whenever the field has 2+ characters: the first row is always **"Ask AI: {typed text}"**
+(Enter or a tap sends to the AI exactly as before), then the matches, each the title and a grey kind word — map · page · tool
+· report · external ↗ (an entry opened on HCDP). ↑/↓ move through all rows starting on the Ask AI row, Enter opens the
+highlighted row, Esc closes it (until the text changes), a click outside closes it. Choosing a match calls the provider's
+`choose(target, { ask, echoAsk, docked })`: **no AI call**; the field keeps the typed text; the wait line says "Opening
+{title}…" for the 700 ms hold (the landing then rides up as for an answer; the docked bar cuts); then the page opens — an
+external one in a new tab at once, the line saying so — and the overview flow runs for the destination with `message` = the
+typed text and `reply` = "You chose {title}." (the conversation and the model's history record the choice the same way); for
+an external open nothing more. The ghost never shows while there is text.
+
+## Did-you-mean tiles (R5 C, 13 Oct)
+Only for a **genuinely ambiguous** ask — a word or phrase that could mean several catalogued things ("fire", "the drought
+map", "station data"). The navigator's clarify answer then carries `options` (prompt rule: 2–4 catalog ids or viewer paths with
+a one-clause why, never on a clear ask; `Navigator.normalize` → `resolve_options`: each resolved to `{id, kind, title, url,
+why}` — a `{date}/{extent}` template filled by the date rule and statewide, another template's page, the title without its
+parenthetical, the why from the model else the entry's when-to-use; unknowns and duplicates dropped; fewer than two → no
+options, a plain clarify). The frontend's `TileChoice` shows them in the landing answer card and in the docked dropdown as
+the portal's own tiles (`ToolTiles.jsx`, button variant: a 3:2 picture, 10 px corners, the navy shade, the bold white name, the
+why as the caption, compact type), two across on phones and up to four across on desktop; the alternatives rows step aside
+for them. The picture (`tileImages.js`): a tool's own portal picture for `/tools/<slug>` (the pictures live in
+`pages/content/toolImages.js`, shared with Climate Tools), a rendered map (`/api/map.webp` over the hero's ocean fill) for a
+viewer path and for a storm report (its peak day), the landing's backdrop fallback for everything else and for a map that
+fails to load. A tap chooses the page with no AI call (`choose`, as for the typeahead; the ask is the question that led to the
+clarify). Misses (no match) keep today's alternatives rows. `backend/data/usecases.json` carries three `ambiguous-*` cases with
+`expected_min_options`; the eval judge counts the options.
+
+## "Wrong page?" (P4 A, 13 Oct)
+At the bottom of every AI overview, after Show more, a small subtle link **"Wrong page?"** unfolds a two-tap chooser inside
+the block — "Which page did you want?" with the answer's alternatives as rows (title + why) and an **"Other…"** row that
+reveals a one-line field and Send (44 px). A row reports the want and opens that page with no AI call (`choose`: the "Opening
+…" line, the overview with "You chose …"); Other reports the text and asks the assistant with it. The report:
+`POST /api/feedback/wrong-page` body `{ ask, reply, destination (the path), overview_id (the summary's request_id, if any),
+wanted: {title, url} | {text} }` → `{ id }` (400 for anything that is not a page here or an allowed HCDP url; its own
+`RateLimiter`, `FEEDBACK_PER_MINUTE` 6 / `FEEDBACK_PER_HOUR` 40). Within the next ten minutes (`WRONG_PAGE_WINDOW_MS`, tab memory
+only) the **next navigation the visitor makes** — an AI answer, a typeahead row, a tile, an open, or a rail change in the
+viewer — is attached once with `POST /api/feedback/wrong-page/{id}/chose` `{ path }` (fire-and-forget; the wanted page itself
+is not "instead"). Storage: `backend/feedback.py`, SQLite at `FEEDBACK_DB` — `/app/data/feedback.sqlite` in the container, on
+the `feedback_data` volume (`deploy/docker-compose.yml`), `backend/cache/feedback.sqlite` in development — WAL, one short
+connection per call behind a lock; **no IP, user agent or cookie is stored**. The admin view: `/admin/feedback` (linked
+nowhere; type the address) asks for the admin key — a password field, sent as `X-Admin-Key`, kept in `sessionStorage` for the
+tab (the one exception to "nothing persisted" besides the unit system) — then a table newest first (when, ask, reply,
+destination, wanted, chose instead), a count and **Export CSV** (`GET /api/admin/feedback.csv` with the header; `GET
+/api/admin/feedback` → `{count, rows}`). The key is `ADMIN_KEY` in the instance's `.env`: unset → the API answers 404 and the
+page says the admin view is not enabled; a wrong key → 401 "Not authorised". `/api/health` reports `feedback.enabled` as a
+boolean (never the key), `feedback.store` and `feedback.stored`.
 
 ## The scope rule (13 Oct)
 The assistant helps with the Hawaiʻi Climate Data Portal only: its maps, stations, reports, downloads, tools and pages, and
@@ -375,21 +465,30 @@ assistant did not cause takes it away. Nothing is persisted.
   site does not have, a spent limiter or any model failure answer **200 with everything empty** — the client then shows the
   reply strip as before. The client fires it as soon as the answer arrives (in parallel with the travel), with an
   `AbortController`; a new question cancels the old call.
+- a written overview also carries `request_id` (32 hex characters), which a "Wrong page?" report names as `overview_id`.
+- the model is told the latest available dates (the date rule above) so a dated follow-up uses yesterday or the last complete month.
 
 `POST /api/followups` body `{ "path": str, "context"?: {…} }` → `{ "followups": [str] }`: the follow-up asks alone, without a
 summary (`Summarizer.followups_for(path, context)`, the same model call shape with the `followups` field only; its own limiter,
-`FOLLOWUPS_GLOBAL_PER_DAY`; empty on any failure). **Reserved for the follow-ups-that-follow-the-view feature, not yet called by
-the client.**
+`FOLLOWUPS_GLOBAL_PER_DAY`; empty on any failure). **Called by the viewer (N4 A, 13 Oct):** when the address changes from the
+rail — dataset, period, date or extent; not a display option, not the first load, not a view the assistant opened — the viewer
+waits 1.5 s after the last change, then posts `{ path: pathname + search, context: { dataset, period, date, extent, title } }`
+and stores the asks with `setFollowups(key, list, { source: 'view' })` (`frontend/src/assistant/useViewFollowups.js`); a
+memory cache by view (at most 50) answers a return at once; an `AbortController` drops a call a newer change overtook; nothing
+changes when the call fails or answers empty.
 
 ## The follow-up carousel (13 Oct)
 The provider keeps the follow-up asks **keyed by address (pathname + search)** — `setFollowups(key, list, { source:
 'summary' | 'view' })`, `followupsFor(pathname, search)` (the exact address first, else the newest set for the pathname, since
 the viewer rewrites its address on load: canonical spelling, remembered units); the last 12 addresses, memory only. On an inner
 page whose address has follow-ups and whose field is empty, the docked bar's ghost typewriter cycles THEM instead of the generic
-examples: same typing, hold and fade, a fresh random order per set, frozen while the field has focus; Tab or a tap on the ghost's
-text inserts one; no placeholder while cycling. The carousel starts on EVERY navigation the assistant performs — as soon as the
-destination renders and `/api/summary` returns, with no user action (sending from the docked bar empties and lets go of the
-field); a visitor who is typing is never interrupted — the new set takes over the next time the field is empty and unfocused.
+examples — in the docked bar's quiet manner (N3 B: the example sits still, holds 3.5 s, crossfades 500 ms into the next; a fresh
+random order per set, frozen while the field has focus); Tab or a tap on the ghost's text inserts one; no placeholder while
+cycling. The carousel starts on EVERY navigation the assistant performs — as soon as the destination renders and `/api/summary`
+returns, with no user action (sending from the docked bar empties and lets go of the field); a visitor who is typing is never
+interrupted — the new set takes over the next time the field is empty and unfocused. A new set that arrives while the ghost is
+cycling (the viewer's own follow-ups, N4 A) is adopted only at the end of the current example's hold — never mid-example — so
+the old set keeps cycling until the new one is in; a set that disappears (a page without follow-ups) is let go of at once.
 Sending a follow-up is a normal question: the wait line, a new answer, a fresh overview (even for the same destination).
 Without follow-ups the docked bar behaves as before ("Ask for another page or map…").
 
@@ -409,6 +508,8 @@ Response:
     { "type": "handoff", "url": "https://<ai-interface>/?ask=...&ctx=viewer:/viewer/...&from=website" }
   ],
   "alternatives": [ { "title": "...", "url": "...", "why": "..." } ],
+  "destination": { "title": "Hurricane Lowell report", "path": "/extreme-events/lowell" },   // R6 C: with a navigate action ({title, url} with an open action; absent otherwise)
+  "options": [ { "id": "ignition-daily-map", "kind": "viewer", "title": "Fire ignition probability map", "url": "/viewer/ignition/day/2026-10-12/statewide", "why": "today's fire risk on a map" } ],   // R5 C: clarify only, 2–4, only when ambiguous
   "minimize": true
 }
 ```
@@ -418,8 +519,10 @@ interface and does not attempt analysis itself; its url is always built server-s
 above, and an analysis `reply` is always the fixed sentence "This is better answered by our AI data analysis
 tool. Try it out here" (the frontend renders "here" as the link and counts down five seconds). `alternatives` are always welcome (2–4). `minimize`
 is true whenever a navigation happened. `info` answers a question about HCDP without navigating.
-`clarify` asks one short question. The model may answer `off_topic` (the scope rule above); the response then carries
-intent `info`, the fixed sentence and `"off_topic": true`.
+`clarify` asks one short question — and, when the ask is genuinely ambiguous, carries `options` (the did-you-mean tiles
+above). The model may answer `off_topic` (the scope rule above); the response then carries
+intent `info`, the fixed sentence and `"off_topic": true`. A blank word from the landing chips ("Rainfall map for island on
+date") is read as "choose a sensible default", never "ask which".
 
 ## The site catalog (backend/data/catalog.json)
 An array of entries; this is the knowledge the navigator reasons over. Keep it exhaustive and honest.
@@ -440,8 +543,10 @@ Viewer entries carry `internal_path` templates such as `/viewer/rainfall/day/{da
   Pacific Portal, Extreme Events, Climate Tools; top nav Home · About · Data Portal · Research · Climate Tools.
 - Every page works at phone width. External links open in a new tab and say so.
 - No cookies, no analytics, no sign-in, no theme (the site is always light; a `hcdp-theme` key left by an earlier
-  visit is removed), nothing persisted — with one exception: the viewer's unit
+  visit is removed), nothing persisted — with two exceptions: the viewer's unit
   system (`mm`/`°C` or `in`/`°F`) is remembered per browser (`localStorage` key `hcdp-units`, read and written in
   try/catch; `frontend/src/viewer/unitsPreference.js`). It only fills in a viewer link that names no units, as a
   load-time `replaceState` (`?units=in` / `?units=f`); a `units=` key in the address always wins, even `units=mm`.
-  The export email is never stored.
+  And the admin key typed on `/admin/feedback` lives in `sessionStorage` for that tab only (P4 A).
+  The export email is never stored. A "Wrong page?" report stores the ask, the reply, the destination and the want —
+  nothing about the visitor.

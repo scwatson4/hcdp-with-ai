@@ -17,6 +17,7 @@ import ExtremeEvents from './pages/content/ExtremeEvents'
 import ClimateTools from './pages/content/ClimateTools'
 import DownloadPage from './download/DownloadPage'
 import NotFound from './pages/NotFound'
+import AdminFeedback from './pages/AdminFeedback'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -44,6 +45,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
               <Route path="tools/:slug" element={<ClimateTools />} />
               <Route path="download" element={<DownloadPage />} />
               <Route path="viewer/*" element={<ViewerPage />} />
+              <Route path="admin/feedback" element={<AdminFeedback />} />   {/* P4 A: linked nowhere; type the address */}
               <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>

@@ -26,7 +26,12 @@ import { shortTitle } from './localMatch'
 // R6 D / R5 C (13 Oct): `choose(target)` is a navigation the visitor made themselves — a typeahead
 // row or a did-you-mean tile — with no AI call: "Opening {title}…" for one hold, then the page (an
 // external one in a new tab at once), then the overview flow with the reply "You chose {title}.".
+// P4 A (13 Oct): "Wrong page?" at the bottom of an overview reports what the visitor wanted instead
+// (reportWrongPage → POST /api/feedback/wrong-page → {id}); for WRONG_PAGE_WINDOW_MS the next
+// navigation the visitor makes — an AI answer, a typeahead row, a tile, a rail change in the viewer —
+// is attached to that report (noteNavigation → POST …/{id}/chose, fire-and-forget; tab memory only).
 const Ctx = createContext(null)
+export const WRONG_PAGE_WINDOW_MS = 10 * 60 * 1000
 
 // The gpt-6-luna narration (/api/narrate) used to be the wait line. R6 C replaced it (13 Oct); flip to try it again.
 export const NARRATION = false
@@ -83,6 +88,7 @@ export function AssistantProvider({ children }) {
   const pathRef = useRef(location.pathname)
   // Follow-up asks by address (pathname + search): { key: { list, source: 'summary' | 'view', at } }.
   const [followups, setFollowupsState] = useState({})
+  const wrongPage = useRef(null)             // { id, until, skip }: the open "Wrong page?" report awaiting the visitor's next page (P4 A)
   const [epoch, setEpoch] = useState(0)      // bumped by reset(): the bars remount empty (item 13)
   const historyRef = useRef([])
   const seq = useRef(0)
@@ -141,6 +147,33 @@ export function AssistantProvider({ children }) {
     return best ? best.list : null
   }, [followups])
 
+  // ── "Wrong page?" (P4 A) ──
+  /** The visitor's next page, attached to the open report (once; never the page they asked for by name). */
+  const noteNavigation = useCallback((target) => {
+    const p = wrongPage.current
+    if (!p || typeof target !== 'string' || !target) return
+    if (Date.now() > p.until) { wrongPage.current = null; return }
+    if (p.skip && target.split('#')[0] === p.skip.split('#')[0]) { p.skip = null; return }   // the wanted page itself is not "instead"
+    wrongPage.current = null
+    try {
+      fetch(`/api/feedback/wrong-page/${encodeURIComponent(p.id)}/chose`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: target }), keepalive: true }).catch(() => {})
+    } catch { /* fire and forget */ }
+  }, [])
+  /** Record a "Wrong page?" report for the overview on screen: `wanted` is { title, url } (an alternative) or { text }.
+   *  Resolves to the report's id (or null); the next navigation within WRONG_PAGE_WINDOW_MS is attached to it. */
+  const reportWrongPage = useCallback(async (wanted) => {
+    const s = summaryRef.current
+    if (!s || !wanted) return null
+    const body = { ask: s.ask || '', reply: s.reply || '', destination: s.destination || s.path || '', overview_id: s.requestId || null, wanted }
+    try {
+      const r = await fetch('/api/feedback/wrong-page', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const d = r && r.ok ? await r.json() : null
+      const id = d && typeof d.id === 'string' ? d.id : null
+      if (id) wrongPage.current = { id, until: Date.now() + WRONG_PAGE_WINDOW_MS, skip: wanted.url || null }
+      return id
+    } catch { return null }
+  }, [])
+
   // ── the AI summary of a destination ──
   const dismissSummary = useCallback(() => { summaryAbort.current?.abort(); summaryAbort.current = null; pendingStrip.current = null; setSummary(null) }, [setSummary])
   /** Ask /api/summary for the page the navigator just chose. The block shows as pending at once; when the sentences
@@ -152,7 +185,8 @@ export function AssistantProvider({ children }) {
     const key = navPath.split('#')[0]
     const pathname = key.split('?')[0]
     const alternatives = (Array.isArray(data.alternatives) ? data.alternatives : []).filter((a) => a && typeof a.url === 'string' && a.title).slice(0, 4)
-    setSummary({ id, path: pathname, status: 'pending', chunks: [], cites: [], more: [], moreCites: [], sources: [], followups: [], alternatives })
+    // ask, reply and destination ride along for a "Wrong page?" report (P4 A); requestId comes back with the sentences
+    setSummary({ id, path: pathname, destination: key, ask: question, reply: data.reply || '', requestId: null, status: 'pending', chunks: [], cites: [], more: [], moreCites: [], sources: [], followups: [], alternatives })
     const fail = () => {
       if (ac.signal.aborted) return
       setSummary((cur) => (cur && cur.id === id ? null : cur))
@@ -169,7 +203,8 @@ export function AssistantProvider({ children }) {
         const citesOf = (list, n) => Array.from({ length: n }, (_, i) => (Array.isArray(list?.[i]) ? list[i].filter((k) => Number.isInteger(k) && k >= 1 && k <= sources.length) : []))
         const more = Array.isArray(d.more) ? d.more.filter((c) => typeof c === 'string' && c.trim()) : []
         const followupList = (Array.isArray(d.followups) ? d.followups : []).filter((f) => typeof f === 'string' && f.trim()).map((f) => f.trim()).slice(0, MAX_FOLLOWUPS)
-        setSummary((cur) => (cur && cur.id === id ? { ...cur, status: 'ready', chunks, cites: citesOf(d.cites, chunks.length), more, moreCites: citesOf(d.more_cites, more.length), sources, followups: followupList } : cur))
+        const requestId = typeof d.request_id === 'string' ? d.request_id : null
+        setSummary((cur) => (cur && cur.id === id ? { ...cur, status: 'ready', requestId, chunks, cites: citesOf(d.cites, chunks.length), more, moreCites: citesOf(d.more_cites, more.length), sources, followups: followupList } : cur))
         setFollowups(key, followupList, { source: 'summary' })
         if (pendingStrip.current && pendingStrip.current.id === id) pendingStrip.current = null
       })
@@ -199,6 +234,7 @@ export function AssistantProvider({ children }) {
     clearTravel()
     endWait()
     setTravel({ phase: 'idle', path: null })
+    noteNavigation(path)
     navigate(path)
     setMode('dock')
     const strip = { ...s, path: path.split('?')[0].split('#')[0] }
@@ -207,7 +243,7 @@ export function AssistantProvider({ children }) {
     // 13 Oct: when a summary is on its way (or here) it is the explanation; the strip shows only if it fails.
     if (sum && sum.id === s.id) pendingStrip.current = { id: s.id, strip }
     else showStrip(strip)
-  }, [clearTravel, navigate, showStrip])
+  }, [clearTravel, navigate, showStrip, endWait, noteNavigation])
   /** Hold (HOLD_MS), then arrive — by way of the ride-up (`ride`, the landing page) or a plain cut (the docked bar). */
   const beginTravel = useCallback((path, s, { ride = true } = {}) => {
     clearTravel()
@@ -257,6 +293,7 @@ export function AssistantProvider({ children }) {
       const alternatives = data.alternatives || []
       // External HCDP pages open now, in a new tab; the message keeps a link if the tab was blocked.
       for (const a of actions) if (a.type === 'open' && a.url) { if (!openNewTab(a.url)) a.blocked = true }
+      if (!actions.some((a) => a.type === 'navigate')) { const op = actions.find((a) => a.type === 'open' && a.url); if (op) noteNavigation(op.url) }
       const nav = actions.find((a) => a.type === 'navigate' && typeof a.path === 'string' && a.path.startsWith('/'))
       const opened = actions.find((a) => a.type === 'open' && typeof a.url === 'string')
       const destination = data.destination && typeof data.destination === 'object' ? data.destination : null
@@ -285,7 +322,7 @@ export function AssistantProvider({ children }) {
       endWait()
       setMessages((m) => [...m, { id: nextId(), role: 'assistant', content: 'I could not reach the navigator. Check the connection and try again.' }])
     } finally { setBusy(false); narrateAbort.current?.abort(); narrateAbort.current = null }
-  }, [busy, travelling, context, startHandoff, beginTravel, arrive, location.pathname, requestSummary, setSummary, hideStrip, startWait, endWait, holdLine])
+  }, [busy, travelling, context, startHandoff, beginTravel, arrive, location.pathname, requestSummary, setSummary, hideStrip, startWait, endWait, holdLine, noteNavigation])
 
   /** R6 D / R5 C: the visitor chose a catalogued place themselves (a typeahead row, a did-you-mean tile): no AI call.
    *  `target` is { title, path | url } (a url starting with "/" counts as a path). The wait line says "Opening {title}…"
@@ -306,6 +343,7 @@ export function AssistantProvider({ children }) {
     const id = nextId()
     const actions = path ? [{ type: 'navigate', path }] : [{ type: 'open', url }]
     if (url && !openNewTab(url)) actions[0].blocked = true
+    if (url) noteNavigation(url)
     setMessages((m) => [...m, ...(userId ? [{ id: userId, role: 'user', content: q }] : []), { id, role: 'assistant', content: reply, intent: 'navigate', actions, alternatives: [] }])
     historyRef.current = [...historyRef.current, ...(userId ? [{ role: 'user', content: q }] : []), { role: 'assistant', content: reply }]
     const onLanding = location.pathname === '/' && !docked
@@ -315,7 +353,7 @@ export function AssistantProvider({ children }) {
     requestSummary(id, q, { reply, intent: 'navigate', alternatives: [] }, path)
     beginTravel(path, { id, reply, alternatives: [] }, { ride: onLanding })
     return true
-  }, [busy, travelling, location.pathname, setSummary, hideStrip, holdLine, requestSummary, beginTravel])
+  }, [busy, travelling, location.pathname, setSummary, hideStrip, holdLine, requestSummary, beginTravel, noteNavigation])
 
   /** Put the cursor in the bar (the landing bar on /, the docked bar elsewhere). */
   const open = useCallback(() => {
@@ -376,9 +414,9 @@ export function AssistantProvider({ children }) {
   const value = useMemo(() => ({
     messages, mode, busy, travelling, travel, strip, wait: waitLine, heroOut, setHeroOut, epoch, send, choose, open, minimize, setMode, reset,
     handoff, stayHere, settleHandoff, holdStrip, releaseStrip, hideStrip,
-    summary, dismissSummary, followups, followupsFor, setFollowups,
+    summary, dismissSummary, followups, followupsFor, setFollowups, reportWrongPage, noteNavigation,
   }), [messages, mode, busy, travelling, travel, strip, waitLine, heroOut, epoch, send, choose, open, minimize, reset, handoff, stayHere, settleHandoff, holdStrip, releaseStrip, hideStrip,
-    summary, dismissSummary, followups, followupsFor, setFollowups])
+    summary, dismissSummary, followups, followupsFor, setFollowups, reportWrongPage, noteNavigation])
   return (
     <Ctx.Provider value={value}>
       {children}

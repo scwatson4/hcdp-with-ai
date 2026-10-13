@@ -15,6 +15,10 @@ import { cn } from '../lib/utils'
 // It renders only while the provider holds an overview for this very pathname — never on a direct load — and is
 // keyed by the answer's id, so a new answer for the same page fades in again. While the overview is still being
 // written the block shows its header and a small comet ring.
+// P4 A (13 Oct): at the bottom, after Show more, a small "Wrong page?" link unfolds a two-tap chooser inside the block —
+// "Which page did you want?" with the answer's alternatives as rows (title + why) and an "Other…" row that reveals a
+// one-line field and Send. A row reports the want (reportWrongPage) and opens that page with no AI call (choose);
+// Other reports the text and asks the assistant with it. The visitor's next page is attached to the report by the provider.
 export const CHUNK_STAGGER_MS = 350
 const SUP = '⁰¹²³⁴⁵⁶⁷⁸⁹'
 export const superscript = (n) => String(n).split('').map((d) => SUP[Number(d)] ?? d).join('')
@@ -24,7 +28,65 @@ export default function AISummary({ className, scrollIntoView = false }) {
   const { pathname } = useLocation()
   const summary = assistant?.summary
   if (!summary || summary.path !== pathname) return null
-  return <SummaryBlock key={summary.id} summary={summary} onDismiss={assistant.dismissSummary} send={assistant.send} className={className} scrollIntoView={scrollIntoView} />
+  return <SummaryBlock key={summary.id} summary={summary} onDismiss={assistant.dismissSummary} send={assistant.send} choose={assistant.choose} reportWrongPage={assistant.reportWrongPage} className={className} scrollIntoView={scrollIntoView} />
+}
+
+/** "Wrong page?" → "Which page did you want?": the alternatives as rows, then "Other…" with a line of text (P4 A). */
+function WrongPage({ summary, send, choose, reportWrongPage }) {
+  const [open, setOpen] = useState(false)
+  const [other, setOther] = useState(false)
+  const [text, setText] = useState('')
+  const [state, setState] = useState('idle')   // 'idle' | 'sending' | 'sent'
+  const alternatives = (summary.alternatives || []).filter((a) => a && a.url && a.title)
+  const pickRow = async (a) => {
+    if (state !== 'idle') return
+    setState('sending')
+    await reportWrongPage?.({ title: a.title, url: a.url })
+    setState('sent')
+    choose?.({ title: a.title, url: a.url }, { ask: summary.ask || '', echoAsk: false, docked: true })
+  }
+  const sendOther = async (e) => {
+    e?.preventDefault()
+    const t = text.trim()
+    if (!t || state !== 'idle') return
+    setState('sending')
+    await reportWrongPage?.({ text: t })
+    setState('sent')
+    send?.(t)
+  }
+  return (
+    <div className="mt-2" data-testid="wrong-page">
+      {!open && (
+        <button type="button" onClick={() => setOpen(true)} className="text-[12px] text-subtle underline-offset-2 hover:text-foreground hover:underline [@media(pointer:coarse)]:min-h-11" data-testid="wrong-page-link">Wrong page?</button>
+      )}
+      {open && (
+        <div className="rounded-lg border border-border bg-surface/60 p-3" role="group" aria-labelledby="wrong-page-q" data-testid="wrong-page-chooser">
+          <p id="wrong-page-q" className="text-[13px] font-medium">Which page did you want?</p>
+          <ul className="mt-2 divide-y divide-border rounded-md border border-border bg-card" aria-label="Pages you may have wanted">
+            {alternatives.map((a) => (
+              <li key={a.url}>
+                <button type="button" onClick={() => pickRow(a)} disabled={state !== 'idle'} className="flex min-h-9 w-full items-center justify-between gap-3 px-3 py-1.5 text-left text-[13px] hover:bg-muted disabled:opacity-60 [@media(pointer:coarse)]:min-h-11" data-testid="wrong-page-row">
+                  <span className="min-w-0"><span className="font-medium">{a.title}</span>{a.why && <span className="text-subtle"> · {a.why}</span>}</span>
+                  {!a.url.startsWith('/') && <ExternalLink className="h-3 w-3 shrink-0 text-subtle" aria-label="opens in a new tab" />}
+                </button>
+              </li>
+            ))}
+            <li>
+              <button type="button" onClick={() => setOther(true)} aria-expanded={other} className="flex min-h-9 w-full items-center px-3 py-1.5 text-left text-[13px] hover:bg-muted [@media(pointer:coarse)]:min-h-11" data-testid="wrong-page-other">Other…</button>
+            </li>
+          </ul>
+          {other && (
+            <form onSubmit={sendOther} className="mt-2 flex items-stretch gap-2" data-testid="wrong-page-other-form">
+              <input type="text" value={text} onChange={(e) => setText(e.target.value.slice(0, 500))} maxLength={500} placeholder="What were you looking for?" aria-label="What were you looking for?" autoFocus
+                className="min-h-11 min-w-0 flex-1 rounded-md border border-border bg-card px-3 text-[13px] text-foreground placeholder:text-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" data-testid="wrong-page-text" />
+              <button type="submit" disabled={!text.trim() || state !== 'idle'} className="hcdp-send min-h-11 rounded-md px-4 text-[13px] font-medium text-accent-foreground disabled:opacity-40" data-testid="wrong-page-send">Send</button>
+            </form>
+          )}
+          {state === 'sent' && <p className="mt-2 text-[12px] text-subtle" role="status" data-testid="wrong-page-thanks">Thanks — noted.</p>}
+        </div>
+      )}
+    </div>
+  )
 }
 
 /** The logo's spectrum as a four-point star (the AI Overview mark). */
@@ -69,7 +131,7 @@ function Chunks({ chunks, cites, sources, reduce, testid, chunkTestid }) {
   )
 }
 
-function SummaryBlock({ summary, onDismiss, send, className, scrollIntoView }) {
+function SummaryBlock({ summary, onDismiss, send, choose, reportWrongPage, className, scrollIntoView }) {
   const ref = useRef(null)
   const gradId = useId().replace(/:/g, '')
   const [open, setOpen] = useState(false)   // collapsed on every new overview
@@ -155,6 +217,7 @@ function SummaryBlock({ summary, onDismiss, send, className, scrollIntoView }) {
               </button>
             </>
           )}
+          {reportWrongPage && <WrongPage summary={summary} send={send} choose={choose} reportWrongPage={reportWrongPage} />}
         </>
       )}
     </section>

@@ -4,7 +4,10 @@ Endpoints
   POST /api/navigate          the navigator (see CONTRACT.md for the protocol)
   POST /api/narrate           one short wait line from gpt-6-luna while the answer is worked out
   POST /api/summary           the AI overview of a destination (numbered sources from the catalog; sentences with cites, a 'more' fold and follow-ups from gpt-6-luna)
-  POST /api/followups         three follow-up asks for a page, without a summary (reserved; not yet called by the client)
+  POST /api/followups         three follow-up asks for a page, without a summary (the viewer asks for them 1.5 s after a rail change, N4 A)
+  POST /api/feedback/wrong-page            "Wrong page?" — what the visitor wanted instead (P4 A; SQLite, no visitor data, rate-limited) → {id}
+  POST /api/feedback/wrong-page/{id}/chose the page they went to next (attached once, within the client's ten minutes)
+  GET  /api/admin/feedback(.csv)           the reports, newest first, behind ADMIN_KEY (X-Admin-Key; 404 when unset, 401 when wrong)
   GET  /api/raster            GeoTIFF proxy to the HCDP API (token stays here; disk cache; ETag + Range)
   GET  /api/dates             available date range for a dataset (proxy, memory cache)
   GET  /api/map.png|webp      a map rendered with a viewer ramp (landing backdrops)
@@ -30,6 +33,7 @@ import asyncio
 import datetime as dt
 import base64
 import hashlib
+import hmac
 import html as htmlmod
 import json
 import os
@@ -42,7 +46,7 @@ from urllib.parse import quote, urlparse
 import httpx
 from dotenv import load_dotenv
 from fastapi import Body, FastAPI, HTTPException, Query, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
 from starlette.concurrency import run_in_threadpool
@@ -52,6 +56,7 @@ load_dotenv(ROOT.parent / ".env")  # local development; containers get the env f
 
 from export import (ANONYMOUS_EMAIL, EMAIL_MAX_FILES, INSTANT_MAX_FILES, ExportError, options as export_options, payload as export_payload,  # noqa: E402
                     valid_email as export_valid_email, validate as export_validate, zip_filename)
+from feedback import ID_RE as FEEDBACK_ID_RE, FeedbackStore  # noqa: E402
 from llm import NavigatorLLM  # noqa: E402
 from navigator import (DATASETS, EXTENTS, HAWAII_BOX, STATEWIDE_ONLY, STATION_DATASETS, Navigator, canonical_viewer_path,  # noqa: E402
                        describe_view, load_catalog, parse_viewer_path)
@@ -80,6 +85,9 @@ EXPORT_TIMEOUT = float(os.environ.get("EXPORT_TIMEOUT", "300"))
 EXPORT_LOG_EMAIL = os.environ.get("EXPORT_LOG_EMAIL", "").strip()
 if not export_valid_email(EXPORT_LOG_EMAIL):
     EXPORT_LOG_EMAIL = ANONYMOUS_EMAIL
+# P4 A (13 Oct): the wrong-page feedback store and the admin key that unlocks reading it (unset → the admin view is off: 404).
+FEEDBACK_DB = os.environ.get("FEEDBACK_DB", str(ROOT / "cache" / "feedback.sqlite"))
+ADMIN_KEY = os.environ.get("ADMIN_KEY", "").strip()
 
 app = FastAPI(title="HCDP with AI — navigator", docs_url=None, redoc_url=None)
 app.state.llm = NavigatorLLM()
@@ -105,6 +113,14 @@ app.state.short_limiter = RateLimiter(per_minute=int(os.environ.get("SHORT_PER_M
 # Exports cost HCDP real work: a limiter per visitor for downloads, a harder one for emailed packages.
 app.state.export_limiter = RateLimiter(per_minute=int(os.environ.get("EXPORT_PER_MINUTE", "6")), per_hour=int(os.environ.get("EXPORT_PER_HOUR", "40")), global_per_day=int(os.environ.get("EXPORT_GLOBAL_PER_DAY", "2000")))
 app.state.email_limiter = RateLimiter(per_minute=int(os.environ.get("EMAIL_PER_MINUTE", "2")), per_hour=int(os.environ.get("EMAIL_PER_HOUR", "10")), global_per_day=int(os.environ.get("EMAIL_GLOBAL_PER_DAY", "500")))
+# Wrong-page feedback (P4 A): a report and its follow-up write a row each; a limiter keeps one connection from filling the table.
+app.state.feedback_limiter = RateLimiter(per_minute=int(os.environ.get("FEEDBACK_PER_MINUTE", "6")), per_hour=int(os.environ.get("FEEDBACK_PER_HOUR", "40")), global_per_day=int(os.environ.get("FEEDBACK_GLOBAL_PER_DAY", "5000")))
+app.state.admin_key = ADMIN_KEY
+try:
+    app.state.feedback = FeedbackStore(FEEDBACK_DB)
+except Exception as _e:  # noqa: BLE001 - an unwritable path: the endpoints answer 503 instead of taking the site down
+    app.state.feedback = None
+    app.state.feedback_error = type(_e).__name__
 app.state.climate_stations = None      # (fetched_at, [station, …]) — HCDP's climate station list
 app.state.stations_index = None        # (that list, {skn: station})
 app.state.stations_lock = asyncio.Lock()
@@ -174,7 +190,10 @@ async def api_summary(body: SummaryBody, request: Request):
     summarizer = getattr(request.app.state, "summarizer", None)
     if summarizer is None:
         return empty_summary()
-    return await run_in_threadpool(summarizer.summarize, body.message, body.reply, body.path, body.intent)
+    out = await run_in_threadpool(summarizer.summarize, body.message, body.reply, body.path, body.intent)
+    if out.get("chunks"):
+        out["request_id"] = uuid.uuid4().hex   # P4 A: a "Wrong page?" report names the overview it was about
+    return out
 
 
 class FollowupsBody(BaseModel):
@@ -212,8 +231,15 @@ async def api_health(request: Request):
     summarizer = getattr(request.app.state, "summarizer", None)
     summary_llm = getattr(summarizer, "llm", None)
     planner_llm = getattr(getattr(request.app.state, "planner", None), "llm", None)
+    store = getattr(request.app.state, "feedback", None)
+    try:
+        stored = store.count() if store is not None else None
+    except Exception:  # noqa: BLE001
+        stored = None
     return {
         "ok": True, "model": llm.model, "model_configured": llm.configured, "llm": llm.stats,
+        # P4 A: whether the admin view is unlocked (a boolean, never the key) and whether the store answers
+        "feedback": {"enabled": bool(getattr(request.app.state, "admin_key", "")), "store": store is not None, "stored": stored},
         # the two small gpt-6-luna clients (the wait line, the AI overview): calls, errors, the last error's class and latency
         "narration": {"model": getattr(narrator, "model", None), "stats": getattr(narrator, "stats", None)},
         "summary": {"model": getattr(summary_llm, "model", None), "timeout": getattr(summary_llm, "timeout", None), "stats": getattr(summary_llm, "stats", None)},
@@ -1043,6 +1069,105 @@ async def warm_viewer():
 
     if os.environ.get("WARM_VIEWER", "1") != "0":
         asyncio.create_task(_warm())
+
+
+# ----- wrong-page feedback (P4 A, 13 Oct; CONTRACT.md "Wrong page?") -----------------------------
+class WantedBody(BaseModel):
+    title: str | None = Field(default=None, max_length=200)
+    url: str | None = Field(default=None, max_length=1000)
+    text: str | None = Field(default=None, max_length=500)
+
+
+class WrongPageBody(BaseModel):
+    ask: str = Field(default="", max_length=500)
+    reply: str = Field(default="", max_length=1000)
+    destination: str = Field(default="", max_length=1000)
+    overview_id: str | None = Field(default=None, max_length=64)
+    wanted: WantedBody
+
+
+class ChoseBody(BaseModel):
+    path: str = Field(min_length=1, max_length=1000)
+
+
+def _feedback_store(request: Request) -> FeedbackStore:
+    store = getattr(request.app.state, "feedback", None)
+    if store is None:
+        raise HTTPException(503, "the feedback store is unavailable")
+    return store
+
+
+def _a_place(ref: str | None, request: Request) -> bool:
+    """A page this site can open: one of its own paths, or an HCDP url the navigator allows."""
+    if not isinstance(ref, str) or not ref.strip():
+        return False
+    if ref.startswith("/"):
+        return "\n" not in ref and len(ref) <= 1000
+    return request.app.state.navigator.allowed_url(ref)
+
+
+@app.post("/api/feedback/wrong-page")
+async def api_wrong_page(body: WrongPageBody, request: Request):
+    """The visitor said the overview's page was the wrong one and named what they wanted: an alternative ({title, url})
+    or a line of text ({text}). Stores the ask, the reply, the destination and the want — nothing about the visitor —
+    and answers {id}; the client attaches the next navigation to that id."""
+    if request.app.state.feedback_limiter.check(request.client.host if request.client else "?"):
+        return JSONResponse({"detail": "That is a lot of feedback from one connection in a short time. Wait a minute and try again."}, status_code=429)
+    if not body.destination.startswith("/"):
+        raise HTTPException(400, "destination must be a path on this site")
+    w = body.wanted
+    text = (w.text or "").strip()
+    url = (w.url or "").strip()
+    if url and not _a_place(url, request):
+        raise HTTPException(400, "wanted.url must be a page on this site or an HCDP page")
+    if not url and not text:
+        raise HTTPException(400, "wanted needs a url or a text")
+    wanted = {"title": (w.title or "").strip()[:200] or None, "url": url or None, "text": text or None}
+    store = _feedback_store(request)
+    fid = await run_in_threadpool(store.record, body.ask.strip(), body.reply.strip(), body.destination.strip(), (body.overview_id or "").strip() or None, wanted)
+    return JSONResponse({"id": fid}, headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/feedback/wrong-page/{fid}/chose")
+async def api_wrong_page_chose(fid: str, body: ChoseBody, request: Request):
+    """The page the visitor went to next (a path here, or an HCDP url they opened); attached once per report."""
+    if not FEEDBACK_ID_RE.match(fid):
+        raise HTTPException(404, "unknown report")
+    if request.app.state.feedback_limiter.check(request.client.host if request.client else "?"):
+        return JSONResponse({"detail": "too many requests"}, status_code=429)
+    if not _a_place(body.path, request):
+        raise HTTPException(400, "path must be a page on this site or an HCDP page")
+    store = _feedback_store(request)
+    ok = await run_in_threadpool(store.attach_choice, fid, body.path.strip())
+    return JSONResponse({"ok": ok}, headers={"Cache-Control": "no-store"})
+
+
+def _admin_check(request: Request) -> None:
+    """404 while no ADMIN_KEY is set (the admin view does not exist); 401 for a missing or wrong X-Admin-Key."""
+    key = getattr(request.app.state, "admin_key", "") or ""
+    if not key:
+        raise HTTPException(404)
+    given = request.headers.get("x-admin-key", "")
+    if not given or not hmac.compare_digest(given.encode("utf-8"), key.encode("utf-8")):
+        raise HTTPException(401, "Not authorised")
+
+
+@app.get("/api/admin/feedback")
+async def api_admin_feedback(request: Request):
+    """The wrong-page reports, newest first (at most 500), with the count — behind the admin key."""
+    _admin_check(request)
+    store = _feedback_store(request)
+    rows, count = await run_in_threadpool(lambda: (store.rows(), store.count()))
+    return JSONResponse({"count": count, "rows": rows}, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/admin/feedback.csv")
+async def api_admin_feedback_csv(request: Request):
+    """The same as CSV with a header row, for a spreadsheet."""
+    _admin_check(request)
+    store = _feedback_store(request)
+    text = await run_in_threadpool(store.csv)
+    return PlainTextResponse(text, media_type="text/csv; charset=utf-8", headers={"Content-Disposition": 'attachment; filename="hcdp-wrong-page-feedback.csv"', "Cache-Control": "no-store"})
 
 
 # ----- the built site ---------------------------------------------------------

@@ -1,6 +1,7 @@
 # Run from this directory:  docker compose --env-file ../.env up -d --build
 # The .env lives one level up (never in the image) and holds AZURE_OPENAI_API_KEY,
-# HCDP_API_TOKEN, NAVIGATOR_MODEL, NAVIGATOR_API_BASE, SITE_ADDRESS, AI_INTERFACE_URL.
+# HCDP_API_TOKEN, NAVIGATOR_MODEL, NAVIGATOR_API_BASE, SITE_ADDRESS, AI_INTERFACE_URL —
+# and ADMIN_KEY, which unlocks the wrong-page feedback admin view (/admin/feedback; unset → off).
 services:
   app:
     build:
@@ -12,6 +13,7 @@ services:
       - "127.0.0.1:8010:8010"   # local only; Caddy fronts it
     volumes:
       - raster_cache:/app/cache
+      - feedback_data:/app/data     # the wrong-page feedback SQLite (P4 A) survives rebuilds
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
@@ -28,5 +30,6 @@ services:
       - app
 volumes:
   raster_cache:
+  feedback_data:
   caddy_data:
   caddy_config:

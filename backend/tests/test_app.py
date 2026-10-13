@@ -54,6 +54,7 @@ def test_health_and_catalog():
     h = c.get("/api/health").json()
     assert h["ok"] is True and h["catalog_entries"] == 1 and "model" in h
     assert set(h["summary"]) == {"model", "timeout", "stats"} and set(h["narration"]) == {"model", "stats"}   # the small gpt-6-luna clients are diagnosable
+    assert set(h["feedback"]) == {"enabled", "store", "stored"} and isinstance(h["feedback"]["enabled"], bool)   # P4 A: a boolean, never the key
     assert c.get("/api/catalog").json()["entries"][0]["id"] == "x"
 
 

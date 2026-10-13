@@ -1,5 +1,6 @@
 """The AI summary and the follow-ups (13 Oct): grounding, validation and the two endpoints, with a fake model."""
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -154,7 +155,8 @@ def test_summary_endpoint_contract():
     r = c.post("/api/summary", json={"message": "Take me to the Hurricane Lowell report", "reply": "Taking you to the Hurricane Lowell report.", "path": "/extreme-events/lowell", "intent": "navigate"})
     assert r.status_code == 200
     body = r.json()
-    assert set(body) == set(EMPTY_OUT)
+    assert set(body) == set(EMPTY_OUT) | {"request_id"}   # P4 A: a written overview carries a request id for "Wrong page?" reports
+    assert re.fullmatch(r"[0-9a-f]{32}", body["request_id"])
     assert body["chunks"] == split_sentences(THREE) and body["sources"][0]["url"] == LOWELL and body["followups"] == FOLLOWUPS
     assert body["cites"] == [[], [], []] and body["more"] == [] and body["more_cites"] == []
     # off_topic and analysis never get a summary; neither does a foreign address; all are 200 with everything empty

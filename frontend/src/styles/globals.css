@@ -895,7 +895,7 @@
    fill was 0.86 for 4.53:1 there; the user asked for more transparency (13 Oct) — 0.62 with a darker ghost (foreground at 70 %). Dark mode: the same with the dark canvas. Without backdrop-filter the
    field falls back to a solid canvas fill. */
 .hcdp-ask-glass {
-  background: hsl(var(--canvas) / 0.62);   /* 13 Oct: more see-through, so the islands show through the bar */
+  background: hsl(var(--canvas) / 0.5);   /* 13 Oct: more see-through still, so the islands show through the bar */
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }

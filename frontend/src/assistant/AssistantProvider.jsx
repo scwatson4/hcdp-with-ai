@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { parseViewerPath } from '../viewer/urlGrammar'
+import { canonicalize, parseViewerPath } from '../viewer/urlGrammar'
 import { handoffUrl } from '../site/handoff'
 import { clearDownload, currentDownload, noteDownload } from '../download/downloadStore'
 import TravelProxy from './TravelProxy'
@@ -89,6 +89,7 @@ export function AssistantProvider({ children }) {
   // Follow-up asks by address (pathname + search): { key: { list, source: 'summary' | 'view', at } }.
   const [followups, setFollowupsState] = useState({})
   const wrongPage = useRef(null)             // { id, until, skip }: the open "Wrong page?" report awaiting the visitor's next page (P4 A)
+  const assistantPath = useRef(null)         // the last path the assistant itself navigated to (the viewer's follow-ups skip it, N4 A)
   const [epoch, setEpoch] = useState(0)      // bumped by reset(): the bars remount empty (item 13)
   const historyRef = useRef([])
   const seq = useRef(0)
@@ -146,6 +147,17 @@ export function AssistantProvider({ children }) {
     for (const [k, v] of Object.entries(followups)) if (k.split('?')[0] === pathname && (!best || v.at > best.at)) best = v
     return best ? best.list : null
   }, [followups])
+
+  /** N4 A: whether the assistant itself opened this viewer address (its overview carries the follow-ups then), alias
+   *  spellings resolved on both sides. */
+  const wasAssistantNavigation = useCallback((pathname, search = '') => {
+    const p = assistantPath.current
+    if (!p) return false
+    const [pp, ps = ''] = p.split('?')
+    const a = canonicalize(pathname, search || '') || pathname
+    const b = canonicalize(pp, ps ? `?${ps}` : '') || pp
+    return a.split('?')[0] === b.split('?')[0]
+  }, [])
 
   // ── "Wrong page?" (P4 A) ──
   /** The visitor's next page, attached to the open report (once; never the page they asked for by name). */
@@ -235,6 +247,7 @@ export function AssistantProvider({ children }) {
     endWait()
     setTravel({ phase: 'idle', path: null })
     noteNavigation(path)
+    assistantPath.current = path.split('#')[0]
     navigate(path)
     setMode('dock')
     const strip = { ...s, path: path.split('?')[0].split('#')[0] }
@@ -414,9 +427,9 @@ export function AssistantProvider({ children }) {
   const value = useMemo(() => ({
     messages, mode, busy, travelling, travel, strip, wait: waitLine, heroOut, setHeroOut, epoch, send, choose, open, minimize, setMode, reset,
     handoff, stayHere, settleHandoff, holdStrip, releaseStrip, hideStrip,
-    summary, dismissSummary, followups, followupsFor, setFollowups, reportWrongPage, noteNavigation,
+    summary, dismissSummary, followups, followupsFor, setFollowups, reportWrongPage, noteNavigation, wasAssistantNavigation,
   }), [messages, mode, busy, travelling, travel, strip, waitLine, heroOut, epoch, send, choose, open, minimize, reset, handoff, stayHere, settleHandoff, holdStrip, releaseStrip, hideStrip,
-    summary, dismissSummary, followups, followupsFor, setFollowups, reportWrongPage, noteNavigation])
+    summary, dismissSummary, followups, followupsFor, setFollowups, reportWrongPage, noteNavigation, wasAssistantNavigation])
   return (
     <Ctx.Provider value={value}>
       {children}

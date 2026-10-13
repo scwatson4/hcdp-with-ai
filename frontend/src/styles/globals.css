@@ -1020,4 +1020,14 @@
 .hcdp-dl-row { animation: hcdp-ai-chunk-in 300ms ease both; }
 @media (prefers-reduced-motion: reduce) {
   .hcdp-verify-ok, .hcdp-dl-row { animation: none; }
+
+/* N3 B (13 Oct): the docked bar's quiet ghost — the follow-up sits still (no typewriter, no caret) and crossfades
+   into the next: the incoming text fades in while the outgoing one, layered under it, fades out. Reduced motion: a cut. */
+.hcdp-ghost-in { animation: hcdp-ghost-in 500ms ease both; }
+.hcdp-ghost-out { animation: hcdp-ghost-out 500ms ease both; pointer-events: none; }
+@keyframes hcdp-ghost-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes hcdp-ghost-out { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .hcdp-ghost-in, .hcdp-ghost-out { animation: none; }
+  .hcdp-ghost-out { display: none; }
 }

@@ -14,6 +14,8 @@ export const HANDOFF_SENTENCE = 'This is better answered by our AI data analysis
 export const HANDOFF_NOTE = 'Opens in a new tab · your question comes with you · sign in there with a code or an HCDP API key'
 
 export const MAX_LINES = 3
+export const QUIET_HOLD_MS = 3500   // N3 B: how long the docked bar's still ghost holds an example
+export const GHOST_FADE_MS = 500    // N3 B: the crossfade between two examples
 
 export const EXAMPLES = [
   'How do I download Hurricane Lowell rainfall data?',
@@ -80,6 +82,12 @@ function HandoffReply({ m }) {
  * frozen while the field has focus; Tab or a tap on the ghost text inserts one. A new set takes over as soon
  * as the field is empty and unfocused — a visitor who is typing is never interrupted. Without follow-ups the
  * docked bar behaves as before.
+ * N3 B + N4 A (13 Oct): the DOCKED bar's ghost is the quiet variant — no typewriter, no caret: the current example sits
+ * still as the grey ghost, holds QUIET_HOLD_MS, then crossfades (GHOST_FADE_MS) into the next; a fresh random order per
+ * set, the same freeze on focus, the same Tab/tap insert. The hero bar keeps its typewriter (L1 B). A new set (a
+ * navigation's follow-ups, or the viewer's own follow-ups after a rail change) is adopted at once while nothing is
+ * cycling, else at the end of the current example's hold — never mid-example — so the old set keeps cycling until the
+ * new one is in.
  * R6 D (13 Oct): the typeahead. From three typed characters a listbox under the bar (both bars) lists up to five
  * catalogue matches, found locally (localMatch.js; no AI call), 80 ms after the last keystroke: the title and a grey
  * kind word (map · page · tool · report · external ↗). ↑/↓ move, Esc closes (until the text changes), a click outside
@@ -118,49 +126,85 @@ export function AskBar({ docked = false, glass = false }) {
   const pool = followups && followups.length ? followups : (!hasConversation ? EXAMPLES : null)
   const poolKind = followups && followups.length ? 'followups' : 'examples'
   const poolKey = pool ? `${poolKind}:${pool.join('\u0001')}` : 'none'
-  const ghostActive = !text && !busy && !travelling && !!pool
+  // N4 A: the set in use follows the incoming one at once while nothing is cycling, else at the end of the current hold.
+  const incomingRef = useRef(null)
+  incomingRef.current = { key: poolKey, pool, kind: poolKind }
+  const [inUse, setInUse] = useState(() => incomingRef.current)
+  const loopRunning = useRef(false)
+  // (a set that disappears — a page without follow-ups — is let go of at once; only a NEW set waits for the hold to end)
+  useEffect(() => { if (inUse.key !== poolKey && (!loopRunning.current || !incomingRef.current.pool)) setInUse(incomingRef.current) }, [poolKey, inUse.key])
+  const activePool = inUse.pool
+  const activeKind = inUse.kind
+  const quiet = docked   // N3 B: the docked bar's ghost sits still — no typewriter, no caret
+  const ghostActive = !text && !busy && !travelling && !!activePool
   const reduceMotion = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
   // A fresh random order per pool (Fisher–Yates), so a refresh almost never starts on the same example.
   const orderRef = useRef({ key: null, order: [] })
-  if (orderRef.current.key !== poolKey) orderRef.current = { key: poolKey, order: shuffledOrder(pool ? pool.length : 0) }
-  const exampleAt = (i) => (pool && orderRef.current.order.length ? pool[orderRef.current.order[i % orderRef.current.order.length]] : '')
-  const [typed, setTyped] = useState(reduceMotion ? exampleAt(0) : '')
+  if (orderRef.current.key !== inUse.key) orderRef.current = { key: inUse.key, order: shuffledOrder(activePool ? activePool.length : 0) }
+  const exampleAt = (i) => (activePool && orderRef.current.order.length ? activePool[orderRef.current.order[i % orderRef.current.order.length]] : '')
+  const [typed, setTyped] = useState(reduceMotion || quiet ? exampleAt(0) : '')
+  const typedRef = useRef(typed); typedRef.current = typed
+  const [outgoing, setOutgoing] = useState(null)   // the quiet variant's crossfade: the example on its way out
   const [ghostShown, setGhostShown] = useState(true)
   const [focused, setFocused] = useState(false)
   const idxRef = useRef(0)
-  const lastPoolRef = useRef(poolKey)
+  const lastPoolRef = useRef(inUse.key)
   const hoverRef = useRef(false)
   const focusRef = useRef(false)   // a click into the field freezes the carousel where it is; typing stops it altogether
   const inputRef = useRef(null)
   useEffect(() => {
-    if (lastPoolRef.current !== poolKey) {   // a new set: start it from the top, with nothing left of the old one
-      lastPoolRef.current = poolKey
+    const fresh = lastPoolRef.current !== inUse.key
+    if (fresh) {   // a new set: start it from the top (the quiet variant crossfades from whatever was showing)
+      lastPoolRef.current = inUse.key
       idxRef.current = 0
-      setTyped(reduceMotion && pool ? exampleAt(0) : '')
+      if (!quiet) setTyped(reduceMotion && activePool ? exampleAt(0) : '')
       setGhostShown(true)
     }
-    if (!ghostActive || reduceMotion) return undefined
+    if (!ghostActive) return undefined
+    if (reduceMotion) { setTyped(exampleAt(idxRef.current)); return undefined }   // one still example
     let cancelled = false; let timer = null; let wake = null
+    loopRunning.current = true
     const sleep = (ms) => new Promise((resolve) => { wake = resolve; timer = setTimeout(resolve, ms) })
     const whileFocused = async () => { while (focusRef.current && !cancelled) await sleep(200) }
+    const adopt = () => { const inc = incomingRef.current; if (inc.key !== inUse.key) { setInUse(inc); return true } return false }
     ;(async () => {
+      if (quiet) {
+        // the first example comes in with a crossfade from whatever the ghost showed (an older set, or nothing)
+        const first = exampleAt(idxRef.current)
+        const was = typedRef.current
+        if (was && was !== first) setOutgoing(was)
+        setTyped(first); setGhostShown(true)
+        if (was && was !== first) { await sleep(GHOST_FADE_MS); if (!cancelled) setOutgoing(null) }
+      }
       while (!cancelled) {
         await whileFocused()
+        if (cancelled) break
         const ex = exampleAt(idxRef.current)
         setGhostShown(true)
-        for (let k = 1; k <= ex.length && !cancelled; k += 1) { await whileFocused(); if (cancelled) break; setTyped(ex.slice(0, k)); await sleep(28) }
+        if (quiet) setTyped(ex)
+        else for (let k = 1; k <= ex.length && !cancelled; k += 1) { await whileFocused(); if (cancelled) break; setTyped(ex.slice(0, k)); await sleep(28) }
         if (cancelled) break
-        await sleep(2000)
+        await sleep(quiet ? QUIET_HOLD_MS : 2000)
         while ((hoverRef.current || focusRef.current) && !cancelled) await sleep(300)
         if (cancelled) break
-        setGhostShown(false); await sleep(350)
-        if (cancelled) break
-        idxRef.current += 1; setTyped('')
+        if (quiet) {
+          if (adopt()) break   // N4 A: the new set takes over at the end of this hold, with a crossfade
+          idxRef.current += 1
+          const next = exampleAt(idxRef.current)
+          setOutgoing(ex); setTyped(next)
+          await sleep(GHOST_FADE_MS)
+          if (!cancelled) setOutgoing(null)
+        } else {
+          setGhostShown(false); await sleep(350)
+          if (cancelled) break
+          if (adopt()) break
+          idxRef.current += 1; setTyped('')
+        }
       }
     })()
-    return () => { cancelled = true; if (timer) clearTimeout(timer); if (wake) wake() }
+    return () => { cancelled = true; loopRunning.current = false; if (timer) clearTimeout(timer); if (wake) wake() }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ghostActive, reduceMotion, poolKey])
+  }, [ghostActive, reduceMotion, inUse.key, quiet])
   const ghostQuery = ghostActive ? exampleAt(idxRef.current) : null
   const insertGhost = () => { if (ghostQuery) { setText(ghostQuery); inputRef.current?.focus() } }
   // The field wraps long questions and grows to three lines; beyond that it scrolls inside (Enter sends, Shift+Enter breaks a line).
@@ -203,10 +247,12 @@ export function AskBar({ docked = false, glass = false }) {
             style={{ height: `${lines * lineHeight}px` }} />
           {ghostQuery && (
             <>
-              <span id="ask-ghost-hint" className="sr-only">{poolKind === 'followups' ? 'Press Tab to insert the suggested follow-up question.' : 'Press Tab to insert the suggested example question.'}</span>
-              <div aria-hidden="true" data-testid="composer-ghost" data-pool={poolKind} className={cn('pointer-events-none absolute top-1/2 -translate-y-1/2 truncate text-[16px] transition-opacity duration-300 motion-reduce:transition-none', docked ? 'left-4 right-12 text-subtle sm:right-28' : 'left-6 right-14 text-foreground/70 sm:right-32 sm:text-[18px]')} style={{ opacity: ghostShown ? 1 : 0 }}>
+              <span id="ask-ghost-hint" className="sr-only">{activeKind === 'followups' ? 'Press Tab to insert the suggested follow-up question.' : 'Press Tab to insert the suggested example question.'}</span>
+              <div aria-hidden="true" data-testid="composer-ghost" data-pool={activeKind} data-variant={quiet ? 'quiet' : 'typewriter'} className={cn('pointer-events-none absolute top-1/2 -translate-y-1/2 truncate text-[16px] transition-opacity duration-300 motion-reduce:transition-none', docked ? 'left-4 right-12 text-subtle sm:right-28' : 'left-6 right-14 text-foreground/70 sm:right-32 sm:text-[18px]')} style={{ opacity: ghostShown ? 1 : 0 }}>
                 {/* a tap on the follow-up's text drops it into the field (the rest of the field still just focuses) */}
-                <span data-testid="composer-ghost-text" onClick={poolKind === 'followups' ? insertGhost : undefined} className={cn(poolKind === 'followups' && 'pointer-events-auto cursor-text')}>{typed}</span><span className={cn('ml-px inline-block h-[1.1em] w-px translate-y-[3px] bg-subtle align-baseline', reduceMotion || typed.length >= ghostQuery.length ? 'opacity-0' : 'hcdp-caret')} />
+                <span key={quiet ? typed : 'typed'} data-testid="composer-ghost-text" onClick={activeKind === 'followups' ? insertGhost : undefined} className={cn(activeKind === 'followups' && 'pointer-events-auto cursor-text', quiet && 'hcdp-ghost-in inline-block')}>{typed}</span>
+                {!quiet && <span className={cn('ml-px inline-block h-[1.1em] w-px translate-y-[3px] bg-subtle align-baseline', reduceMotion || typed.length >= ghostQuery.length ? 'opacity-0' : 'hcdp-caret')} />}
+                {quiet && outgoing && <span aria-hidden="true" data-testid="composer-ghost-outgoing" className="hcdp-ghost-out absolute left-0 top-0 truncate">{outgoing}</span>}
               </div>
             </>
           )}

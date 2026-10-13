@@ -33,6 +33,7 @@ import { Compass, CornerStack, ExperimentalBadge, IGNITION_CAUTION, Legend, MapP
 import { GrammarError, MapStatus } from './map/ErrorStates'
 import Launcher from './map/Launcher'
 import AISummary from '../assistant/AISummary'
+import { useViewFollowups } from '../assistant/useViewFollowups'
 
 const ClimateMap = lazy(() => import('./map/ClimateMap'))
 const TimeSeriesPanel = lazy(() => import('./TimeSeriesPanel'))
@@ -97,6 +98,8 @@ function Viewer({ v }) {
   const latest = useRef(v)
   latest.current = v
   const seq = useRef(0)
+  // N4 A (13 Oct): a rail change (dataset, period, date, extent) refreshes the docked bar's follow-up asks for the new view.
+  useViewFollowups(v)
 
   // The view the last write in this task produced, before React has rendered
   // it: a second write in the same task (two limiter flushes, two toggles)

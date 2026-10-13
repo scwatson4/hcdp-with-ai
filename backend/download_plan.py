@@ -384,6 +384,15 @@ def trim_words(text: str, limit: int) -> str:
     return text if len(words) <= limit else " ".join(words[:limit]).rstrip(",;:") + "…"
 
 
+def shorten(text: str, limit: int) -> str:
+    """At most `limit` characters, cut at a word boundary with an ellipsis — never mid-word."""
+    t = (text or "").strip()
+    if len(t) <= limit:
+        return t
+    cut = t[:limit - 1].rsplit(" ", 1)[0].rstrip(",;:(-")
+    return (cut if len(cut) >= limit // 2 else t[:limit - 1].rstrip()) + "…"
+
+
 class DownloadPlanner:
     """Grounds the model (the products HCDP can package with their published ranges, the catalogued storms, today's date),
     asks it for a plan and validates everything it answers. `llm` has `configured` and `complete(system, user) -> dict | None`;
@@ -493,7 +502,7 @@ class DownloadPlanner:
         add(event, True, "the storm's story, key figures and HCDP's official downloads, linked in the README")
         for e in self.nav.related_entries(event, seen):
             first = re.split(r"(?<=[.!?])\s+", clean_text(e.get("summary") or e.get("when_to_use") or ""), maxsplit=1)[0]
-            add(e, False, first)
+            add(e, False, shorten(first, 120))
         return out
 
     def normalize(self, raw: dict, ask: str, ranges: dict | None = None, previous: list | None = None) -> dict:

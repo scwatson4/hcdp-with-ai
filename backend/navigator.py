@@ -513,7 +513,7 @@ WHAT YOU CAN DO
 2. open — open a real HCDP page or tool, or a catalogued external site (for example the National Weather Service for forecasts and warnings), in a new tab (only URLs from the catalog).
 3. handoff — when the request is data ANALYSIS (numbers, totals, averages, rankings, comparisons, trends, charts, "how much", "which station recorded the most", "why"), send them to the HCDP AI interface, which can compute. Do not attempt the analysis; say in one sentence that the analysis assistant will do it. But "was it raining / how hot was it at PLACE on DAY or MONTH" with no number asked is a MAP question: navigate to that day's or month's map for the island.
 4. info — answer a factual question about HCDP from the catalog, briefly, without navigating.
-5. clarify — ask ONE short question, only when you truly cannot choose (prefer acting with a sensible default and offering alternatives).
+5. clarify — ask ONE short question, only when you truly cannot choose (prefer acting with a sensible default and offering alternatives). When the ask is genuinely ambiguous — a word or phrase that could mean several catalogued things ("fire": the fire ignition map or the ignition forecast page; "the drought map": the SPI-3 map, the SPI-12 map or the rangeland portal; "station data": the climate station records, the Mesonet live readings or the station list) — add "options": 2 to 4 of the things it could mean, each {{"id": "<catalog id>", "why": "one clause"}} or {{"path": "/viewer/…", "why": "one clause"}}; the site shows them as picture tiles the visitor taps. Leave options out when a plain question is enough, and never add them to a clear ask.
 6. off_topic — the request is not about HCDP or Hawaiʻi's climate (see SCOPE): no reply text is needed, no actions, no alternatives.
 7. download — the visitor wants DATA FILES rather than a page or a map: "download …", "data for …", "I need the rainfall data …", "get me the station totals …", "how do I download …", "export …", "GeoTIFFs/CSVs of …" for rainfall or temperature (HCDP's export packages gridded maps and station data by day or month). Answer intent "download" with ONE navigate action to /data/api (the API page, where the site offers to prepare the files with AI) and a "download" object: {{"ask": the request as typed, "offer": one sentence on what the AI would prepare (which product, dates, islands, as one zip), "hints": {{"product": rainfall|rainfall-legacy|temperature-max|temperature-min|temperature-mean, "period": day|month, "start": …, "end": …, "extents": [slugs], "event": name or null, "place": name or null}}}}. The reply says you are taking them to the API page where the files can be prepared. A storm's data uses its catalogued dates. Mesonet 5-minute readings, SPI, NDVI, ignition and projections are NOT in the export: for those, navigate or open as before. Never navigate to /download yourself.
 
@@ -548,7 +548,7 @@ RULES
 - Set minimize=true whenever you navigate or open.
 
 Respond with ONLY a JSON object:
-{{"intent": "navigate|analysis|info|clarify|off_topic|download", "reply": "…", "actions": [{{"type": "navigate", "path": "/…"}} | {{"type": "open", "url": "https://…"}} | {{"type": "handoff"}}], "alternatives": [{{"title": "…", "url": "https://… or /path", "why": "…"}}], "minimize": true|false, "download": {{"ask": "…", "offer": "…", "hints": {{…}}}} (download intent only)}}"""
+{{"intent": "navigate|analysis|info|clarify|off_topic|download", "reply": "…", "actions": [{{"type": "navigate", "path": "/…"}} | {{"type": "open", "url": "https://…"}} | {{"type": "handoff"}}], "alternatives": [{{"title": "…", "url": "https://… or /path", "why": "…"}}], "options": [{{"id": "…", "why": "…"}} | {{"path": "/viewer/…", "why": "…"}}] (clarify only, when ambiguous), "minimize": true|false, "download": {{"ask": "…", "offer": "…", "hints": {{…}}}} (download intent only)}}"""
 
     # ----- response ---------------------------------------------------------
     def respond(self, message: str, history: list[dict] | None = None, context: dict | None = None) -> dict:
@@ -641,6 +641,10 @@ Respond with ONLY a JSON object:
         destination = self.destination_for(actions)
         if destination:
             out["destination"] = destination   # R6 C (13 Oct): the wait line says "Opening {title}…" during the hold/travel
+        if intent == "clarify":
+            options = self.resolve_options(raw.get("options"))
+            if options:
+                out["options"] = options   # R5 C (13 Oct): the did-you-mean tiles
         return out
 
     def api_page_url(self) -> str | None:
@@ -662,6 +666,80 @@ Respond with ONLY a JSON object:
             elif isinstance(v, list) and all(isinstance(x, str) for x in v):
                 hints[k] = [x.strip()[:40] for x in v if x.strip()][:6]
         return {"ask": ask, "offer": offer or "I can gather the HCDP files for this into one zip, with a README that says what is inside.", "hints": hints, "api_url": self.api_page_url()}
+
+    # ----- did-you-mean options for an ambiguous ask (R5 C, 13 Oct) -----
+    def fill_template(self, path: str) -> str:
+        """A viewer template's {date} and {extent} filled with yesterday (daily) or the last complete month (monthly) in
+        Hawaiʻi and statewide (the frontend's fillTemplate does the same)."""
+        today = self.today()
+        yesterday = (today - dt.timedelta(days=1)).isoformat()
+        last_month = (today.replace(day=1) - dt.timedelta(days=1)).strftime("%Y-%m")
+        return path.replace("{date}", last_month if "/month/" in path else yesterday).replace("{extent}", "statewide")
+
+    def entry_target(self, e: dict) -> str | None:
+        """Where a catalog entry leads: its internal path (a {date}/{extent} template filled; another template's page),
+        else its url when allowed; None when nowhere."""
+        ip = e.get("internal_path")
+        target = None
+        if isinstance(ip, str) and ip:
+            if "{" not in ip:
+                target = ip
+            elif set(re.findall(r"\{([^}]*)\}", ip)) <= {"date", "extent"}:
+                target = self.fill_template(ip)
+            else:
+                base = ip.split("#", 1)[0].partition("?")[0]
+                target = base if base and base != "/" else None
+        if target and valid_internal_path(target):
+            return target
+        return e["url"] if self.allowed_url(e.get("url")) else None
+
+    def resolve_option(self, item) -> dict | None:
+        """One did-you-mean option from the model — a catalog id, a path or a url, as a string or {id|path|url, why} —
+        resolved to {id, kind, title, url, why}; None when it names nothing this site can open."""
+        if isinstance(item, str):
+            s = item.strip()
+            item = {"path": s} if s.startswith("/") else {"url": s} if s.startswith(("http://", "https://")) else {"id": s}
+        if not isinstance(item, dict):
+            return None
+        why = str(item.get("why") or "").strip()[:160]
+        e, target = None, None
+        if item.get("id"):
+            e = self.entry(str(item["id"]).strip())
+            if e is None:
+                return None
+            target = self.entry_target(e)
+        else:
+            ref = item.get("path") or item.get("url")
+            if isinstance(ref, str) and ref.startswith("/") and valid_internal_path(ref):
+                target = ref
+                e = self.destination(ref)
+            elif self.allowed_url(ref):
+                target = ref
+                e = self.entry_for_url(ref)
+        if not target:
+            return None
+        if e and e.get("title"):
+            title = short_title(e["title"])
+        elif target.startswith("/"):
+            title = self.title_for_path(target)
+        else:
+            title = urlparse(target).hostname or target
+        if not why:
+            why = str((e or {}).get("when_to_use") or "").strip()[:160]
+        return {"id": (e or {}).get("id"), "kind": (e or {}).get("kind"), "title": title, "url": target, "why": why}
+
+    def resolve_options(self, items) -> list[dict]:
+        """2–4 distinct did-you-mean options (fewer than two is no choice → none)."""
+        out: list[dict] = []
+        seen: set[str] = set()
+        for item in items if isinstance(items, list) else []:
+            o = self.resolve_option(item)
+            if o and o["url"] not in seen:
+                seen.add(o["url"])
+                out.append(o)
+            if len(out) == 4:
+                break
+        return out if len(out) >= 2 else []
 
     # ----- the destination's name, for the staged wait line (R6 C, 13 Oct) -----
     def entry_for_url(self, url: str) -> dict | None:

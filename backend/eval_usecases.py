@@ -6,7 +6,9 @@ Prints a summary and a Markdown table of misses. A case passes on intent when
 the navigator's intent equals expected_intent; it passes on target when the
 primary action (first navigate/open) resolves to one of expected_ids, or the
 navigate path starts with expected_path_prefix, or (analysis) a handoff exists.
-"Near" means an expected target appeared among the alternatives instead.
+A clarify case with expected_min_options (R5 C) passes on target only when the
+answer carries at least that many did-you-mean options and one of them is an
+expected id. "Near" means an expected target appeared among the alternatives instead.
 """
 from __future__ import annotations
 
@@ -65,6 +67,10 @@ def judge(case: dict, out: dict, catalog: list[dict]) -> dict:
     elif case["id"].startswith("off-topic-"):
         # the scope guard: the fixed sentence (normalize sets off_topic) and nothing to navigate to
         target_ok = out.get("off_topic") is True and not out.get("actions")
+    elif exp_intent == "clarify" and case.get("expected_min_options"):
+        options = out.get("options") or []
+        opt_ids = set().union(*[resolve(catalog, o.get("url")) | ({o["id"]} if o.get("id") else set()) for o in options] or [set()])
+        target_ok = intent_ok and len(options) >= case["expected_min_options"] and (not exp_ids or bool(exp_ids & opt_ids))
     elif exp_intent in ("info", "clarify"):
         target_ok = intent_ok or bool(exp_ids & set().union(*[resolve(catalog, u) for u in alts] or [set()]))
     else:
@@ -78,7 +84,7 @@ def judge(case: dict, out: dict, catalog: list[dict]) -> dict:
             near = True
     return {"id": case["id"], "persona": case.get("persona"), "query": case["query"], "expected_intent": exp_intent, "intent": out.get("intent"),
             "intent_ok": intent_ok, "target_ok": target_ok, "near": near, "primary": primary, "reply": out.get("reply"), "error": out.get("error"),
-            "expected": sorted(exp_ids) or prefix}
+            "expected": sorted(exp_ids) or prefix, "options": [o.get("id") or o.get("url") for o in out.get("options") or []]}
 
 
 def main():

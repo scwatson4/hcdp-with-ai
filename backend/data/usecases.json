@@ -1311,6 +1311,44 @@
       ],
       "expected_path_prefix": "/data/api",
       "notes": "Daily temperature grids are in the export (temperature-max by day, extent hawaii); GeoTIFFs = data files, so download rather than a viewer map."
+    },
+    {
+      "id": "ambiguous-fire",
+      "persona": "citizen",
+      "query": "fire",
+      "expected_intent": "clarify",
+      "expected_ids": [
+        "ignition-daily-map",
+        "ignition-forecast"
+      ],
+      "expected_min_options": 2,
+      "notes": "R5 C (13 Oct): one word that could mean the daily fire ignition map, the 1–3 day ignition forecast (Access Data) or the Hurricane Lane fire story; the clarify answer asks which and carries 2–4 options the site shows as picture tiles."
+    },
+    {
+      "id": "ambiguous-drought-map",
+      "persona": "farmer-rancher",
+      "query": "the drought map",
+      "expected_intent": "clarify",
+      "expected_ids": [
+        "spi-3-map",
+        "spi-12-map",
+        "h-rip"
+      ],
+      "expected_min_options": 2,
+      "notes": "R5 C: several drought maps — SPI-3 (seasonal), SPI-12 (a year) and the rangeland portal's ranch drought view; the answer asks which and offers them as options (tiles)."
+    },
+    {
+      "id": "ambiguous-station-data",
+      "persona": "researcher",
+      "query": "station data",
+      "expected_intent": "clarify",
+      "expected_ids": [
+        "station-data",
+        "mesonet-live-data",
+        "mesonet-station-list"
+      ],
+      "expected_min_options": 2,
+      "notes": "R5 C: the climate station records behind the maps, the Mesonet live readings or the station list; ask which, with the candidates as options (tiles)."
     }
   ]
 }

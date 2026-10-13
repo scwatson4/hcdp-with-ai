@@ -5,6 +5,7 @@ import { useAssistant } from './AssistantProvider'
 import { cn } from '../lib/utils'
 import { handoffUrl } from '../site/handoff'
 import { DEBOUNCE_MS, MIN_CHARS, fold, localMatch } from './localMatch'
+import TileChoice from './TileChoice'
 
 // T2 pick B (2026-10-08): the hand-off moment. The sentence is fixed (the backend writes the
 // same words into the conversation history); "here" is the link; a grey line says what to
@@ -235,7 +236,11 @@ export function AskBar({ docked = false, glass = false }) {
  * page the question is already in the bar). `compact` is the docked bar's dropdown.
  */
 export function Conversation({ compact = false, hideUser = false, latestOnly = false, className }) {
-  const { messages: all, busy } = useAssistant()
+  const { messages: all, busy, choose } = useAssistant()
+  // R5 C: a clarify answer with did-you-mean options shows them as picture tiles (the rows of alternatives then step aside);
+  // a tap chooses with the question that led to the answer as the ask, so the overview reads "fire → You chose …".
+  const tiles = (m) => m.role === 'assistant' && m.intent === 'clarify' && Array.isArray(m.options) && m.options.length >= 2
+  const askFor = (m) => { const i = all.indexOf(m); for (let k = i - 1; k >= 0; k -= 1) if (all[k].role === 'user') return all[k].content; return '' }
   // latestOnly: the docked dropdown shows the newest reply only — never the history (12 Oct).
   const messages = latestOnly ? [all[0], ...all.filter((m) => m.role === 'assistant').slice(-1)] : all
   const listRef = useRef(null)
@@ -245,14 +250,15 @@ export function Conversation({ compact = false, hideUser = false, latestOnly = f
     <div ref={listRef} className={cn('space-y-3 overflow-y-auto', compact ? 'px-1 py-1.5 text-[13px]' : 'max-h-[42vh] px-1 py-2', className)} aria-live="polite" data-testid="conversation">
       {messages.map((m, i) => (i === 0 || (hideUser && m.role === 'user') ? null : (
         <div key={m.id ?? i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')} data-testid={m.role === 'user' ? 'user-bubble' : 'assistant-bubble'}>
-          <div className={cn('max-w-[92%] rounded-lg px-3 py-2 text-sm leading-relaxed', m.role === 'user' ? 'bg-accent text-accent-foreground' : 'bg-surface border border-border')}>
+          <div className={cn('rounded-lg px-3 py-2 text-sm leading-relaxed', tiles(m) ? 'w-full' : 'max-w-[92%]', m.role === 'user' ? 'bg-accent text-accent-foreground' : 'bg-surface border border-border')}>
             {m.intent === 'analysis' ? <HandoffReply m={m} /> : m.content}
             {m.role === 'user' && <button type="button" title="Copy a link that asks this" aria-label="Copy a link that asks this" onClick={(ev) => { const href = `${window.location.origin}/?ask=${encodeURIComponent(m.content)}`; const b = ev.currentTarget; navigator.clipboard?.writeText(href).then(() => { b.dataset.copied = '1'; setTimeout(() => { delete b.dataset.copied }, 1500) }).catch(() => window.prompt('Copy this link', href)) }} className="group ml-1 inline-grid h-6 w-6 place-items-center rounded align-middle text-accent-foreground/70 hover:bg-white/10 hover:text-accent-foreground data-[copied]:text-accent-foreground"><Link2 className="h-3.5 w-3.5 group-data-[copied]:hidden" aria-hidden="true" /><span className="hidden text-[10px] group-data-[copied]:inline">Copied</span></button>}
             {m.actions?.filter((a) => a.type === 'open').map((a, j) => (
               <div key={j} className="mt-2"><a className="inline-flex items-center gap-1 rounded-md border border-border bg-canvas px-2.5 py-1 text-xs font-medium hover:border-foreground" href={a.url} target="_blank" rel="noopener noreferrer">{a.blocked ? 'Your browser blocked the new tab — open it here' : 'Opened in a new tab — open again'} <ExternalLink className="h-3 w-3" aria-hidden="true" /></a></div>
             ))}
-            {m.alternatives?.length > 0 && !compact && <div className="mt-2 space-y-1">{m.alternatives.map((a, j) => <Alternative key={j} a={a} />)}</div>}
-            {m.alternatives?.length > 0 && compact && <div className="mt-1.5 text-xs text-subtle">Also: {m.alternatives.slice(0, 3).map((a, j) => <span key={j}>{j > 0 && ' · '}{a.url?.startsWith('/') ? <Link to={a.url} className="underline underline-offset-2 hover:text-foreground">{a.title}</Link> : <a href={a.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">{a.title}</a>}</span>)}</div>}
+            {tiles(m) && <TileChoice options={m.options} onChoose={(o) => choose(o, { ask: askFor(m), echoAsk: false, docked: compact })} />}
+            {m.alternatives?.length > 0 && !tiles(m) && !compact && <div className="mt-2 space-y-1">{m.alternatives.map((a, j) => <Alternative key={j} a={a} />)}</div>}
+            {m.alternatives?.length > 0 && !tiles(m) && compact && <div className="mt-1.5 text-xs text-subtle">Also: {m.alternatives.slice(0, 3).map((a, j) => <span key={j}>{j > 0 && ' · '}{a.url?.startsWith('/') ? <Link to={a.url} className="underline underline-offset-2 hover:text-foreground">{a.title}</Link> : <a href={a.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">{a.title}</a>}</span>)}</div>}
           </div>
         </div>
       )))}

@@ -13,18 +13,23 @@ export const TILE_SHADES = {
 }
 
 const FRAME = 'relative block aspect-[3/2] overflow-hidden rounded-[10px] bg-inset'
+const FOCUS = 'group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas'
 
 /**
- * One tile. `tool`: { name, caption?, href?, image: { src, width, height },
- * shade?: 'navy' | 'blue', soon?: bool, ai?: bool }. With an `href` the whole tile is one
+ * One tile. `tool`: { name, caption?, href?, image: { src, width, height, fallback? },
+ * shade?: 'navy' | 'blue', soon?: bool, ai?: bool, external?: bool }. With an `href` the whole tile is one
  * link that opens in a new tab; a `soon` tile is not a link. An `ai` tile wears the
  * logo's spectrum as its 1.5 px outline, so it reads as the AI door.
+ * R5 C (13 Oct): with `onSelect` the tile is a button instead (the assistant's did-you-mean tiles choose a
+ * page without leaving the site; `external` marks one that will open in a new tab); `compact` scales the
+ * type for a tile a quarter of a card wide; an image's `fallback` replaces it if it fails to load.
  */
-export function ToolTile({ tool, headingLevel = 2 }) {
+export function ToolTile({ tool, headingLevel = 2, onSelect = null, compact = false }) {
   const id = useId()
-  const { name, caption, href, image, shade = 'navy', soon = false, ai = false } = tool
+  const { name, caption, href, image, shade = 'navy', soon = false, ai = false, external = false } = tool
   const Heading = `h${headingLevel}`
-  const live = Boolean(href) && !soon
+  const live = (Boolean(href) || Boolean(onSelect)) && !soon
+  const opensTab = Boolean(href) || external
   const inner = (
     <>
       <img
@@ -34,22 +39,39 @@ export function ToolTile({ tool, headingLevel = 2 }) {
         height={image.height}
         loading="lazy"
         decoding="async"
+        onError={image.fallback ? (e) => { if (!e.currentTarget.src.endsWith(image.fallback)) e.currentTarget.src = image.fallback } : undefined}
         className="absolute inset-0 h-full w-full object-cover"
       />
       <div aria-hidden="true" className="absolute inset-0" style={{ backgroundImage: TILE_SHADES[shade] || TILE_SHADES.navy }} />
       <div className="absolute left-[10%] top-[10%] w-[80%] text-left text-white">
-        <Heading id={`${id}name`} className={cn('ml-[5px] text-[1.4rem] font-bold leading-[1.2] text-white', live && 'underline-offset-4 group-hover:underline')}>
+        <Heading id={`${id}name`} className={cn('ml-[5px] font-bold text-white', compact ? 'text-[15px] leading-[1.2] sm:text-[16px]' : 'text-[1.4rem] leading-[1.2]', live && 'underline-offset-4 group-hover:underline')}>
           {name}
           {soon && ' (Coming soon)'}
         </Heading>
-        {caption && <p id={`${id}caption`} className="text-[1rem] leading-[1.7] text-white">{caption}</p>}
+        {caption && <p id={`${id}caption`} className={cn('text-white', compact ? 'mt-0.5 line-clamp-2 text-[12px] leading-[1.35]' : 'text-[1rem] leading-[1.7]')}>{caption}</p>}
       </div>
       {/* In the corner, clear of the text box, so titles wrap as on the portal. */}
-      {live && <ExternalIcon className="absolute right-3 top-3 h-4 w-4 text-white drop-shadow" strokeWidth={2.25} aria-hidden="true" />}
+      {live && opensTab && <ExternalIcon className="absolute right-3 top-3 h-4 w-4 text-white drop-shadow" strokeWidth={2.25} aria-hidden="true" />}
     </>
   )
   if (!live) {
     return <div className={FRAME} data-testid="tool">{inner}</div>
+  }
+  if (onSelect) {
+    return (
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-labelledby={opensTab ? `${id}name ${id}tab` : `${id}name`}
+        aria-describedby={caption ? `${id}caption` : undefined}
+        className={cn(FRAME, FOCUS, 'w-full text-left', ai && 'hcdp-rainbow-border')}
+        data-testid="tool"
+        data-ai={ai ? 'true' : undefined}
+      >
+        {inner}
+        {opensTab && <span id={`${id}tab`} className="sr-only">(opens in a new tab)</span>}
+      </button>
+    )
   }
   return (
     <a
@@ -58,7 +80,7 @@ export function ToolTile({ tool, headingLevel = 2 }) {
       rel="noopener noreferrer"
       aria-labelledby={`${id}name ${id}tab`}
       aria-describedby={caption ? `${id}caption` : undefined}
-      className={cn(FRAME, 'group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas', ai && 'hcdp-rainbow-border')}
+      className={cn(FRAME, FOCUS, ai && 'hcdp-rainbow-border')}
       data-testid="tool"
       data-ai={ai ? 'true' : undefined}
     >

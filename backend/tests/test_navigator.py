@@ -280,3 +280,32 @@ def test_destination_names_the_page_the_answer_opens():
     assert "destination" not in nav.normalize({"intent": "info", "reply": "x", "actions": [], "alternatives": []}, "x")
     assert "destination" not in nav.normalize({"intent": "analysis", "reply": "x", "actions": [], "alternatives": []}, "x")
     assert "destination" not in nav.normalize({"intent": "off_topic", "reply": "x", "actions": [], "alternatives": []}, "x")
+
+
+# ── did-you-mean options for an ambiguous ask (R5 C, 13 Oct) ─────────────────
+def test_clarify_options_are_resolved_from_the_catalog_and_unknowns_dropped():
+    from navigator import load_catalog
+    nav = Navigator(FakeLLM({}), load_catalog(), today=dt.date(2026, 10, 13))
+    s = nav.system_prompt({"path": "/"})
+    assert '"options"' in s and "picture tiles" in s and "never add them to a clear ask" in s
+    raw = {"intent": "clarify", "reply": "Which fire map do you mean?", "actions": [], "alternatives": [],
+           "options": [{"id": "ignition-daily-map", "why": "today's fire risk on a map"}, {"id": "ignition-forecast", "why": "the 1–3 day predictions"},
+                       {"id": "no-such-entry", "why": "x"}, "hurricane-lane-2018", {"path": "/viewer/spi-3/month/2026-08/statewide", "why": "drought"}, {"id": "ignition-forecast"}]}
+    out = nav.normalize(raw, "fire")
+    assert out["intent"] == "clarify" and out["reply"] == "Which fire map do you mean?"
+    opts = out["options"]
+    assert [o["id"] for o in opts] == ["ignition-daily-map", "ignition-forecast", "hurricane-lane-2018", "spi-3-map"]   # unknown dropped, duplicate dropped, four at most; a path resolves through the templates
+    assert opts[0] == {"id": "ignition-daily-map", "kind": "viewer", "title": "Fire ignition probability map", "url": "/viewer/ignition/day/2026-10-12/statewide", "why": "today's fire risk on a map"}
+    assert opts[1]["url"] == "/data" and opts[1]["title"] == "Fire ignition probability and 1–3 day predictions"
+    assert opts[2]["url"].startswith("https://www.hawaii.edu/") and opts[2]["why"]            # a bare id: the why comes from when_to_use
+    assert opts[3] == {"id": "spi-3-map", "kind": "viewer", "title": "Drought index SPI-3 map", "url": "/viewer/spi-3/month/2026-08/statewide", "why": "drought"}
+    # a monthly template fills with the last complete month; a station template falls back to its page
+    assert nav.resolve_option("spi-12-map")["url"] == "/viewer/spi-12/month/2026-09/statewide"
+    assert nav.resolve_option({"id": "mesonet-station-live"})["url"] == "/mesonet"
+    assert nav.resolve_option({"id": "ask-link"}) is None                                 # a question link is not a place
+    assert nav.resolve_option({"url": "https://evil.example/"}) is None and nav.resolve_option({"path": "/nowhere"}) is None and nav.resolve_option(42) is None
+    # one option is no choice; options never ride on other intents
+    assert "options" not in nav.normalize({"intent": "clarify", "reply": "Which?", "actions": [], "alternatives": [], "options": ["lowell"]}, "x")
+    assert "options" not in nav.normalize({"intent": "clarify", "reply": "Which?", "actions": [], "alternatives": []}, "x")
+    assert "options" not in nav.normalize({"intent": "info", "reply": "x", "actions": [], "alternatives": [], "options": ["lowell", "lala"]}, "x")
+    assert "options" not in nav.normalize({"intent": "navigate", "reply": "x", "actions": [{"type": "navigate", "path": "/data"}], "alternatives": [], "options": ["lowell", "lala"]}, "x")

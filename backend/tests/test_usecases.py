@@ -22,7 +22,7 @@ PERSONAS = {"climate-scientist", "emergency-responder", "researcher", "citizen",
             "water-utility", "journalist", "developer"}
 INTENTS = {"navigate", "analysis", "info", "clarify", "download"}
 REQUIRED = {"id": str, "persona": str, "query": str, "expected_intent": str, "expected_ids": list, "notes": str}
-OPTIONAL = {"expected_path_prefix": str, "context": dict}
+OPTIONAL = {"expected_path_prefix": str, "context": dict, "expected_min_options": int}
 ID_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 AS_OF = dt.date(2026, 9, 25)
 LAST_DAY = AS_OF - dt.timedelta(days=1)     # daily maps run through yesterday
@@ -197,6 +197,22 @@ def test_no_placeholder_text_or_forbidden_names():
             low = s.lower()
             assert "todo" not in low and "lorem" not in low, s[:80]
             assert not FORBIDDEN_NAMES.search(s), s[:80]
+
+
+def test_ambiguous_cases_expect_clarify_with_options():
+    """R5 C (13 Oct): a genuinely ambiguous ask gets a clarify answer carrying 2–4 catalogued options (the did-you-mean tiles)."""
+    amb = [c for c in CASES if "expected_min_options" in c]
+    assert len(amb) >= 3 and {c["id"] for c in amb} >= {"ambiguous-fire", "ambiguous-drought-map", "ambiguous-station-data"}
+    for c in amb:
+        assert c["expected_intent"] == "clarify", c["id"]
+        assert 2 <= c["expected_min_options"] <= 4, c["id"]
+        assert len(c["expected_ids"]) >= 2, c["id"]        # the candidates the options should name
+        assert "expected_path_prefix" not in c, c["id"]
+    # and the navigator can turn every candidate into an option
+    nav = Navigator(None, list(CATALOG.values()))
+    for c in amb:
+        for i in c["expected_ids"]:
+            assert nav.resolve_option({"id": i}), (c["id"], i)
 
 
 def test_off_topic_cases_expect_the_scope_reply():

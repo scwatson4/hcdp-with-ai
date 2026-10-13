@@ -1,9 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ArrowUp, ExternalLink, Link2 } from 'lucide-react'
 import { useAssistant } from './AssistantProvider'
 import { cn } from '../lib/utils'
 import { handoffUrl } from '../site/handoff'
+import { DEBOUNCE_MS, MIN_CHARS, fold, localMatch } from './localMatch'
 
 // T2 pick B (2026-10-08): the hand-off moment. The sentence is fixed (the backend writes the
 // same words into the conversation history); "here" is the link; a grey line says what to
@@ -78,11 +79,38 @@ function HandoffReply({ m }) {
  * frozen while the field has focus; Tab or a tap on the ghost text inserts one. A new set takes over as soon
  * as the field is empty and unfocused — a visitor who is typing is never interrupted. Without follow-ups the
  * docked bar behaves as before.
+ * R6 D (13 Oct): the typeahead. From three typed characters a listbox under the bar (both bars) lists up to five
+ * catalogue matches, found locally (localMatch.js; no AI call), 80 ms after the last keystroke: the title and a grey
+ * kind word (map · page · tool · report · external ↗). ↑/↓ move, Esc closes (until the text changes), a click outside
+ * closes; Enter asks the AI as before unless a row has been arrow-keyed to, in which case it is chosen; tapping or
+ * choosing a row calls the provider's choose(): the field keeps the typed text, the wait line says "Opening {title}…"
+ * for one hold, then the page opens (an external one in a new tab) and the overview flow runs.
  */
 export function AskBar({ docked = false, glass = false }) {
-  const { messages, busy, travelling, send, setMode, followupsFor } = useAssistant()
+  const { messages, busy, travelling, send, choose, followupsFor } = useAssistant()
   const { pathname, search } = useLocation()
   const [text, setText] = useState('')
+  // ── the typeahead (R6 D) ──
+  const listId = useId().replace(/:/g, '')
+  const formRef = useRef(null)
+  const [matches, setMatches] = useState([])
+  const [active, setActive] = useState(-1)        // the arrow-keyed row, -1 for none
+  const [dismissed, setDismissed] = useState(false)   // Esc or a click outside closed it, until the text changes
+  const canList = fold(text).trim().length >= MIN_CHARS
+  useEffect(() => {
+    setDismissed(false); setActive(-1)
+    if (!canList) { setMatches([]); return undefined }
+    const t = setTimeout(() => setMatches(localMatch(text)), DEBOUNCE_MS)
+    return () => clearTimeout(t)
+  }, [text, canList])
+  const listOpen = canList && !dismissed && matches.length > 0 && !busy && !travelling
+  useEffect(() => {
+    if (!listOpen) return undefined
+    const onDown = (e) => { if (formRef.current && !formRef.current.contains(e.target)) setDismissed(true) }
+    document.addEventListener('pointerdown', onDown)
+    return () => document.removeEventListener('pointerdown', onDown)
+  }, [listOpen])
+  const pick = (row) => { setDismissed(true); choose(row, { ask: text, echoAsk: true, docked }) }
   const hasConversation = messages.length > 1
   // The ghost's pool: this address's follow-ups when docked; the examples before any conversation; else nothing.
   const followups = docked && followupsFor ? followupsFor(pathname, search) : null
@@ -149,16 +177,25 @@ export function AskBar({ docked = false, glass = false }) {
   // Sending from the docked bar empties the field and lets go of it (the page is about to change; on phones the keyboard
   // goes), so the destination's follow-ups can start cycling with no user action; a click back in freezes them again.
   const submit = (e) => { e?.preventDefault(); const t = text; if (docked) { setText(''); inputRef.current?.blur() } send(t, { docked }) }
+  const onKeyDown = (e) => {
+    if (listOpen && e.key === 'ArrowDown') { e.preventDefault(); setActive((a) => (a + 1) % matches.length); return }
+    if (listOpen && e.key === 'ArrowUp') { e.preventDefault(); setActive((a) => (a <= 0 ? matches.length - 1 : a - 1)); return }
+    if (listOpen && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setDismissed(true); return }
+    if (e.key === 'Enter' && !e.shiftKey) { if (listOpen && active >= 0 && matches[active]) { e.preventDefault(); pick(matches[active]) } else submit(e); return }
+    if (e.key === 'Tab' && !e.shiftKey && ghostQuery) { e.preventDefault(); setText(ghostQuery) }
+  }
   const placeholder = ghostQuery ? '' : docked && hasConversation ? 'Ask for another page or map…' : 'What are you looking for?'
   return (
-    <form onSubmit={submit} onMouseEnter={() => { hoverRef.current = true }} onMouseLeave={() => { hoverRef.current = false }} data-testid={docked ? 'docked-ask-bar' : 'ask-bar'}>
+    <form ref={formRef} onSubmit={submit} onMouseEnter={() => { hoverRef.current = true }} onMouseLeave={() => { hoverRef.current = false }} data-testid={docked ? 'docked-ask-bar' : 'ask-bar'} className="relative">
       <div className={cn('hcdp-ask', lines > 1 ? 'rounded-3xl' : 'rounded-full', docked ? 'min-h-11' : 'min-h-14 shadow-lg', busy && 'hcdp-ask-busy')} data-testid="ask-field" data-busy={busy ? 'true' : 'false'} data-lines={lines} data-hero={docked ? undefined : 'true'}>
         <span aria-hidden="true" className="hcdp-ask-ring" />
         <div className={cn('hcdp-ask-field relative flex min-h-[inherit] items-end', docked ? 'py-1 pl-4 pr-1' : 'py-2 pl-6 pr-2', glass && 'hcdp-ask-glass')}>
           <textarea ref={inputRef} value={text} rows={1} onChange={(e) => setText(e.target.value.slice(0, 500))} autoComplete="off" enterKeyHint="send"
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) submit(e); else if (e.key === 'Tab' && !e.shiftKey && ghostQuery) { e.preventDefault(); setText(ghostQuery) } }}
+            onKeyDown={onKeyDown}
             onFocus={() => { setFocused(true); focusRef.current = true }} onBlur={() => { setFocused(false); focusRef.current = false }}
             aria-describedby={ghostQuery ? 'ask-ghost-hint' : undefined}
+            aria-autocomplete="list" aria-controls={listOpen ? listId : undefined} aria-expanded={listOpen}
+            aria-activedescendant={listOpen && active >= 0 ? `${listId}-${active}` : undefined}
             placeholder={placeholder}
             aria-label="Ask AI" data-testid="assistant-input"
             className={cn('hcdp-ask-input my-auto min-w-0 flex-1 resize-none bg-transparent text-[16px] leading-6 text-foreground placeholder:text-subtle focus-visible:outline-none', !docked && 'sm:text-[18px] sm:leading-7', lines >= MAX_LINES ? 'overflow-y-auto' : 'overflow-hidden')}
@@ -176,6 +213,19 @@ export function AskBar({ docked = false, glass = false }) {
           <button type="submit" disabled={!text.trim() || busy || travelling} aria-label="Send" className={cn('hcdp-send grid shrink-0 place-items-center rounded-full text-accent-foreground disabled:opacity-40', docked ? 'h-9 w-9' : 'h-10 w-10')}><ArrowUp className="h-4 w-4" /></button>
         </div>
       </div>
+      {listOpen && (
+        <ul role="listbox" id={listId} aria-label="Pages that match what you typed" data-testid="typeahead"
+          className={cn('absolute inset-x-0 top-full z-20 overflow-hidden rounded-xl border border-border bg-card py-1 shadow-lg', docked ? 'mt-1' : 'mt-2')}>
+          {matches.map((row, i) => (
+            <li key={row.id} id={`${listId}-${i}`} role="option" aria-selected={i === active} data-testid="typeahead-row" data-kind={row.kindWord}
+              onPointerDown={(e) => e.preventDefault()} onClick={() => pick(row)} onMouseEnter={() => setActive(i)}
+              className={cn('flex cursor-pointer items-center justify-between gap-3 px-4 py-2 text-left text-[14px] text-foreground [@media(pointer:coarse)]:min-h-11', i === active ? 'bg-muted' : 'hover:bg-muted/60')}>
+              <span className="min-w-0 truncate font-medium">{row.title}</span>
+              <span className="shrink-0 text-xs text-subtle" data-testid="typeahead-kind">{row.kindWord}{row.kindWord === 'external' && <span aria-hidden="true"> ↗</span>}{row.kindWord === 'external' && <span className="sr-only"> (opens in a new tab)</span>}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </form>
   )
 }

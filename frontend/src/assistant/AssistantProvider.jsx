@@ -4,6 +4,7 @@ import { parseViewerPath } from '../viewer/urlGrammar'
 import { handoffUrl } from '../site/handoff'
 import { clearDownload, currentDownload, noteDownload } from '../download/downloadStore'
 import TravelProxy from './TravelProxy'
+import { shortTitle } from './localMatch'
 
 // The navigator's client-side brain. Conversation lives in memory only (this
 // tab, this visit); nothing is stored. The assistant has three states:
@@ -22,6 +23,9 @@ import TravelProxy from './TravelProxy'
 // server-side, `destination` in the /api/navigate response) for the hold and the travel; an
 // open action says "Opening {title} in a new tab…", a hand-off "Opening the AI data analysis
 // tool…", each for one hold; info and clarify replies end the line as their card shows.
+// R6 D / R5 C (13 Oct): `choose(target)` is a navigation the visitor made themselves — a typeahead
+// row or a did-you-mean tile — with no AI call: "Opening {title}…" for one hold, then the page (an
+// external one in a new tab at once), then the overview flow with the reply "You chose {title}.".
 const Ctx = createContext(null)
 
 // The gpt-6-luna narration (/api/narrate) used to be the wait line. R6 C replaced it (13 Oct); flip to try it again.
@@ -204,12 +208,13 @@ export function AssistantProvider({ children }) {
     if (sum && sum.id === s.id) pendingStrip.current = { id: s.id, strip }
     else showStrip(strip)
   }, [clearTravel, navigate, showStrip])
-  const beginTravel = useCallback((path, s) => {
+  /** Hold (HOLD_MS), then arrive — by way of the ride-up (`ride`, the landing page) or a plain cut (the docked bar). */
+  const beginTravel = useCallback((path, s, { ride = true } = {}) => {
     clearTravel()
     setTravel({ phase: 'hold', path })
     timers.current.hold = setTimeout(() => {
       timers.current.hold = null
-      if (prefersReducedMotion()) { arrive(path, s); return }   // a cut instead of the ride-up, same end state
+      if (!ride || prefersReducedMotion()) { arrive(path, s); return }   // a cut instead of the ride-up, same end state
       setTravel({ phase: 'travel', path })
       timers.current.travel = setTimeout(() => arrive(path, s), TRAVEL_MS)
     }, HOLD_MS)
@@ -282,6 +287,36 @@ export function AssistantProvider({ children }) {
     } finally { setBusy(false); narrateAbort.current?.abort(); narrateAbort.current = null }
   }, [busy, travelling, context, startHandoff, beginTravel, arrive, location.pathname, requestSummary, setSummary, hideStrip, startWait, endWait, holdLine])
 
+  /** R6 D / R5 C: the visitor chose a catalogued place themselves (a typeahead row, a did-you-mean tile): no AI call.
+   *  `target` is { title, path | url } (a url starting with "/" counts as a path). The wait line says "Opening {title}…"
+   *  for one hold (an external page opens in a new tab at once — browsers allow a new tab only close to the tap — and
+   *  its line says so), then the page opens and the destination's overview flow runs with `ask` as the question and
+   *  "You chose {title}." as the reply; for an external open nothing more. `echoAsk` records the typed text as the
+   *  visitor's turn (a typeahead pick); a tile answers a question already in the conversation. */
+  const choose = useCallback((target, { ask = '', echoAsk = false, docked = false } = {}) => {
+    if (busy || travelling || !target) return false
+    const title = shortTitle(target.title) || 'the page'
+    const path = typeof target.path === 'string' && target.path.startsWith('/') ? target.path : (typeof target.url === 'string' && target.url.startsWith('/') ? target.url : null)
+    const url = !path && typeof target.url === 'string' && /^https?:\/\//.test(target.url) ? target.url : null
+    if (!path && !url) return false
+    const q = (ask || '').trim()
+    const reply = `You chose ${title}.`
+    summaryAbort.current?.abort(); summaryAbort.current = null; pendingStrip.current = null; setSummary(null); hideStrip()
+    const userId = echoAsk && q ? nextId() : null
+    const id = nextId()
+    const actions = path ? [{ type: 'navigate', path }] : [{ type: 'open', url }]
+    if (url && !openNewTab(url)) actions[0].blocked = true
+    setMessages((m) => [...m, ...(userId ? [{ id: userId, role: 'user', content: q }] : []), { id, role: 'assistant', content: reply, intent: 'navigate', actions, alternatives: [] }])
+    historyRef.current = [...historyRef.current, ...(userId ? [{ role: 'user', content: q }] : []), { role: 'assistant', content: reply }]
+    const onLanding = location.pathname === '/' && !docked
+    setMode((m) => (m === 'panel' ? 'dock' : m))   // the dropdown gives way to the wait line
+    if (url) { holdLine(openingTab(title), () => { if (actions[0].blocked && !onLanding) setMode('panel') }); return true }
+    setWait(opening(title))
+    requestSummary(id, q, { reply, intent: 'navigate', alternatives: [] }, path)
+    beginTravel(path, { id, reply, alternatives: [] }, { ride: onLanding })
+    return true
+  }, [busy, travelling, location.pathname, setSummary, hideStrip, holdLine, requestSummary, beginTravel])
+
   /** Put the cursor in the bar (the landing bar on /, the docked bar elsewhere). */
   const open = useCallback(() => {
     const sel = location.pathname === '/' ? '[data-testid="landing-assistant"] [data-testid="assistant-input"]' : '[data-testid="assistant-bar"] [data-testid="assistant-input"]'
@@ -339,10 +374,10 @@ export function AssistantProvider({ children }) {
   // The wait line the bars show: the staged line; gpt-6-luna's narration instead while it is on and has arrived.
   const waitLine = wait ? (NARRATION && busy && narration ? narration : wait) : null
   const value = useMemo(() => ({
-    messages, mode, busy, travelling, travel, strip, wait: waitLine, heroOut, setHeroOut, epoch, send, open, minimize, setMode, reset,
+    messages, mode, busy, travelling, travel, strip, wait: waitLine, heroOut, setHeroOut, epoch, send, choose, open, minimize, setMode, reset,
     handoff, stayHere, settleHandoff, holdStrip, releaseStrip, hideStrip,
     summary, dismissSummary, followups, followupsFor, setFollowups,
-  }), [messages, mode, busy, travelling, travel, strip, waitLine, heroOut, epoch, send, open, minimize, reset, handoff, stayHere, settleHandoff, holdStrip, releaseStrip, hideStrip,
+  }), [messages, mode, busy, travelling, travel, strip, waitLine, heroOut, epoch, send, choose, open, minimize, reset, handoff, stayHere, settleHandoff, holdStrip, releaseStrip, hideStrip,
     summary, dismissSummary, followups, followupsFor, setFollowups])
   return (
     <Ctx.Provider value={value}>

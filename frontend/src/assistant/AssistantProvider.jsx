@@ -17,7 +17,21 @@ import TravelProxy from './TravelProxy'
 // <AISummary /> at the top of the page instead of the strip; the strip only when the summary fails)
 // and stores its follow-up asks, keyed by the destination's pathname + search, for the docked
 // bar's ghost carousel (setFollowups / followupsFor).
+// R6 C (13 Oct): the wait line under either bar is staged — "Thinking…" at once, "Finding the right
+// page…" after THINKING_MS without an answer, then "Opening {destination}…" (the title resolved
+// server-side, `destination` in the /api/navigate response) for the hold and the travel; an
+// open action says "Opening {title} in a new tab…", a hand-off "Opening the AI data analysis
+// tool…", each for one hold; info and clarify replies end the line as their card shows.
 const Ctx = createContext(null)
+
+// The gpt-6-luna narration (/api/narrate) used to be the wait line. R6 C replaced it (13 Oct); flip to try it again.
+export const NARRATION = false
+export const THINKING_MS = 1400    // "Thinking…" this long without an answer → "Finding the right page…"
+export const WAIT_THINKING = 'Thinking…'
+export const WAIT_FINDING = 'Finding the right page…'
+export const WAIT_HANDOFF = 'Opening the AI data analysis tool…'
+export const opening = (title) => (title ? `Opening ${title}…` : 'Opening…')
+export const openingTab = (title) => (title ? `Opening ${title} in a new tab…` : 'Opening a new tab…')
 
 const WELCOME = { id: 0, role: 'assistant', content: 'Tell me what you are looking for and I will take you there: a map, a station, a storm report, a download, a tool.' }
 
@@ -50,8 +64,9 @@ export function AssistantProvider({ children }) {
   const [busy, setBusy] = useState(false)
   const [travel, setTravel] = useState({ phase: 'idle', path: null })   // 'idle' | 'hold' | 'travel'
   const [strip, setStrip] = useState(null)   // { id, reply, alternatives, path }
-  const [narration, setNarration] = useState(null)
-  const [heroOut, setHeroOut] = useState(false)   // L4 E: the landing hero has scrolled away → the bar docks under the header   // the wait line from gpt-6-luna, or null → "Working on that…"
+  const [wait, setWait] = useState(null)     // the staged wait line under the bar (R6 C), or null when there is none
+  const [narration, setNarration] = useState(null)   // gpt-6-luna's line, only while NARRATION is on
+  const [heroOut, setHeroOut] = useState(false)   // L4 E: the landing hero has scrolled away → the bar docks under the header
   const narrateAbort = useRef(null)
   // The AI overview of the latest destination: { id, path (pathname only), status: 'pending' | 'ready', chunks, cites,
   // more, moreCites, sources, followups, alternatives (the answer's, for the Show more fold) }. A ref mirrors it so
@@ -157,11 +172,28 @@ export function AssistantProvider({ children }) {
       .catch(fail)
   }, [setSummary, setFollowups, showStrip])
 
+  // ── the staged wait line (R6 C) ──
+  const clearWaitTimers = useCallback(() => { clearTimeout(timers.current.finding); clearTimeout(timers.current.lineHold); timers.current.finding = timers.current.lineHold = null }, [])
+  /** "Thinking…" now; "Finding the right page…" after THINKING_MS unless an answer has moved the line on. */
+  const startWait = useCallback(() => {
+    clearWaitTimers()
+    setWait(WAIT_THINKING)
+    timers.current.finding = setTimeout(() => { timers.current.finding = null; setWait((w) => (w === WAIT_THINKING ? WAIT_FINDING : w)) }, THINKING_MS)
+  }, [clearWaitTimers])
+  const endWait = useCallback(() => { clearWaitTimers(); setWait(null) }, [clearWaitTimers])
+  /** Show one line for a hold (an open action, the hand-off), then run `then`. */
+  const holdLine = useCallback((text, then) => {
+    clearWaitTimers()
+    setWait(text)
+    timers.current.lineHold = setTimeout(() => { timers.current.lineHold = null; setWait(null); then?.() }, HOLD_MS)
+  }, [clearWaitTimers])
+
   // ── answer first, then travel ──
   const clearTravel = useCallback(() => { clearTimeout(timers.current.hold); clearTimeout(timers.current.travel); timers.current.hold = timers.current.travel = null }, [])
   /** The page changes: the bar docks under the header and the reply sits in the strip for a while. */
   const arrive = useCallback((path, s) => {
     clearTravel()
+    endWait()
     setTravel({ phase: 'idle', path: null })
     navigate(path)
     setMode('dock')
@@ -182,7 +214,7 @@ export function AssistantProvider({ children }) {
       timers.current.travel = setTimeout(() => arrive(path, s), TRAVEL_MS)
     }, HOLD_MS)
   }, [arrive, clearTravel])
-  useEffect(() => () => { clearHandoffTimer(); clearTravel(); clearTimeout(timers.current.strip) }, [clearTravel])
+  useEffect(() => () => { clearHandoffTimer(); clearTravel(); clearWaitTimers(); clearTimeout(timers.current.strip) }, [clearTravel, clearWaitTimers])
 
   const context = useCallback(() => {
     const viewer = parseViewerPath(location.pathname, location.search)
@@ -194,16 +226,19 @@ export function AssistantProvider({ children }) {
     if (!q || busy || travelling) return
     setBusy(true)
     setNarration(null)
+    startWait()   // R6 C: "Thinking…", then "Finding the right page…"
     // A new question replaces the last answer's summary and strip (the page shows the wait line meanwhile).
     summaryAbort.current?.abort(); summaryAbort.current = null; pendingStrip.current = null; setSummary(null); hideStrip()
     setMessages((m) => [...m, { id: nextId(), role: 'user', content: q }])
-    // In parallel with the answer: one short narration line for the wait indicator (never delays the answer).
-    try {
-      narrateAbort.current?.abort()
-      const ac = new AbortController(); narrateAbort.current = ac
-      fetch('/api/narrate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: q }), signal: ac.signal })
-        .then((r) => (r.ok ? r.json() : null)).then((d) => { if (!ac.signal.aborted && d && typeof d.line === 'string' && d.line.trim()) setNarration(d.line.trim()) }).catch(() => {})
-    } catch { /* no narration: the fallback line shows */ }
+    // The gpt-6-luna narration, only while NARRATION is on: one short line in parallel with the answer (never delays it).
+    if (NARRATION) {
+      try {
+        narrateAbort.current?.abort()
+        const ac = new AbortController(); narrateAbort.current = ac
+        fetch('/api/narrate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: q }), signal: ac.signal })
+          .then((r) => (r.ok ? r.json() : null)).then((d) => { if (!ac.signal.aborted && d && typeof d.line === 'string' && d.line.trim()) setNarration(d.line.trim()) }).catch(() => {})
+      } catch { /* no narration: the staged line shows */ }
+    }
     try {
       const res = await fetch('/api/navigate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -218,8 +253,10 @@ export function AssistantProvider({ children }) {
       // External HCDP pages open now, in a new tab; the message keeps a link if the tab was blocked.
       for (const a of actions) if (a.type === 'open' && a.url) { if (!openNewTab(a.url)) a.blocked = true }
       const nav = actions.find((a) => a.type === 'navigate' && typeof a.path === 'string' && a.path.startsWith('/'))
+      const opened = actions.find((a) => a.type === 'open' && typeof a.url === 'string')
+      const destination = data.destination && typeof data.destination === 'object' ? data.destination : null
       const id = nextId()
-      setMessages((m) => [...m, { id, role: 'assistant', content: data.reply || '', intent: data.intent, actions, alternatives }])
+      setMessages((m) => [...m, { id, role: 'assistant', content: data.reply || '', intent: data.intent, actions, alternatives, options: data.options }])
       // 13 Oct (D1): a data ask carries a download offer for the page it opens (the OfferCard on /data/api); any other answer clears it.
       if (data.intent === 'download' && data.download && nav) noteDownload(id, data.download, nav.path)
       else clearDownload()
@@ -227,16 +264,23 @@ export function AssistantProvider({ children }) {
       const onLanding = location.pathname === '/' && !opts.docked   // sent from the scroll-docked bar: go at once, like an inner page
       if (nav) {
         const s = { id, reply: data.reply || '', alternatives: alternatives.slice(0, 2) }
+        setWait(opening(destination?.title))   // "Opening Hurricane Lowell report…" for the hold and the travel (arrive() ends it)
         if (!data.off_topic) requestSummary(id, q, data, nav.path)   // the destination's AI summary, in parallel with the travel
         if (onLanding) beginTravel(nav.path, s)   // answer first, then the bar rides up
         else arrive(nav.path, s)                   // already docked: go now; the summary (or, failing that, the strip) explains
-      } else if (!onLanding) {
-        setMode('panel')   // a reply with nowhere to go: the dropdown shows it
+      } else if (data.intent === 'analysis') {
+        holdLine(WAIT_HANDOFF, () => { if (!onLanding) setMode('panel') })   // one hold, then the card with its countdown
+      } else if (opened) {
+        holdLine(openingTab(destination?.title), () => { if (!onLanding) setMode('panel') })
+      } else {
+        endWait()   // info or clarify: the card (or the dropdown) is the answer
+        if (!onLanding) setMode('panel')   // a reply with nowhere to go: the dropdown shows it
       }
     } catch (e) {
+      endWait()
       setMessages((m) => [...m, { id: nextId(), role: 'assistant', content: 'I could not reach the navigator. Check the connection and try again.' }])
     } finally { setBusy(false); narrateAbort.current?.abort(); narrateAbort.current = null }
-  }, [busy, travelling, context, startHandoff, beginTravel, arrive, location.pathname, requestSummary, setSummary, hideStrip])
+  }, [busy, travelling, context, startHandoff, beginTravel, arrive, location.pathname, requestSummary, setSummary, hideStrip, startWait, endWait, holdLine])
 
   /** Put the cursor in the bar (the landing bar on /, the docked bar elsewhere). */
   const open = useCallback(() => {
@@ -247,10 +291,10 @@ export function AssistantProvider({ children }) {
   // Start over: the hero bar on the landing page, the docked bar anywhere else.
   const reset = useCallback(() => {
     historyRef.current = []
-    clearHandoffTimer(); setHandoff(null); clearTravel(); setTravel({ phase: 'idle', path: null }); hideStrip()
+    clearHandoffTimer(); setHandoff(null); clearTravel(); setTravel({ phase: 'idle', path: null }); hideStrip(); endWait()
     dismissSummary(); setFollowupsState({}); clearDownload()
     setMessages([WELCOME]); setMode(location.pathname === '/' ? 'inline' : 'dock'); setEpoch((n) => n + 1)
-  }, [location.pathname, clearTravel, hideStrip, dismissSummary])
+  }, [location.pathname, clearTravel, hideStrip, dismissSummary, endWait])
 
   // Arriving on the landing page brings the conversation back into the hero bar; on an inner page the
   // bar is docked and any open dropdown closes (a navigation happened).
@@ -262,7 +306,7 @@ export function AssistantProvider({ children }) {
   // and the strip belongs to the page it was shown on.
   useEffect(() => {
     pathRef.current = location.pathname
-    if (travel.phase !== 'idle' && location.pathname !== '/') { clearTravel(); setTravel({ phase: 'idle', path: null }) }
+    if (travel.phase !== 'idle' && location.pathname !== '/') { clearTravel(); setTravel({ phase: 'idle', path: null }); endWait() }
     if (strip && strip.path !== location.pathname) hideStrip()
     // and the summary belongs to the page the assistant opened: a route change it did not cause takes it away
     if (summaryRef.current && summaryRef.current.path !== location.pathname) dismissSummary()
@@ -292,11 +336,13 @@ export function AssistantProvider({ children }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [mode, open])
 
+  // The wait line the bars show: the staged line; gpt-6-luna's narration instead while it is on and has arrived.
+  const waitLine = wait ? (NARRATION && busy && narration ? narration : wait) : null
   const value = useMemo(() => ({
-    messages, mode, busy, travelling, travel, strip, narration, heroOut, setHeroOut, epoch, send, open, minimize, setMode, reset,
+    messages, mode, busy, travelling, travel, strip, wait: waitLine, heroOut, setHeroOut, epoch, send, open, minimize, setMode, reset,
     handoff, stayHere, settleHandoff, holdStrip, releaseStrip, hideStrip,
     summary, dismissSummary, followups, followupsFor, setFollowups,
-  }), [messages, mode, busy, travelling, travel, strip, narration, heroOut, epoch, send, open, minimize, reset, handoff, stayHere, settleHandoff, holdStrip, releaseStrip, hideStrip,
+  }), [messages, mode, busy, travelling, travel, strip, waitLine, heroOut, epoch, send, open, minimize, reset, handoff, stayHere, settleHandoff, holdStrip, releaseStrip, hideStrip,
     summary, dismissSummary, followups, followupsFor, setFollowups])
   return (
     <Ctx.Provider value={value}>

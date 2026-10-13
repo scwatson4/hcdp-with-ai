@@ -28,10 +28,15 @@ try {
     await input.fill('Show me the rainfall map for Kauaʻi on 7 September 2026')
     await input.press('Enter')
     const t0 = Date.now()
-    await page.waitForSelector('[data-testid="assistant-busy"]', { state: 'attached', timeout: 5000 }).catch(() => {})
-    const answered = await page.waitForFunction(() => !document.querySelector('[data-testid="assistant-busy"]'), null, { timeout: 90000 }).then(() => true).catch(() => false)
+    // R6 C (13 Oct): the staged wait line — "Thinking…" at once, "Finding the right page…" after 1.4 s, then
+    // "Opening {destination}…" (the server-resolved title) for the hold and the travel; no gpt-6-luna narration.
+    await page.waitForSelector('[data-testid="landing-status"]', { state: 'attached', timeout: 5000 }).catch(() => {})
+    const firstLine = await page.evaluate(() => document.querySelector('[data-testid="landing-status"]')?.textContent || '')
+    const answered = await page.waitForFunction(() => { const el = document.querySelector('[data-testid="landing-status"]'); return !el || /^Opening /.test(el.textContent || '') }, null, { timeout: 90000 }).then(() => true).catch(() => false)
     const ms = Date.now() - t0
-    // R1 A + D: the reply shows first (700 ms), then the bar rides up (450 ms) and the page changes.
+    const openingLine = await page.evaluate(() => document.querySelector('[data-testid="landing-status"]')?.textContent || '')
+    check(`${label}: the wait line is staged (Thinking… first, then Opening {destination}…)`, firstLine === 'Thinking…' && /^Opening .+…$/.test(openingLine), `"${firstLine}" → "${openingLine}"`)
+    // R1 A + D: the line holds (700 ms), then the bar rides up (450 ms) and the page changes.
     await page.waitForURL(/\/viewer\//, { timeout: 5000 }).catch(() => {})
     const path = new URL(page.url()).pathname
     const docked = (await page.locator('[data-testid="assistant-bar"] [data-testid="assistant-input"]').count()) > 0

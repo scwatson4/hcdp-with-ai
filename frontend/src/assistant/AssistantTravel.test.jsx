@@ -12,7 +12,7 @@ import { TooltipProvider } from '../components/ui/tooltip'
 // R1 picks A + D (2026-10-08): answer first, then the bar rides up and docks under the header.
 const VIEW = '/viewer/rainfall/day/2026-09-07/kauai'
 const REPLY = 'Here is the Kauaʻi rainfall map for 7 September 2026.'
-const navigateReply = (path = VIEW) => ({ ok: true, status: 200, json: () => Promise.resolve({ intent: 'navigate', reply: REPLY, actions: [{ type: 'navigate', path }], alternatives: [{ title: 'Access Data', url: '/data', why: 'downloads' }, { title: 'Lowell report', url: 'https://www.hawaii.edu/climate-data-portal/hurricane-lowell/', why: 'the report' }, { title: 'A third one', url: '/mesonet' }], minimize: true }) })
+const navigateReply = (path = VIEW) => ({ ok: true, status: 200, json: () => Promise.resolve({ intent: 'navigate', reply: REPLY, actions: [{ type: 'navigate', path }], alternatives: [{ title: 'Access Data', url: '/data', why: 'downloads' }, { title: 'Lowell report', url: 'https://www.hawaii.edu/climate-data-portal/hurricane-lowell/', why: 'the report' }, { title: 'A third one', url: '/mesonet' }], minimize: true, destination: { title: path === VIEW ? 'Daily rainfall map' : 'Some page', path } }) })
 const infoReply = () => ({ ok: true, status: 200, json: () => Promise.resolve({ intent: 'info', reply: 'HCDP is the Hawaiʻi Climate Data Portal.', actions: [], alternatives: [] }) })
 const backdrops = () => ({ ok: true, status: 200, json: () => Promise.resolve({ items: [] }) })
 
@@ -49,15 +49,16 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
 
 describe('answer first, then travel (landing page)', () => {
-  it('shows the reply as a working line under the bar (the question stays in the bar), holds 700 ms, rides up 450 ms, then navigates', async () => {
+  it('shows "Opening {destination}…" as the working line under the bar (the question stays in the bar), holds 700 ms, rides up 450 ms, then navigates', async () => {
     renderApp('/')
     await ask('rain map kauai')
-    // the hold: still on the landing page, the answer card shows the reply and no echoed question
+    // the hold: still on the landing page, no echoed question
     expect(screen.getByTestId('probe').textContent).toBe('/')
-    // 13 Oct: no card — a comet ring and the reply sentence as one line under the bar
+    // 13 Oct: no card — a comet ring and one line under the bar; R6 C: the line names the destination the server resolved
     expect(screen.queryByTestId('landing-answers')).toBeNull()
     expect(screen.getByTestId('landing-working')).toBeInTheDocument()
-    expect(screen.getByTestId('landing-status')).toHaveTextContent(REPLY)
+    expect(screen.getByTestId('landing-status')).toHaveTextContent('Opening Daily rainfall map…')
+    expect(screen.getByTestId('landing-status')).not.toHaveTextContent(REPLY)
     expect(screen.queryByTestId('user-bubble')).toBeNull()
     expect(screen.getByTestId('assistant-input')).toHaveValue('rain map kauai')
     expect(screen.getByTestId('landing-hero')).toHaveAttribute('data-travel', 'hold')
@@ -74,8 +75,10 @@ describe('answer first, then travel (landing page)', () => {
     await tick(TRAVEL_MS - 60)
     expect(screen.getByTestId('probe').textContent).toBe('/')
     await tick(70)
-    // arrived: the docked bar under the header, the hero gone, no pill anywhere
+    // arrived: the docked bar under the header, the hero gone, no pill anywhere, the wait line ended
     expect(screen.getByTestId('probe').textContent).toBe(VIEW)
+    expect(screen.queryByTestId('landing-working')).toBeNull()
+    expect(screen.queryByTestId('docked-working')).toBeNull()
     expect(screen.getByTestId('assistant-bar')).not.toHaveAttribute('aria-hidden')
     expect(screen.getAllByTestId('assistant-input')).toHaveLength(1)
     expect(screen.getByTestId('assistant-input')).toHaveAttribute('placeholder', 'Ask for another page or map…')

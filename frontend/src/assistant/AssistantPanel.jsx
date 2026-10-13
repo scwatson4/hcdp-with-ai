@@ -214,22 +214,23 @@ export function Conversation({ compact = false, hideUser = false, latestOnly = f
 /** The landing page's assistant: the hero bar and, once there is something to say, the answer card
  *  under it (the AI's bubbles only — the question is in the bar). */
 export default function AssistantPanel({ glass = false }) {
-  const { messages, busy, travelling, travel, narration, epoch } = useAssistant()
+  const { messages, busy, travelling, wait, epoch } = useAssistant()
   const last = messages[messages.length - 1]
   const lastIsNavigate = last?.role === 'assistant' && (last.actions || []).some((a) => a.type === 'navigate')
-  // 13 Oct: while the AI works, and while a navigation answer is read before the travel, only a rainbow comet
-  // ring and one line of text sit under the bar — no card, no background. The card stays for replies with
-  // nowhere to go (info, clarify, the hand-off).
-  const working = busy || (travelling && travel.phase === 'hold')
-  const status = busy ? (narration || 'Working on that…') : (lastIsNavigate ? last.content : '')
-  const showCard = !busy && !travelling && messages.length > 1 && !lastIsNavigate
+  // 13 Oct: while the AI works, and while a navigation answer is held before the travel, only a rainbow comet
+  // ring and one line of text sit under the bar — no card, no background. R6 C: the line is staged by the
+  // provider ("Thinking…", "Finding the right page…", "Opening {destination}…"); each change fades in (the key
+  // remounts the span; reduced motion: no animation). The card stays for replies with nowhere to go (info,
+  // clarify, the hand-off) once their line has ended.
+  const working = wait != null
+  const showCard = !busy && !travelling && !working && messages.length > 1 && !lastIsNavigate
   return (
     <div className="flex flex-col" data-testid="assistant-panel">
       <AskBar key={epoch} glass={glass} />
       {working && (
         <div className="mt-4 flex items-center justify-center gap-3 px-2 text-center text-[15px] text-foreground/85 sm:text-[16px]" role="status" aria-live="polite" data-testid="landing-working">
           <span className="hcdp-comet-ring" aria-hidden="true" />
-          <span key={status} className="hcdp-status-in" data-testid="landing-status">{status}</span>
+          <span key={wait} className="hcdp-status-in" data-testid="landing-status">{wait}</span>
         </div>
       )}
       {showCard && (

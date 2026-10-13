@@ -251,3 +251,32 @@ def test_template_regex_matches_one_segment_per_placeholder():
     assert rx.match("/viewer/rainfall/day/2026-09-07/kauai") and not rx.match("/viewer/rainfall/month/2026-09/kauai") and not rx.match("/viewer/rainfall/day/2026-09-07/kauai/extra")
     rx2 = template_regex("/mesonet?viewer=live&station={id}&view=dashboard")
     assert rx2.match("/mesonet?viewer=live&station=0115&view=dashboard") and not rx2.match("/mesonet?viewer=live&view=dashboard")
+
+
+# ── the destination's name for the staged wait line (R6 C, 13 Oct) ────────────
+def test_destination_names_the_page_the_answer_opens():
+    from navigator import load_catalog, short_title
+    assert short_title("Daily rainfall map (viewer)") == "Daily rainfall map"
+    assert short_title("Access Data (interactive data portal)") == "Access Data"
+    assert short_title("Hurricane Lowell report") == "Hurricane Lowell report"
+    assert short_title("(odd)") == "(odd)" and short_title("") == ""
+    nav = Navigator(FakeLLM({}), load_catalog(), today=dt.date(2026, 9, 25))
+    # a navigate action: the best catalog entry's title, without its parenthetical
+    out = nav.normalize({"intent": "navigate", "reply": "Taking you there.", "actions": [{"type": "navigate", "path": "/extreme-events/lowell"}], "alternatives": []}, "lowell")
+    assert out["destination"] == {"title": "Hurricane Lowell report", "path": "/extreme-events/lowell"}
+    # a viewer deep link resolves through the templates; one no template covers describes the view itself
+    out = nav.normalize({"intent": "navigate", "reply": "x", "actions": [{"type": "navigate", "path": "/viewer/rainfall/day/2026-09-20/oahu"}], "alternatives": []}, "rain")
+    assert out["destination"] == {"title": "Daily rainfall map", "path": "/viewer/rainfall/day/2026-09-20/oahu"}
+    out = nav.normalize({"intent": "navigate", "reply": "x", "actions": [{"type": "navigate", "path": "/viewer/temperature-max/day/2026-09-07/oahu"}], "alternatives": []}, "temp")
+    assert out["destination"] == {"title": "Maximum temperature, September 7, 2026, Oʻahu", "path": "/viewer/temperature-max/day/2026-09-07/oahu"}
+    # an open action: the catalog entry's title; an uncatalogued (allowed) url names its host; the navigate wins over an open
+    out = nav.normalize({"intent": "navigate", "reply": "x", "actions": [{"type": "open", "url": "https://rainfall.geography.hawaii.edu/"}], "alternatives": []}, "atlas")
+    assert out["destination"] == {"title": "Rainfall Atlas of Hawaiʻi", "url": "https://rainfall.geography.hawaii.edu/"}
+    out = nav.normalize({"intent": "navigate", "reply": "x", "actions": [{"type": "open", "url": "https://www.hawaii.edu/some-new-page/"}], "alternatives": []}, "x")
+    assert out["destination"] == {"title": "www.hawaii.edu", "url": "https://www.hawaii.edu/some-new-page/"}
+    out = nav.normalize({"intent": "navigate", "reply": "x", "actions": [{"type": "open", "url": "https://rainfall.geography.hawaii.edu/"}, {"type": "navigate", "path": "/data"}], "alternatives": []}, "x")
+    assert out["destination"]["path"] == "/data" and out["destination"]["title"] == "Access Data"
+    # info, clarify, analysis and the scope guard carry none
+    assert "destination" not in nav.normalize({"intent": "info", "reply": "x", "actions": [], "alternatives": []}, "x")
+    assert "destination" not in nav.normalize({"intent": "analysis", "reply": "x", "actions": [], "alternatives": []}, "x")
+    assert "destination" not in nav.normalize({"intent": "off_topic", "reply": "x", "actions": [], "alternatives": []}, "x")

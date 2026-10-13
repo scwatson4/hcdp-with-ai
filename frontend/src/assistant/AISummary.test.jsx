@@ -300,30 +300,48 @@ describe('the AI overview after a navigation', () => {
   })
 })
 
-describe('the docked bar while the AI works', () => {
-  it('shows the comet ring with "Working on that…" under the bar, then the narration line, then nothing', async () => {
+describe('the docked bar while the AI works (R6 C: the staged line)', () => {
+  it('shows the comet ring with "Thinking…" under the bar, then "Finding the right page…" after 1.4 s, then nothing', async () => {
     let resolve
     replies = [new Promise((r) => { resolve = r })]
     renderApp('/data')
     await ask('where is the API')
     const line = screen.getByTestId('docked-working')
     expect(line.querySelector('.hcdp-comet-ring')).not.toBeNull()
-    expect(within(line).getByTestId('docked-status')).toHaveTextContent('Working on that…')
+    expect(within(line).getByTestId('docked-status')).toHaveTextContent('Thinking…')
+    expect(within(line).getByTestId('docked-status').className).toContain('hcdp-status-in')
     expect(line.className).not.toMatch(/bg-|border/)
     expect(screen.queryByTestId('reply-strip')).toBeNull()
+    await tick(1500)
+    expect(within(screen.getByTestId('docked-working')).getByTestId('docked-status')).toHaveTextContent('Finding the right page…')
     await act(async () => { resolve(json({ intent: 'info', reply: 'The API page explains it.', actions: [], alternatives: [] })); await vi.advanceTimersByTimeAsync(10) })
     expect(screen.queryByTestId('docked-working')).toBeNull()
+    expect(screen.getByTestId('assistant-dropdown')).toBeInTheDocument()   // info: the dropdown is the answer
   })
 
-  it('replaces the fallback with gpt-6-luna\'s line when it arrives first', async () => {
+  it('never asks gpt-6-luna for a narration line (NARRATION is off; the endpoint stays)', async () => {
     let resolve
     narrate = 'Pulling up the API access info'
     replies = [new Promise((r) => { resolve = r })]
     renderApp('/data')
     await ask('where is the API')
-    expect(screen.getByTestId('docked-status')).toHaveTextContent('Pulling up the API access info')
+    expect(calls.filter((c) => c.url === '/api/narrate')).toHaveLength(0)
+    expect(screen.getByTestId('docked-status')).toHaveTextContent('Thinking…')
+    expect(screen.queryByText('Pulling up the API access info')).toBeNull()
     await act(async () => { resolve(json({ intent: 'info', reply: 'ok', actions: [], alternatives: [] })); await vi.advanceTimersByTimeAsync(10) })
     expect(screen.queryByTestId('docked-working')).toBeNull()
+  })
+
+  it('an open action from the docked bar says "Opening {title} in a new tab…" for one hold, then the dropdown shows the reply', async () => {
+    vi.spyOn(window, 'open').mockImplementation(() => ({ opener: 'x' }))
+    replies = [{ intent: 'navigate', reply: 'Opening the Rainfall Atlas in a new tab.', actions: [{ type: 'open', url: 'https://rainfall.geography.hawaii.edu/' }], alternatives: [], minimize: true, destination: { title: 'Rainfall Atlas of Hawaiʻi', url: 'https://rainfall.geography.hawaii.edu/' } }]
+    renderApp('/data')
+    await ask('rainfall atlas')
+    expect(screen.getByTestId('docked-status')).toHaveTextContent('Opening Rainfall Atlas of Hawaiʻi in a new tab…')
+    expect(screen.queryByTestId('assistant-dropdown')).toBeNull()
+    await tick(HOLD_MS + 20)
+    expect(screen.queryByTestId('docked-working')).toBeNull()
+    expect(screen.getByTestId('assistant-dropdown')).toHaveTextContent('Opening the Rainfall Atlas in a new tab.')
   })
 })
 

@@ -418,6 +418,14 @@ def valid_internal_path(path: str) -> bool:
     return True
 
 
+def short_title(title: str) -> str:
+    """A catalog title without its trailing parenthetical, for the wait line's "Opening …" (R6 C, 13 Oct):
+    'Daily rainfall map (viewer)' → 'Daily rainfall map', 'Access Data (interactive data portal)' → 'Access Data'.
+    The frontend's shortTitle() in localMatch.js does the same."""
+    t = re.sub(r"\s*\([^()]*\)\s*$", "", str(title or "")).strip()
+    return t or str(title or "").strip()
+
+
 def template_regex(template: str) -> re.Pattern:
     """A catalog internal_path template ('/viewer/rainfall/day/{date}/{extent}') as a regex over a path: every
     {placeholder} matches one segment or query value."""
@@ -629,6 +637,10 @@ Respond with ONLY a JSON object:
         out = {"intent": intent, "reply": reply or "Here is what I found.", "actions": actions, "alternatives": alternatives, "minimize": minimize}
         if download:
             out["download"] = download
+
+        destination = self.destination_for(actions)
+        if destination:
+            out["destination"] = destination   # R6 C (13 Oct): the wait line says "Opening {title}…" during the hold/travel
         return out
 
     def api_page_url(self) -> str | None:
@@ -650,6 +662,37 @@ Respond with ONLY a JSON object:
             elif isinstance(v, list) and all(isinstance(x, str) for x in v):
                 hints[k] = [x.strip()[:40] for x in v if x.strip()][:6]
         return {"ask": ask, "offer": offer or "I can gather the HCDP files for this into one zip, with a README that says what is inside.", "hints": hints, "api_url": self.api_page_url()}
+
+    # ----- the destination's name, for the staged wait line (R6 C, 13 Oct) -----
+    def entry_for_url(self, url: str) -> dict | None:
+        """The catalog entry whose url is this one (a trailing slash does not matter), or None."""
+        if not isinstance(url, str) or not url:
+            return None
+        want = url.rstrip("/")
+        return next((e for e in self.catalog if isinstance(e.get("url"), str) and e["url"].rstrip("/") == want), None)
+
+    def title_for_path(self, path: str) -> str:
+        """A short name for an internal path: the best catalog entry's title without its parenthetical, else what a
+        viewer address shows ('Rainfall, September 7, 2026, Kauaʻi'), else 'the page'."""
+        e = self.destination(path)
+        if e and e.get("title"):
+            return short_title(e["title"])
+        v = parse_viewer_path(path)
+        return describe_view(v) if v else "the page"
+
+    def destination_for(self, actions: list[dict]) -> dict | None:
+        """{title, path} for the navigate action, else {title, url} for the first open action (the catalog entry's
+        title, else the host), else None. Resolved here, never by the model, so the line never names a page the
+        answer does not open."""
+        nav = next((a for a in actions if a.get("type") == "navigate"), None)
+        if nav:
+            return {"title": self.title_for_path(nav["path"]), "path": nav["path"]}
+        op = next((a for a in actions if a.get("type") == "open"), None)
+        if op:
+            e = self.entry_for_url(op["url"])
+            title = short_title(e["title"]) if e and e.get("title") else (urlparse(op["url"]).hostname or "the page")
+            return {"title": title, "url": op["url"]}
+        return None
 
     # ----- the destination of a navigation (the AI summary's grounding and sources, 13 Oct) -----
     def entry(self, entry_id: str) -> dict | None:

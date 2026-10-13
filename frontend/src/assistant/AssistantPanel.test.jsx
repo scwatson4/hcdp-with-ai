@@ -2,7 +2,7 @@ import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, act, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { AssistantProvider } from './AssistantProvider'
+import { AssistantProvider, HOLD_MS, WAIT_HANDOFF } from './AssistantProvider'
 import AssistantPanel, { HANDOFF_NOTE, HANDOFF_SENTENCE } from './AssistantPanel'
 
 // T2 pick B: the hand-off moment, with fake timers.
@@ -11,11 +11,14 @@ const analysis = () => ({ ok: true, status: 200, json: () => Promise.resolve({ i
 
 const renderBar = (path = '/') => render(<MemoryRouter initialEntries={[path]}><AssistantProvider><AssistantPanel bar /></AssistantProvider></MemoryRouter>)
 
+// R6 C (13 Oct): the hand-off answer first shows "Opening the AI data analysis tool…" as the wait line for one hold
+// (HOLD_MS), then the card with the countdown; `ask` waits that hold out.
 const ask = async (question = 'Compare September 2026 rainfall on Kauaʻi with the 30-year normal') => {
   const input = screen.getByTestId('assistant-input')
   fireEvent.change(input, { target: { value: question } })
   fireEvent.keyDown(input, { key: 'Enter' })
   await act(async () => { await vi.advanceTimersByTimeAsync(30) })
+  await act(async () => { await vi.advanceTimersByTimeAsync(HOLD_MS) })
 }
 
 beforeEach(() => {
@@ -54,6 +57,19 @@ describe('the ask field', () => {
 })
 
 describe('the hand-off moment (analysis replies)', () => {
+  it('first says "Opening the AI data analysis tool…" as the wait line for one hold, without the card', async () => {
+    renderBar()
+    const input = screen.getByTestId('assistant-input')
+    fireEvent.change(input, { target: { value: 'Compare September' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    await act(async () => { await vi.advanceTimersByTimeAsync(30) })
+    expect(screen.getByTestId('landing-status')).toHaveTextContent(WAIT_HANDOFF)
+    expect(screen.queryByTestId('handoff-reply')).toBeNull()
+    await act(async () => { await vi.advanceTimersByTimeAsync(HOLD_MS) })
+    expect(screen.queryByTestId('landing-working')).toBeNull()
+    expect(screen.getByTestId('handoff-reply')).toBeInTheDocument()
+  })
+
   it('says exactly the sentence with "here" as the external link, then the grey note and a countdown', async () => {
     renderBar()
     await ask()

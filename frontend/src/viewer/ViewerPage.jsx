@@ -32,6 +32,7 @@ import { useNarrowScreen } from './useMediaQuery'
 import { Compass, CornerStack, ExperimentalBadge, IGNITION_CAUTION, Legend, MapPill, TitleCard, ValueReadout } from './map/MapFurniture'
 import { GrammarError, MapStatus } from './map/ErrorStates'
 import Launcher from './map/Launcher'
+import AISummary from '../assistant/AISummary'
 
 const ClimateMap = lazy(() => import('./map/ClimateMap'))
 const TimeSeriesPanel = lazy(() => import('./TimeSeriesPanel'))
@@ -390,6 +391,8 @@ function Viewer({ v }) {
     return (
       <TooltipProvider delayDuration={300}>
         <div className="relative w-full pb-[7.75rem]" data-testid="viewer" data-layout="sheet">
+          {/* 13 Oct: on phones the assistant's AI summary sits at the top of the page, above the map. */}
+          <AISummary className="mx-4 mb-3 mt-3" />
           <section className="min-w-0" aria-label="Map">{maps}</section>
           <BottomSheet title={title} tabs={tabs} tab={tab} onTabChange={setTab} snap={snap} onSnapChange={setSnap} />
         </div>
@@ -402,6 +405,8 @@ function Viewer({ v }) {
     <div className="mx-auto w-full max-w-[1440px] px-4 pb-8 pt-4" data-testid="viewer" data-layout="rail">
       <div className={cn('flex flex-col gap-4 lg:grid lg:items-start lg:gap-5', selection ? 'lg:grid-cols-[18rem_minmax(0,1fr)_20rem]' : 'lg:grid-cols-[18rem_minmax(0,1fr)]')}>
         <aside className="min-w-0 space-y-4" aria-label="Map settings">
+          {/* 13 Oct: the assistant's AI summary tops the rail when it brought the visitor here. */}
+          <AISummary />
           <header>
             <p className={EYEBROW}>Climate viewer</p>
             <h1 className="mt-0.5 font-display text-xl leading-tight lg:text-2xl" data-testid="viewer-heading">{title}</h1>

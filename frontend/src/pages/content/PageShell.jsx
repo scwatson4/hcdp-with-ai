@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import ExternalLink from './ExternalLink'
+import AISummary from '../../assistant/AISummary'
 
 // Scroll to the element named by location.hash once the page has rendered.
 // The shell (App.jsx) scrolls to the top on every path change, and parent
@@ -21,12 +22,14 @@ export function useHashScroll() {
 }
 
 // The frame every content page shares: the portal source link, the title and
-// lead, the body, and a "Related" list of sibling pages.
-export function PageShell({ title, lead, source, sourceLabel = 'This page on the HCDP portal', icon: Icon, actions, children, related = [], className }) {
+// lead, the body, and a "Related" list of sibling pages. When the assistant brought the visitor here,
+// its AI summary sits above the heading (13 Oct); `summary={false}` for a page that places it itself.
+export function PageShell({ title, lead, source, sourceLabel = 'This page on the HCDP portal', icon: Icon, actions, children, related = [], className, summary = true }) {
   useHashScroll()
   return (
     <article className={cn('mx-auto w-full max-w-4xl px-4 py-8 sm:py-10', className)}>
       {/* The "Original HCDP version" link now lives in the bar above every page (components/OriginalLink). */}
+      {summary && <AISummary className="mb-7" />}
       <header>
         <div className="flex items-start gap-3">
           {Icon && (

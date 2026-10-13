@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { PageShell, Section, FactList } from './PageShell'
 import ExternalLink from './ExternalLink'
 import ExportForm from './ExportForm'
+import AISummary from '../../assistant/AISummary'
 import { CodeBlock, CopyBlock } from './CopyButton'
 import { dataRelated, lastCompleteMonth, yesterday } from './contentUtils'
 
@@ -94,6 +95,7 @@ export function AccessData() {
     <PageShell
       title="Access Data"
       icon={MapIcon}
+      summary={false}
       source={PORTAL_PAGE}
       lead={<p>The HCDP data portal maps and downloads Hawaiʻi's gridded climate products (rainfall back to 1920, temperature, drought, humidity, vegetation and fire risk) together with the station data behind them.</p>}
       actions={(
@@ -190,6 +192,8 @@ export function AccessData() {
       </Section>
 
       <Section id="export" title="Export data" lead={<p>Rainfall and temperature as HCDP packages them: gridded maps (GeoTIFF), their standard-error and anomaly maps, metadata and error metrics, and the station data as CSV, for the dates and extents you choose. Small packages download at once; larger ones are zipped by HCDP and a link is emailed to you.</p>}>
+        {/* 13 Oct: on this page the assistant's AI summary sits above the Export form (and the page scrolls to it on arrival). */}
+        <AISummary scrollIntoView className="mb-5" />
         <ExportForm originalHref={`${PORTAL_APP}/?datatype=rainfall&period=month`} />
         <p className="mt-3 text-sm text-subtle" data-testid="export-original-link">
           Drought index (SPI), vegetation (NDVI), ignition probability, climate projections and the climatologies are exported from the{' '}

@@ -995,3 +995,17 @@
   .hcdp-ask[data-hero]:focus-within { transform: none; }
   .hcdp-ask[data-hero]:focus-within::after { animation: none; }
 }
+
+/* 13 Oct: the AI summary block at the top of a destination page (assistant/AISummary.jsx). A 3 px vertical spectrum
+   rule on the left, a 7 px spectrum dot in the eyebrow, the AI words underlined by a 1 px spectrum rule (P1), and the
+   sentences fading and rising 350 ms apart (the stagger is an inline animation-delay). Reduced motion: all at once. */
+.hcdp-ai-summary-rule { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 9999px; background: var(--hcdp-rainbow-v); }
+.hcdp-ai-dot { display: inline-block; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--hcdp-rainbow); }
+.hcdp-ai-words { background: var(--hcdp-rainbow) left bottom / 100% 1px no-repeat; padding-bottom: 1px; }
+.hcdp-ai-chunk { animation: hcdp-ai-chunk-in 420ms ease both; }
+@keyframes hcdp-ai-chunk-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+/* The docked bar's wait line and the summary's pending state use a smaller comet ring. */
+.hcdp-comet-ring-sm { width: 14px; height: 14px; }
+@media (prefers-reduced-motion: reduce) {
+  .hcdp-ai-chunk { animation: none; }
+}

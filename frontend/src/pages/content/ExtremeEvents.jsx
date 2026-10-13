@@ -1,5 +1,5 @@
 import { useMemo, useEffect } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { CloudLightning, CalendarDays, MapPin, ArrowRight } from 'lucide-react'
 import { formatViewerPath, describeViewer } from '../../viewer/urlGrammar'
 import { HCDP } from '../../site/nav'
@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { PageShell, Section, Prose } from './PageShell'
+import AISummary from '../../assistant/AISummary'
 import ExternalLink from './ExternalLink'
 import { sectionRelated, dayRange, yesterday, formatDate } from './contentUtils'
 
@@ -218,6 +219,11 @@ const SLUG_TO_ID = { 'kona-low-1': 'kona-lows', 'kona-low-2': 'kona-lows' }
 
 export default function ExtremeEvents() {
   const { slug } = useParams()
+  const { hash } = useLocation()
+  // The page scrolls to a storm's section when the address names one (a slug or a hash), so the assistant's AI overview
+  // then tops THAT section, where the visitor lands, instead of the page heading (13 Oct).
+  const target = slug ? (SLUG_TO_ID[slug] || slug) : (hash && hash.length > 1 ? decodeURIComponent(hash.slice(1)) : null)
+  const overviewIn = EVENTS.some((e) => e.id === target) ? target : null
   useEffect(() => {
     if (!slug) return undefined
     const id = SLUG_TO_ID[slug] || slug
@@ -229,6 +235,7 @@ export default function ExtremeEvents() {
     <PageShell
       title="Extreme Events"
       icon={CloudLightning}
+      summary={!overviewIn}
       source={`${HCDP}/extreme-events/`}
       lead={<p>HCDP storm reports and live trackers, built from Hawaiʻi Mesonet observations and HCDP rainfall maps, newest first. The portal's Extreme Events page lists the Lowell, Lala and Kona Low reports; the Nolo tracker has its own page.</p>}
       related={sectionRelated('/extreme-events')}
@@ -241,6 +248,7 @@ export default function ExtremeEvents() {
 
       {EVENTS.map((e) => (
         <Section key={e.id} id={e.id} title={e.name}>
+          {overviewIn === e.id && <AISummary className="mb-4" />}
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="soft">{e.kind}</Badge>
             <Badge variant="outline"><CalendarDays className="h-3 w-3" aria-hidden="true" />{e.when}</Badge>

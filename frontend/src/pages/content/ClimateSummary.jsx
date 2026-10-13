@@ -1,11 +1,12 @@
 import { useEffect } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { CalendarDays, CloudRain, Thermometer, Sun, Mail, MapPin, BarChart3, FileText, RadioTower } from 'lucide-react'
 import { HCDP } from '../../site/nav'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { PageShell, Section, Prose, FactList } from './PageShell'
+import AISummary from '../../assistant/AISummary'
 import ExternalLink from './ExternalLink'
 import EmbedFrame from './EmbedFrame'
 import { sectionRelated } from './contentUtils'
@@ -103,10 +104,15 @@ const SUPPORTERS = [
 ]
 
 export default function ClimateSummary() {
+  // A month link lands on the dashboard (MonthPicker scrolls there): the AI overview then tops that section (13 Oct).
+  const { search } = useLocation()
+  const q = new URLSearchParams(search)
+  const landsOnDashboard = /^\d{4}$/.test(q.get('year') || '') && /^(1[0-2]|[1-9])$/.test(q.get('month') || '')
   return (
     <PageShell
       title="Monthly Climate Summary"
       icon={CalendarDays}
+      summary={!landsOnDashboard}
       source={SUMMARY_PAGE}
       lead={<p>The Hawaiʻi Monthly Climate Summary (beta) lets you explore rainfall, temperature and drought across the Hawaiian Islands by month, year, island and geographic division, and sends a monthly report by email.</p>}
       actions={(
@@ -212,6 +218,7 @@ export default function ClimateSummary() {
       </Section>
 
       <Section id="dashboard" title="The dashboard" lead={<p>The summary itself, embedded from the portal.</p>}>
+        {landsOnDashboard && <AISummary className="mb-4" />}
         <MonthPicker />
       </Section>
 

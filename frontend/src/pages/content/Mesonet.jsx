@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { RadioTower, Code2, PlayCircle, Globe2 } from 'lucide-react'
 import { HCDP } from '../../site/nav'
 import { Card } from '@/components/ui/card'
@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { PageShell, Section, Prose } from './PageShell'
+import AISummary from '../../assistant/AISummary'
 import ExternalLink from './ExternalLink'
 import EmbedFrame from './EmbedFrame'
 import { sectionRelated } from './contentUtils'
@@ -111,10 +112,15 @@ const STATS = [
 ]
 
 export default function Mesonet() {
+  // A station or viewer link lands on the live viewers (ViewerTabs scrolls there): the AI overview then tops that section (13 Oct).
+  const { search } = useLocation()
+  const q = new URLSearchParams(search)
+  const landsOnViewers = Boolean(q.get('station') || q.get('viewer') || q.get('view'))
   return (
     <PageShell
       title="Hawaiʻi Mesonet"
       icon={RadioTower}
+      summary={!landsOnViewers}
       source={MESONET_PAGE}
       lead={<p>A statewide advanced weather and climate monitoring network of approximately 100 telemetered stations, now under construction.</p>}
       actions={(
@@ -140,6 +146,7 @@ export default function Mesonet() {
       </div>
 
       <Section id="viewers" title="Live viewers" lead={<p>Three ways to watch the network live. Only the open tab loads.</p>}>
+        {landsOnViewers && <AISummary className="mb-4" />}
         <ViewerTabs />
         <p className="mt-3 text-xs text-subtle">American Samoa has its own Mesonet: <ExternalLink href={`${HCDP}/hawaii-mesonet-data/#/american-samoa`}>American Samoa Mesonet Live Data Viewer</ExternalLink> (see <Link className="underline" to="/pacific">Pacific Portal</Link>).</p>
       </Section>

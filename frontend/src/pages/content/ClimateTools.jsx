@@ -41,7 +41,13 @@ export default function ClimateTools() {
   const { slug } = useParams()
   useEffect(() => {
     if (!slug) return undefined
-    const t = window.setTimeout(() => { const el = document.getElementById(`tool-${slug}`); el?.scrollIntoView({ block: 'center' }); el?.classList.add('ring-4', 'ring-accent'); setTimeout(() => el?.classList.remove('ring-4', 'ring-accent'), 2200) }, 80)
+    const t = window.setTimeout(() => {
+      const el = document.getElementById(`tool-${slug}`)
+      // 13 Oct: when the assistant's AI overview tops the page, land on it (the tile is ringed below it); else centre the tile.
+      const overview = document.querySelector('.hcdp-ai-summary')
+      if (overview) overview.scrollIntoView({ block: 'start' }); else el?.scrollIntoView({ block: 'center' })
+      el?.classList.add('ring-4', 'ring-accent'); setTimeout(() => el?.classList.remove('ring-4', 'ring-accent'), 2200)
+    }, 80)
     return () => window.clearTimeout(t)
   }, [slug])
   return (

@@ -16,9 +16,9 @@ import { cn } from '../lib/utils'
 // Not on the landing page (there the hero bar is the assistant) — except invisibly during the
 // ride-up, so the travelling bar has a rectangle to arrive at.
 export default function AssistantBar() {
-  const { mode, setMode, minimize, reset, travel, strip, epoch, holdStrip, releaseStrip, hideStrip } = useAssistant()
+  const { mode, setMode, minimize, reset, travel, strip, epoch, holdStrip, releaseStrip, hideStrip, heroOut } = useAssistant()
   const { pathname } = useLocation()
-  const onLanding = pathname === '/'
+  const onLanding = pathname === '/' && !heroOut   // L4 E: once the hero has scrolled away the bar docks here too
   const measuring = onLanding && travel.phase === 'travel'
   const rootRef = useRef(null)
   const open = mode === 'panel' && !measuring

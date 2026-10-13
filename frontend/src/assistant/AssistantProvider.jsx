@@ -43,6 +43,9 @@ export function AssistantProvider({ children }) {
   const [busy, setBusy] = useState(false)
   const [travel, setTravel] = useState({ phase: 'idle', path: null })   // 'idle' | 'hold' | 'travel'
   const [strip, setStrip] = useState(null)   // { id, reply, alternatives, path }
+  const [narration, setNarration] = useState(null)
+  const [heroOut, setHeroOut] = useState(false)   // L4 E: the landing hero has scrolled away → the bar docks under the header   // the wait line from gpt-6-luna, or null → "Working on that…"
+  const narrateAbort = useRef(null)
   const [epoch, setEpoch] = useState(0)      // bumped by reset(): the bars remount empty (item 13)
   const historyRef = useRef([])
   const seq = useRef(0)
@@ -104,11 +107,19 @@ export function AssistantProvider({ children }) {
     return { path: location.pathname + location.search, viewer: viewer && !viewer.error ? viewer : null }
   }, [location])
 
-  const send = useCallback(async (text) => {
+  const send = useCallback(async (text, opts = {}) => {
     const q = (text || '').trim()
     if (!q || busy || travelling) return
     setBusy(true)
+    setNarration(null)
     setMessages((m) => [...m, { id: nextId(), role: 'user', content: q }])
+    // In parallel with the answer: one short narration line for the wait indicator (never delays the answer).
+    try {
+      narrateAbort.current?.abort()
+      const ac = new AbortController(); narrateAbort.current = ac
+      fetch('/api/narrate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: q }), signal: ac.signal })
+        .then((r) => (r.ok ? r.json() : null)).then((d) => { if (!ac.signal.aborted && d && typeof d.line === 'string' && d.line.trim()) setNarration(d.line.trim()) }).catch(() => {})
+    } catch { /* no narration: the fallback line shows */ }
     try {
       const res = await fetch('/api/navigate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -126,7 +137,7 @@ export function AssistantProvider({ children }) {
       const id = nextId()
       setMessages((m) => [...m, { id, role: 'assistant', content: data.reply || '', intent: data.intent, actions, alternatives }])
       if (data.intent === 'analysis') startHandoff(id, actions.find((a) => a.type === 'handoff')?.url || handoffUrl({ question: q, viewerPath: location.pathname }))
-      const onLanding = location.pathname === '/'
+      const onLanding = location.pathname === '/' && !opts.docked   // sent from the scroll-docked bar: go at once, like an inner page
       if (nav) {
         const s = { id, reply: data.reply || '', alternatives: alternatives.slice(0, 2) }
         if (onLanding) beginTravel(nav.path, s)   // answer first, then the bar rides up
@@ -136,7 +147,7 @@ export function AssistantProvider({ children }) {
       }
     } catch (e) {
       setMessages((m) => [...m, { id: nextId(), role: 'assistant', content: 'I could not reach the navigator. Check the connection and try again.' }])
-    } finally { setBusy(false) }
+    } finally { setBusy(false); narrateAbort.current?.abort(); narrateAbort.current = null }
   }, [busy, travelling, context, startHandoff, beginTravel, arrive, location.pathname])
 
   /** Put the cursor in the bar (the landing bar on /, the docked bar elsewhere). */
@@ -187,9 +198,9 @@ export function AssistantProvider({ children }) {
   }, [mode, open])
 
   const value = useMemo(() => ({
-    messages, mode, busy, travelling, travel, strip, epoch, send, open, minimize, setMode, reset,
+    messages, mode, busy, travelling, travel, strip, narration, heroOut, setHeroOut, epoch, send, open, minimize, setMode, reset,
     handoff, stayHere, settleHandoff, holdStrip, releaseStrip, hideStrip,
-  }), [messages, mode, busy, travelling, travel, strip, epoch, send, open, minimize, reset, handoff, stayHere, settleHandoff, holdStrip, releaseStrip, hideStrip])
+  }), [messages, mode, busy, travelling, travel, strip, narration, heroOut, epoch, send, open, minimize, reset, handoff, stayHere, settleHandoff, holdStrip, releaseStrip, hideStrip])
   return (
     <Ctx.Provider value={value}>
       {children}

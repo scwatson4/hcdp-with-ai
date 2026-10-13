@@ -95,3 +95,47 @@ class NavigatorLLM:
         self.stats["last_error"] = type(last).__name__
         self.stats["last_ms"] = int((time.monotonic() - t0) * 1000)
         raise last
+
+
+NARRATION_SYSTEM = (
+    "You are the navigator of the Hawaiʻi Climate Data Portal website. The visitor just asked something; while the "
+    "real answer is being worked out, say in ONE short line (at most eight words, present progressive, no quotes, no "
+    "trailing period) what you are doing for them — for example 'Pulling up the API access info', "
+    "'Finding the Kauaʻi rainfall map', 'Opening the Hurricane Lowell report'. Plain words only."
+)
+
+
+class NarrationLLM:
+    """A quick, simple, short line to show beside the wait indicator (the user's rule, 13 Oct): always gpt-6-luna,
+    through the navigator's route, with a hard 3-second timeout; any failure means the caller shows its fallback."""
+
+    def __init__(self, base_url=None, api_key=None, model=None, timeout=3.0):
+        self.base_url = base_url or os.environ.get("NAVIGATOR_API_BASE") or DEFAULT_BASE
+        self.api_key = api_key if api_key is not None else (os.environ.get("NAVIGATOR_API_KEY") or os.environ.get("AZURE_OPENAI_API_KEY", ""))
+        self.model = model or os.environ.get("NARRATION_MODEL") or "gpt-6-luna"
+        self._client = OpenAI(base_url=self.base_url, api_key=self.api_key, timeout=timeout, max_retries=0) if self.api_key else None
+        self.stats = {"calls": 0, "errors": 0, "last_ms": None}
+
+    @property
+    def configured(self) -> bool:
+        return self._client is not None
+
+    def narrate(self, message: str) -> str | None:
+        if not self._client or not (message or "").strip():
+            return None
+        msgs = [{"role": "system", "content": NARRATION_SYSTEM}, {"role": "user", "content": message.strip()[:500]}]
+        t0 = time.monotonic()
+        self.stats["calls"] += 1
+        for kw in (dict(model=self.model, messages=msgs, max_completion_tokens=24, reasoning_effort="low"), dict(model=self.model, messages=msgs, max_completion_tokens=24), dict(model=self.model, messages=msgs)):
+            try:
+                resp = self._client.chat.completions.create(**kw)
+                self.stats["last_ms"] = int((time.monotonic() - t0) * 1000)
+                line = (resp.choices[0].message.content or "").strip().strip('"').strip("'").rstrip(".").strip()
+                line = line.split("\n")[0][:80]
+                return line or None
+            except Exception as e:  # noqa: BLE001
+                if not _is_bad_request(e):
+                    break
+        self.stats["errors"] += 1
+        self.stats["last_ms"] = int((time.monotonic() - t0) * 1000)
+        return None

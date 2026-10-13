@@ -36,10 +36,11 @@ describe('the ask field wraps long questions', () => {
     mount()
     const ta = screen.getByTestId('assistant-input')
     act(() => { fireEvent.change(ta, { target: { value: 'hello' } }) })
+    const navigates = () => fetchSpy.mock.calls.filter((c) => c[0] === '/api/navigate').length
     act(() => { fireEvent.keyDown(ta, { key: 'Enter', shiftKey: true }) })
-    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(navigates()).toBe(0)
     act(() => { fireEvent.keyDown(ta, { key: 'Enter' }) })
-    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(navigates()).toBe(1)
     fetchSpy.mockRestore()
   })
 })

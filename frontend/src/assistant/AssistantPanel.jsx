@@ -126,11 +126,11 @@ export function AskBar({ docked = false, glass = false }) {
     setLines(n)
     el.style.height = `${n * lineHeight}px`
   }, [text, lineHeight])
-  const submit = (e) => { e?.preventDefault(); const t = text; if (docked) setText(''); send(t) }
+  const submit = (e) => { e?.preventDefault(); const t = text; if (docked) setText(''); send(t, { docked }) }
   const placeholder = ghostQuery ? '' : docked && hasConversation ? 'Ask for another page or map…' : 'What are you looking for?'
   return (
     <form onSubmit={submit} onMouseEnter={() => { hoverRef.current = true }} onMouseLeave={() => { hoverRef.current = false }} data-testid={docked ? 'docked-ask-bar' : 'ask-bar'}>
-      <div className={cn('hcdp-ask', lines > 1 ? 'rounded-3xl' : 'rounded-full', docked ? 'min-h-11' : 'min-h-14 shadow-lg', busy && 'hcdp-ask-busy')} data-testid="ask-field" data-busy={busy ? 'true' : 'false'} data-lines={lines}>
+      <div className={cn('hcdp-ask', lines > 1 ? 'rounded-3xl' : 'rounded-full', docked ? 'min-h-11' : 'min-h-14 shadow-lg', busy && 'hcdp-ask-busy')} data-testid="ask-field" data-busy={busy ? 'true' : 'false'} data-lines={lines} data-hero={docked ? undefined : 'true'}>
         <span aria-hidden="true" className="hcdp-ask-ring" />
         <div className={cn('hcdp-ask-field relative flex min-h-[inherit] items-end', docked ? 'py-1 pl-4 pr-1' : 'py-2 pl-6 pr-2', glass && 'hcdp-ask-glass')}>
           <textarea ref={inputRef} value={text} rows={1} onChange={(e) => setText(e.target.value.slice(0, 500))} autoComplete="off" enterKeyHint="send"
@@ -150,7 +150,7 @@ export function AskBar({ docked = false, glass = false }) {
             </>
           )}
           {ghostQuery && focused && <kbd className="mr-2 hidden shrink-0 rounded-md border border-border bg-surface px-1.5 py-px font-mono text-[11px] text-foreground sm:inline-block" data-testid="ask-tab-hint">Tab ↹</kbd>}
-          <button type="submit" disabled={!text.trim() || busy || travelling} aria-label="Send" className={cn('grid shrink-0 place-items-center rounded-full bg-accent text-accent-foreground disabled:opacity-40', docked ? 'h-9 w-9' : 'h-10 w-10')}><ArrowUp className="h-4 w-4" /></button>
+          <button type="submit" disabled={!text.trim() || busy || travelling} aria-label="Send" className={cn('hcdp-send grid shrink-0 place-items-center rounded-full text-accent-foreground disabled:opacity-40', docked ? 'h-9 w-9' : 'h-10 w-10')}><ArrowUp className="h-4 w-4" /></button>
         </div>
       </div>
     </form>
@@ -191,14 +191,14 @@ export function Conversation({ compact = false, hideUser = false, latestOnly = f
 /** The landing page's assistant: the hero bar and, once there is something to say, the answer card
  *  under it (the AI's bubbles only — the question is in the bar). */
 export default function AssistantPanel({ glass = false }) {
-  const { messages, busy, travelling, travel, epoch } = useAssistant()
+  const { messages, busy, travelling, travel, narration, epoch } = useAssistant()
   const last = messages[messages.length - 1]
   const lastIsNavigate = last?.role === 'assistant' && (last.actions || []).some((a) => a.type === 'navigate')
   // 13 Oct: while the AI works, and while a navigation answer is read before the travel, only a rainbow comet
   // ring and one line of text sit under the bar — no card, no background. The card stays for replies with
   // nowhere to go (info, clarify, the hand-off).
   const working = busy || (travelling && travel.phase === 'hold')
-  const status = busy ? 'Working on that…' : (lastIsNavigate ? last.content : '')
+  const status = busy ? (narration || 'Working on that…') : (lastIsNavigate ? last.content : '')
   const showCard = !busy && !travelling && messages.length > 1 && !lastIsNavigate
   return (
     <div className="flex flex-col" data-testid="assistant-panel">

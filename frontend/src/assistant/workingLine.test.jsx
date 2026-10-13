@@ -8,7 +8,7 @@ describe('the working line under the landing bar', () => {
   afterEach(() => vi.restoreAllMocks())
   it('shows a comet ring with "Working on that…" while the AI works, and no card', async () => {
     let resolve
-    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise((r) => { resolve = r }))
+    vi.spyOn(globalThis, 'fetch').mockImplementation((url) => url === '/api/narrate' ? Promise.reject(new Error('no narration')) : new Promise((r) => { resolve = r }))
     render(<MemoryRouter><AssistantProvider><AssistantPanel /></AssistantProvider></MemoryRouter>)
     const ta = screen.getByTestId('assistant-input')
     act(() => { fireEvent.change(ta, { target: { value: 'where is the API' } }) })
@@ -21,5 +21,17 @@ describe('the working line under the landing bar', () => {
     await act(async () => { resolve({ ok: true, json: async () => ({ intent: 'info', reply: 'The API page explains it.', actions: [], alternatives: [] }) }) })
     expect(screen.queryByTestId('landing-working')).toBeNull()
     expect(screen.getByTestId('landing-answers')).toBeInTheDocument()   // a reply with nowhere to go keeps the card
+  })
+
+  it('replaces the fallback with the short narration from the model when it arrives first', async () => {
+    let resolve
+    vi.spyOn(globalThis, 'fetch').mockImplementation((url) => url === '/api/narrate' ? Promise.resolve({ ok: true, json: async () => ({ line: 'Pulling up the API access info' }) }) : new Promise((r) => { resolve = r }))
+    render(<MemoryRouter><AssistantProvider><AssistantPanel /></AssistantProvider></MemoryRouter>)
+    const ta = screen.getByTestId('assistant-input')
+    act(() => { fireEvent.change(ta, { target: { value: 'where is the API' } }) })
+    act(() => { fireEvent.keyDown(ta, { key: 'Enter' }) })
+    expect(await screen.findByText('Pulling up the API access info')).toBeInTheDocument()
+    await act(async () => { resolve({ ok: true, json: async () => ({ intent: 'info', reply: 'The API page explains it.', actions: [], alternatives: [] }) }) })
+    expect(screen.queryByTestId('landing-working')).toBeNull()
   })
 })

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { Map, RadioTower, CalendarDays, Globe2, CloudLightning, Wrench, ArrowRight, Instagram, Mail } from 'lucide-react'
 import { TOOL_CARDS, SIDEBAR } from '../site/nav'
@@ -49,10 +50,23 @@ export function Sidebar() {
   )
 }
 
+function useHeroOut(ref, setHeroOut) {
+  useEffect(() => {
+    const el = ref.current
+    if (!el || typeof IntersectionObserver === 'undefined') return undefined
+    const obs = new IntersectionObserver(([entry]) => setHeroOut(!entry.isIntersecting), { rootMargin: '-120px 0px 0px 0px', threshold: 0 })
+    obs.observe(el)
+    return () => { obs.disconnect(); setHeroOut(false) }
+  }, [ref, setHeroOut])
+}
+
 export default function Landing() {
   const dark = useIsDark()
   const ocean = `#${dark ? OCEAN.dark : OCEAN.light}`
   const { travel } = useAssistant()   // R1 D: while the bar rides up to the header the hero lifts away
+  const assistantRef = useRef(null)
+  const { setHeroOut } = useAssistant()
+  useHeroOut(assistantRef, setHeroOut)
   return (
     <div className="mx-auto w-full max-w-[1440px]">
       <div className="grid lg:grid-cols-[minmax(0,85fr)_minmax(210px,15fr)] lg:items-start">
@@ -65,7 +79,7 @@ export default function Landing() {
               islands stay visible around and through it. */}
           <div className="relative z-10 row-start-2 mx-auto w-full max-w-3xl px-4 py-6">
             <h1 className="sr-only">Hawaiʻi Climate Data Portal</h1>
-            <div data-testid="landing-assistant">
+            <div data-testid="landing-assistant" ref={assistantRef}>
               <AssistantPanel glass />
             </div>
           </div>

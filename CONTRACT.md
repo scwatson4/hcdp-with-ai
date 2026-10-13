@@ -228,6 +228,12 @@ station fills: `partial`, and `raw` for daily rainfall. The body HCDP receives i
 `{email?, data: [{fileData: [{fileParams: {extent: [codes], units: [unit], fill?: [fills]}, files: [tags]}], params: {location, datatype, …, period},
 dates: {start, end, unit, interval: 1}}]}`. The HCDP token stays server-side; the frontend never calls HCDP.
 
+## The wait line (13 Oct)
+`POST /api/narrate` body `{ "message": str }` → `{ "line": str | null }`: one short present-progressive line from gpt-6-luna
+(`NARRATION_MODEL`, default gpt-6-luna, through the navigator's route, 3 s timeout, its own limiter) shown beside the comet ring
+under the landing bar while the answer is being worked out; null → the page shows "Working on that…". Fired in parallel with
+`/api/navigate` and never delays it.
+
 ## The navigator's action protocol (backend → assistant)
 `POST /api/navigate` body: `{ "message": str, "history": [{"role","content"}] (last 8, memory only),
 "context": { "path": str, "viewer": {...} | null } }`

@@ -78,10 +78,14 @@ if not export_valid_email(EXPORT_LOG_EMAIL):
 app = FastAPI(title="HCDP with AI — navigator", docs_url=None, redoc_url=None)
 app.state.llm = NavigatorLLM()
 app.state.navigator = Navigator(app.state.llm, load_catalog(), ai_interface_url=AI_INTERFACE_URL)
+from llm import NarrationLLM  # noqa: E402
+app.state.narrator = NarrationLLM()
 app.state.dates_cache = {}
 app.state.limiter = RateLimiter(per_minute=int(os.environ.get("NAV_PER_MINUTE", "12")), per_hour=int(os.environ.get("NAV_PER_HOUR", "120")),
                                  global_per_day=int(os.environ.get("NAV_GLOBAL_PER_DAY", "5000")))
 # Short links are cheap but write files: a second limiter keeps one visitor from filling the disk.
+# The wait line: one tiny gpt-6-luna call per question, in parallel with the answer; its own limiter mirrors the navigator's.
+app.state.narrate_limiter = RateLimiter(per_minute=int(os.environ.get("NAV_PER_MINUTE", "12")), per_hour=int(os.environ.get("NAV_PER_HOUR", "120")), global_per_day=int(os.environ.get("NARRATE_GLOBAL_PER_DAY", "5000")))
 app.state.short_limiter = RateLimiter(per_minute=int(os.environ.get("SHORT_PER_MINUTE", "30")), per_hour=int(os.environ.get("SHORT_PER_HOUR", "300")), global_per_day=200000)
 # Exports cost HCDP real work: a limiter per visitor for downloads, a harder one for emailed packages.
 app.state.export_limiter = RateLimiter(per_minute=int(os.environ.get("EXPORT_PER_MINUTE", "6")), per_hour=int(os.environ.get("EXPORT_PER_HOUR", "40")), global_per_day=int(os.environ.get("EXPORT_GLOBAL_PER_DAY", "2000")))
@@ -115,6 +119,23 @@ async def api_navigate(body: NavigateBody, request: Request):
         out["reply"] = "The assistant has reached today's limit, so here are the closest matches by keyword."
         return out
     return await run_in_threadpool(nav.respond, body.message, body.history[-24:], body.context)
+
+
+class NarrateBody(BaseModel):
+    message: str = ""
+
+
+@app.post("/api/narrate")
+async def api_narrate(body: NarrateBody, request: Request):
+    """One short line for the wait indicator ("Pulling up the API access info"), from gpt-6-luna; null when the
+    model is slow, over budget or unavailable — the page then shows "Working on that…"."""
+    if request.app.state.narrate_limiter.check(request.client.host if request.client else "?"):
+        return {"line": None}
+    narrator = getattr(request.app.state, "narrator", None)
+    if narrator is None or not narrator.configured:
+        return {"line": None}
+    line = await run_in_threadpool(narrator.narrate, body.message)
+    return {"line": line}
 
 
 @app.get("/api/stations")

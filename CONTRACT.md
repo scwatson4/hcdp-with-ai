@@ -99,6 +99,13 @@ There is no entry in the header menu (item 12).
   (else a visit to it), ✕ dismisses, nothing is stored, the strip goes on the next route change and the `from`
   key is stripped from the address.
 
+## The landing page on phones (M3 C, 14 Oct)
+Built on today's landing: the hero (the bar with its typewriter examples and its four chips, on phones too), then — where
+the sidebar stacks under the hero (below `lg`, every phone) — the portal's five buttons and the AI tool's as 44 px rows
+(44 px on coarse pointers at any width), then one **"More from HCDP"** accordion row (48 px, closed) holding Climate
+Resources, Social Media, How To Cite and Contact Us (44 px rows inside), then "What HCDP offers". Wide screens keep the
+portal's open sidebar. The logo row carries neither "Share this view" nor "Original HCDP version" on the landing page.
+
 ## Stack and layout
 - `frontend/` — React 18 + Vite + Tailwind. Same design system as the AI interface: tokens in
   `src/styles/globals.css`, primitives in `src/components/ui/*`. The assistant is labelled with the words "Ask AI"
@@ -128,9 +135,11 @@ Run the frontend tests with `cd frontend && npx vitest run`, the backend tests w
 
 ## The URL principle
 Every state on this site has its own shareable URL — a map, a station, a month, a storm, a tool, even a
-question to the assistant — because HCDP's own pages cannot do that. Every page shows an **"Original HCDP
+question to the assistant — because HCDP's own pages cannot do that. Every page except the landing page (M3 C, 14 Oct:
+the landing shows neither, at any width) shows an **"Original HCDP
 version"** link at the far right of the header's logo row (`frontend/src/site/original.js` maps our URLs to
-theirs; many of ours map to one of theirs) and a **"Share this view"** copier at its far left (item 11). Adding anything new means: put its state in
+theirs; many of ours map to one of theirs) and a **"Share this view"** copier at its far left (item 11); on the phone
+viewer they live in its sheet and its floating bar (M1 C below). Adding anything new means: put its state in
 the URL, register the query keys / route pattern in `backend/navigator.py` (`PAGE_QUERY_KEYS`,
 `ROUTE_PATTERNS`), add it to the catalog so the navigator can produce it, and map it in `original.js`.
 

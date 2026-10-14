@@ -113,8 +113,10 @@ function HandoffReply({ m }) {
  * choosing a row calls the provider's choose(): the field keeps the typed text, the wait line says "Opening {title}…"
  * for one hold, then the page opens (an external one in a new tab) and the overview flow runs.
  */
+const consumedSheetChips = new Set()   // a chip template meant for the phone sheet fills one sheet field, once
+
 export function AskBar({ docked = false, glass = false, onChipsState = null, inSheet = false, mini = false }) {
-  const { messages, busy, travelling, send, choose, followupsFor, chipTemplate } = useAssistant()
+  const { messages, busy, travelling, send, choose, followupsFor, chipTemplate, pickChip } = useAssistant()
   const { pathname, search } = useLocation()
   // M2 A (14 Oct): on a phone the docked bar is the door to the Ask AI sheet — a tap on it opens the sheet (whose own
   // field takes the keyboard); the bar keeps its quiet follow-up ghost (M3 C). In the sheet and in the full-screen
@@ -238,7 +240,12 @@ export function AskBar({ docked = false, glass = false, onChipsState = null, inS
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ghostActive, reduceMotion, inUse.key, quiet])
   const ghostQuery = ghostActive ? exampleAt(idxRef.current) : null
-  const insertGhost = () => { if (ghostQuery) { setText(ghostQuery); inputRef.current?.focus() } }
+  // On a phone the docked bar's follow-up opens the sheet with it in the sheet's field.
+  const insertGhost = (e) => {
+    if (!ghostQuery) return
+    if (opensSheet) { e?.stopPropagation?.(); pickChip({ template: ghostQuery, blanks: [] }, 'sheet'); openSheet(); return }
+    setText(ghostQuery); inputRef.current?.focus()
+  }
   // The field wraps long questions and grows to three lines; beyond that it scrolls inside (Enter sends, Shift+Enter breaks a line).
   const lineHeight = docked ? 24 : (typeof window !== 'undefined' && window.matchMedia?.('(min-width: 640px)').matches ? 28 : 24)
   const [lines, setLines] = useState(1)
@@ -271,8 +278,9 @@ export function AskBar({ docked = false, glass = false, onChipsState = null, inS
   useEffect(() => {
     if (!chipTemplate || (chipTemplate.target === 'sheet' ? !inSheet : docked)) return undefined
     const { template, blanks, seq } = chipTemplate
-    if (!template || seenChip.current === seq) return undefined
+    if (!template || seenChip.current === seq || (chipTemplate.target === 'sheet' && consumedSheetChips.has(seq))) return undefined
     seenChip.current = seq
+    if (chipTemplate.target === 'sheet') consumedSheetChips.add(seq)
     const at = blanks?.length ? template.indexOf(blanks[0]) : -1
     selectRef.current = at >= 0 ? { start: at, end: at + blanks[0].length } : { start: template.length, end: template.length }
     setText(template)

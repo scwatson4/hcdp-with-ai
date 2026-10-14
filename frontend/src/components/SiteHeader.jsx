@@ -1,4 +1,4 @@
-import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { ChevronDown, ExternalLink, Menu } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from './ui/button'
@@ -30,18 +30,22 @@ const NAV_ITEM = 'font-nav text-[12.5px] font-semibold uppercase tracking-[0.06e
 
 export default function SiteHeader() {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const { reset } = useAssistant()   // item 13: the logo always resets the landing page
   const [mobile, setMobile] = useState(false)
+  // M3 C (14 Oct): the landing page shows neither "Share this view" nor "Original HCDP version", at any width — every
+  // inner page keeps them. The logo stays centred (the two side cells stay, empty).
+  const utility = pathname !== '/'
   return (
     <header className="border-b border-border bg-canvas/95 backdrop-blur">
       <div className="hcdp-band" aria-hidden="true" />
       <div className="mx-auto grid w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 pb-1 pt-3" data-testid="logo-row">
-        <div className="flex min-w-0 items-center justify-start"><ShareView /></div>
+        <div className="flex min-w-0 items-center justify-start">{utility && <ShareView />}</div>
         <Link to="/" aria-label="Hawaiʻi Climate Data Portal home" className="block" onClick={() => { setMobile(false); reset() }} data-testid="logo-home">
           <img src="/hcdp_logo.png" alt="HCDP — Hawaiʻi Climate Data Portal" width="1120" height="150" decoding="async" fetchPriority="high" className="h-7 w-auto sm:h-[52px]" />
         </Link>
         <div className="flex min-w-0 items-center justify-end gap-1">
-          <OriginalVersionLink />
+          {utility && <OriginalVersionLink />}
           <Button variant="ghost" size="sm" className="h-8 w-8 p-0 md:hidden" aria-label="Menu" aria-expanded={mobile} onClick={() => setMobile((v) => !v)}><Menu className="h-4 w-4" /></Button>
         </div>
       </div>

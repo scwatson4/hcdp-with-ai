@@ -129,6 +129,7 @@ portal's open sidebar. The logo row carries neither "Share this view" nor "Origi
 | Climate viewer | `frontend/src/viewer/ViewerPage.jsx`, `frontend/src/viewer/map/*`, `frontend/src/viewer/*.test.js(x)`; may READ `urlGrammar.js` and the two `*.reference.js` files | viewer agent |
 | Site catalog + navigator test cases | `backend/data/catalog.json`, `backend/data/usecases.json`, `backend/tests/test_catalog.py`, `backend/tests/test_usecases.py` | catalog agent |
 | Use-case document | `docs/USE_CASES.md` | use-case agent |
+| Review-period feedback (F1–F5) | `frontend/src/feedback/*`, `frontend/src/pages/AdminFeedback.jsx` (+ tests), `backend/feedback.py`, `backend/tests/test_feedback.py`, `e2e/feedback_smoke.mjs`; one line each in `App.jsx`, `AISummary.jsx`, `AssistantPanel.jsx` | feedback agent |
 
 Run the frontend tests with `cd frontend && npx vitest run`, the backend tests with
 `cd backend && python -m pytest -q`. Keep both green.
@@ -163,6 +164,7 @@ the URL, register the query keys / route pattern in `backend/navigator.py` (`PAG
 /extreme-events           index of events (Nolo, Lowell, Lala, Kona Lows …), each with its portal links
 /tools                    Climate Tools
 /viewer/...               the deep-linkable climate viewer (grammar below)
+/admin/feedback           the feedback review table (linked nowhere; the admin key — "Feedback" below)
 ```
 Anything the prototype does not replicate links out to the real page on www.hawaii.edu/climate-data-portal
 (open in a new tab, marked with an external-link icon).
@@ -463,11 +465,74 @@ is not "instead"). Storage: `backend/feedback.py`, SQLite at `FEEDBACK_DB` — `
 the `feedback_data` volume (`deploy/docker-compose.yml`), `backend/cache/feedback.sqlite` in development — WAL, one short
 connection per call behind a lock; **no IP, user agent or cookie is stored**. The admin view: `/admin/feedback` (linked
 nowhere; type the address) asks for the admin key — a password field, sent as `X-Admin-Key`, kept in `sessionStorage` for the
-tab (the one exception to "nothing persisted" besides the unit system) — then a table newest first (when, ask, reply,
-destination, wanted, chose instead), a count and **Export CSV** (`GET /api/admin/feedback.csv` with the header; `GET
-/api/admin/feedback` → `{count, rows}`). The key is `ADMIN_KEY` in the instance's `.env`: unset → the API answers 404 and the
-page says the admin view is not enabled; a wrong key → 401 "Not authorised". `/api/health` reports `feedback.enabled` as a
-boolean (never the key), `feedback.store` and `feedback.stored`.
+tab — then (since F3 A, 13 Oct) the review table over these reports and the reviewers' feedback ("Feedback" below), where a
+report reads as kind `wrong_page` with its destination, wanted page and "went to instead". `GET /api/admin/feedback(.csv)` still
+answer with the wrong-page rows alone (`{count, rows}`; the CSV with its header). The key is `ADMIN_KEY` in the instance's `.env`:
+unset → the API answers 404 and the page says the admin view is not enabled; a wrong key → 401 "Not authorised". `/api/health`
+reports `feedback.enabled` as a boolean (never the key), `feedback.store`, `feedback.stored` (wrong-page reports) and
+`feedback.items` (the reviewers' feedback).
+
+## Feedback (F1–F5, 13 Oct)
+For the HCDP team's review of the site — the same ability to give feedback on responses, navigation results and the revamped
+features as the AI data analysis interface has. `frontend/src/feedback/*`, mounted once by `App.jsx` (`FeedbackProvider` around
+the shell, `FeedbackLayer` at its end); `AISummary.jsx` and `AssistantPanel.jsx` hook in with one line each.
+- **Three ways in (F1 A).** (a) 👍 / 👎 on every AI answer (the landing card, the docked dropdown, the phone's Ask AI sheet) and
+  at the end of every AI overview: two quiet 28 px icons (44 px on coarse pointers) at the LEFT of the last row — on an overview
+  right before "Wrong page?" (the right edge belongs to the tab and Back to top). 👍 is one tap: `POST /api/feedback` with the
+  exchange, a toast "Thanks", the thumb stays filled. 👎 (F5 A) unfolds "Which page did you want?" in place — the answer's
+  alternatives (and did-you-mean options) as rows, "Other…" with a line of text and Next, and "Skip — it is not about the page" —
+  then opens the composer with the choice attached (the pick files; it does not navigate). (b) Select text anywhere (not in form
+  fields, not in the feedback UI) → a small dark pill "Copy · Give feedback" over the selection (under it on touch screens, clear
+  of the system menu); the next Tab moves into it, Esc puts it away until the selection changes. Give feedback opens the composer
+  with the passage quoted (≤ 500 characters), the feature guessed from where it sits (an overview → AI Overview with its exchange,
+  an answer → AI answer with its exchange, `/viewer/…` → Maps viewer, `/download` → Downloads, else A page) and the passage
+  marked on the page while the composer is open (CSS Custom Highlight API, `::highlight(hcdp-feedback)` — the page's DOM is never
+  touched). (c) The right-edge **"Give feedback"** tab: vertical, the portal's chip style (white, a 1 px border), 44 px wide,
+  centred on the right edge of every page with the landing, hidden in print and kept (inert, invisible) while the panel is open
+  so the focus can come back to it; on narrow or touch screens (`(max-width: 1023px), (pointer: coarse)`) it tucks off the edge
+  while the page scrolls down and returns on the way up or near the top.
+- **The composer (F2 A).** A non-modal 400 px right-side panel on desktop, a bottom sheet (≤ 88 dvh, a grab bar) below 640 px,
+  in the portal's fonts; above every layer of the site (z 1300 — the Ask AI sheet is 71, the full-screen map 60, the phone
+  viewer's sheet 1100); ✕ or Esc closes it (the Esc stops there) and the focus returns. In order: the quote (removable); the page
+  — title and path, editable; the last question and answer, attached automatically when the feature is AI answer, Navigation
+  result or AI Overview (an overview's sentences follow the navigator's reply as "AI Overview: …", its `request_id` as
+  `overview_id`), shown and removable; after a 👎 the wanted page (removable); the feature picker — AI answer · Navigation
+  result · AI Overview · Maps viewer · Downloads · Feedback itself · A page · Other; the text (required, ≤ 2000); the reviewer's
+  name; Send (Ctrl/⌘ + Enter). A refusal keeps the words and shows the server's reason; closing keeps the words for next time.
+- **The reviewer's name (F4 A).** Remembered per browser in `localStorage` (`hcdp-reviewer-name`, read and written in
+  try/catch) — the review-period exception to "nothing persisted", said under the field; empty = anonymous. A label, not an
+  identity.
+- **The panel (F3 A).** The composer's header switches **New · My feedback · Others**. My feedback (`GET
+  /api/feedback/mine?name=`) lists the items sent under that name, newest first, with a status chip (New · Reviewed · Fixed ·
+  Won't fix; never the team's note) — a tap goes to the page and marks the quoted passage; Others (`GET
+  /api/feedback/others?name=`) lists everyone else's — the anonymous "Wrong page?" reports included — as titles and statuses,
+  never a name. The name is changed there; earlier items follow it (`POST /api/feedback/rename {from, to}` → `{ok, changed}`).
+- **The API.** `POST /api/feedback` body `{ kind: "thumbs" | "selection" | "tab", rating: "up" | "down" | null (a thumbs item
+  needs one), feature, page: { path (a path here), title }, quote, ask, reply, overview_id, wanted: {title, url} | {text} | null,
+  text (required except for a 👍), reviewer_name }` → `{ id }`; 400 for an unknown kind, rating or feature, a missing text, a
+  page that is not a path here, a wanted url that is neither a page here nor an allowed HCDP url; 422 over the limits (quote and
+  ask 500, reply and text 2000, name 60); its own `RateLimiter` (`FEEDBACK_ITEMS_PER_MINUTE` 12 / `FEEDBACK_ITEMS_PER_HOUR` 120 /
+  `FEEDBACK_ITEMS_GLOBAL_PER_DAY` 10 000; the rename shares it); 503 without a store. Storage: the `feedback` table next to
+  `wrong_page` in the same SQLite file (`backend/feedback.py`) — id, created_at (UTC, milliseconds), kind, rating, feature,
+  page_path, page_title, quote, ask, reply, overview_id, wanted (JSON), text, reviewer_name, status (new | reviewed | fixed |
+  wontfix), admin_note, updated_at; **no IP, user agent or cookie**. `wrong_page` gained status, admin_note and updated_at
+  (added in place on start).
+- **The admin page** (`/admin/feedback`, the key as above) is the review table over both stores, newest first: the counts (by
+  status, ▲ / ▼ thumbs, by kind; they follow a status change at once), filters by kind, feature and status, and per row when ·
+  kind · feature · page · what was said (the rating, the quote, the text, ask → reply, the wanted page, where a wrong-page visitor
+  went instead) · reviewer · a status dropdown saved at once and a team note saved on Save (`PATCH /api/admin/feedback/{id}`
+  `{status?, admin_note?}` → `{ok, row}`; 400 for an unknown status or nothing to change, 404 for an unknown id) · **Add to
+  backlog**, which copies a ready-made team-backlog command for the row (`docker exec hcdp-team-backlog python /app/cli.py add
+  --actor 'HCDP website feedback' --id FB-YYYYMMDD-xxxxxxxx --category ai-behavior|general-ui --title … --summary …`, the quote,
+  page, ask, reply and wanted page in the summary, quoted for the shell) — the backlog CLI lives on another VM, so the admin
+  pastes it there (the tooltip says so). **Export CSV** (`GET /api/admin/feedback/review.csv`, the same filters) and **Export as
+  eval cases** (`GET /api/admin/feedback/evals.json` → `{as_of, cases}`: the 👎 and wrong-page rows that named a page and carry
+  an ask, shaped like `backend/data/usecases.json` entries — `id` feedback-xxxxxxxx, `persona` reviewer, `query`,
+  `expected_intent` navigate, `expected_ids` from the catalog, `expected_path_prefix` for a page here or `expected_url` for an HCDP
+  url the catalog lacks, `notes`). `GET /api/admin/feedback/review?kind&feature&status` → `{count, counts, rows}` (400 for
+  unknown values).
+- `e2e/feedback_smoke.mjs <url>` drives all of it against a running site (two items stored under the reviewer "Smoke test
+  (automated)" — mark them won't fix).
 
 ## The scope rule (13 Oct)
 The assistant helps with the Hawaiʻi Climate Data Portal only: its maps, stations, reports, downloads, tools and pages, and
@@ -606,10 +671,11 @@ Viewer entries carry `internal_path` templates such as `/viewer/rainfall/day/{da
   Pacific Portal, Extreme Events, Climate Tools; top nav Home · About · Data Portal · Research · Climate Tools.
 - Every page works at phone width. External links open in a new tab and say so.
 - No cookies, no analytics, no sign-in, no theme (the site is always light; a `hcdp-theme` key left by an earlier
-  visit is removed), nothing persisted — with two exceptions: the viewer's unit
+  visit is removed), nothing persisted — with three exceptions: the viewer's unit
   system (`mm`/`°C` or `in`/`°F`) is remembered per browser (`localStorage` key `hcdp-units`, read and written in
   try/catch; `frontend/src/viewer/unitsPreference.js`). It only fills in a viewer link that names no units, as a
   load-time `replaceState` (`?units=in` / `?units=f`); a `units=` key in the address always wins, even `units=mm`.
-  And the admin key typed on `/admin/feedback` lives in `sessionStorage` for that tab only (P4 A).
+  And the admin key typed on `/admin/feedback` lives in `sessionStorage` for that tab only (P4 A). And, for the review
+  period, the reviewer's name is remembered per browser (`localStorage` key `hcdp-reviewer-name`, F4 A; "Feedback" above).
   The export email is never stored. A "Wrong page?" report stores the ask, the reply, the destination and the want —
-  nothing about the visitor.
+  nothing about the visitor; a feedback item stores what the reviewer sent and the name they typed — nothing else.

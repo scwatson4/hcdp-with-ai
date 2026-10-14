@@ -82,9 +82,11 @@
     @apply font-sans;
   }
   /* M6 A (14 Oct), the phone checklist: on phones and touch screens every text field and select is 16 px, so iOS never
-     zooms the page when one takes the focus (it does for anything smaller). Checkboxes, radios and sliders are exempt. */
+     zooms the page when one takes the focus (it does for anything smaller). Checkboxes, radios and sliders are exempt.
+     :is() gives every member the specificity of the longest one, so a text utility on the element (text-sm, and this
+     site's text-base, which is 15 px) cannot win. */
   @media (max-width: 767px), (pointer: coarse) {
-    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), select, textarea:not(.hcdp-ask-input) { font-size: 16px; }
+    :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), select, textarea:not(.hcdp-ask-input)) { font-size: 16px; }
   }
   /* The portal's menu type (.onepress-menu a): Raleway 600. */
   header nav[aria-label="Site"] :is(a, button),

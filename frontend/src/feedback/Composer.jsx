@@ -150,7 +150,7 @@ export default function Composer({ draft, narrow = false }) {
           <textarea id={`${uid}-text`} ref={textRef} value={text} onChange={(e) => { setText(e.target.value.slice(0, LIMITS.text)); if (error) setError('') }} rows={4} required aria-required="true"
             onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) send(e) }}
             placeholder="Type your feedback here…" data-testid="composer-text" className={cn(field, 'mt-1 resize-y py-2 leading-relaxed')} />
-          <p className="mt-0.5 text-right text-[11px] text-subtle" aria-hidden="true">{text.length}/{LIMITS.text}</p>
+          <p className="mt-0.5 text-right text-[12px] text-subtle" aria-hidden="true">{text.length}/{LIMITS.text}</p>
         </div>
         <div>
           <label htmlFor={`${uid}-name`} className="text-[12px] font-medium uppercase tracking-wide text-subtle">Your name</label>

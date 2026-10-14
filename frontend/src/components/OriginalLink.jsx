@@ -66,7 +66,7 @@ export function ShareView({ className }) {
         <div className="absolute left-0 top-full z-50 mt-1 w-[min(92vw,26rem)] rounded-md border border-border bg-card p-1.5 shadow-lg" data-testid="share-panel">
           <div className="flex items-center gap-1">
             <input ref={inputRef} readOnly value={href} onFocus={(e) => e.target.select()} aria-label="Link to this view"
-              className="h-7 min-w-0 flex-1 rounded-md border border-border bg-canvas px-2 font-mono text-[12px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-md:h-11 max-md:text-base" />
+              className="h-7 min-w-0 flex-1 rounded-md border border-border bg-canvas px-2 font-mono text-[12px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-md:h-11 max-md:text-[16px]" />
             <button type="button" onClick={copy} aria-label={copied ? 'Copied' : 'Copy link'} title={copied ? 'Copied' : 'Copy link'} data-testid="share-copy"
               className={`grid h-7 w-7 shrink-0 place-items-center rounded-md border border-border bg-canvas hover:border-foreground max-md:h-11 max-md:w-11 ${copied ? 'text-accent' : 'text-foreground'}`}>
               {copied ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}

@@ -19,7 +19,7 @@ const STATUS_TONE = {
 export function StatusChip({ status }) {
   return (
     <span data-testid="status-chip" data-status={status}
-      className={cn('inline-flex items-center rounded-full border px-1.5 py-px text-[10.5px] font-semibold uppercase tracking-wide', STATUS_TONE[status] || STATUS_TONE.new)}>
+      className={cn('inline-flex items-center rounded-full border px-1.5 py-px text-[12px] font-semibold uppercase tracking-wide', STATUS_TONE[status] || STATUS_TONE.new)}>
       {STATUS_LABEL[status] || status || 'New'}
     </span>
   )
@@ -32,10 +32,10 @@ function Item({ row, mine, onOpen }) {
         className="w-full rounded-lg border border-border bg-card px-3 py-2 text-left text-[13px] hover:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         {mine && row.quote && <span className="mb-1 block truncate border-l-2 border-[#e8b84b] pl-2 italic text-subtle">“{row.quote}”</span>}
         <span className="line-clamp-2 block text-foreground" data-testid="item-title">{row.title}</span>
-        <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11.5px] text-subtle">
+        <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] text-subtle">
           <StatusChip status={row.status} />
           <span>{FEATURE_LABEL[row.feature] || 'Other'}</span>
-          {row.page_path && <span className="max-w-[12rem] truncate font-mono text-[11px]">· {row.page_path}</span>}
+          {row.page_path && <span className="max-w-[12rem] truncate font-mono text-[12px]">· {row.page_path}</span>}
           <span>· {ago(row.created_at)}</span>
         </span>
       </button>

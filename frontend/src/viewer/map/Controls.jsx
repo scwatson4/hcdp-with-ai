@@ -23,7 +23,7 @@ import { portalDataset } from '../portalDatasets.reference'
 export const LABEL = 'mb-1 block font-mono text-[12px] font-medium uppercase tracking-wide text-subtle'
 // M6 A (14 Oct): on phones (the viewer's sheet) and on any touch screen every field is 44 px tall with 16 px text, so
 // iOS never zooms the page when one takes the focus (it does for anything under 16 px).
-const TOUCH_FIELD = 'max-md:h-11 max-md:text-base [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:text-base'
+const TOUCH_FIELD = 'max-md:h-11 max-md:text-[16px] [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:text-[16px]'
 const FIELD = `h-9 w-full rounded-md border border-border bg-card px-3 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 ${TOUCH_FIELD}`
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
@@ -107,7 +107,7 @@ export function DatePicker({ period, date, range, onChange, label = null, testid
   if (period === 'day') {
     field = (
       <input
-        id={id} type="date" className={cn(FIELD, 'min-w-0 px-2 font-mono text-[13px] max-md:text-base [@media(pointer:coarse)]:text-base')}
+        id={id} type="date" className={cn(FIELD, 'min-w-0 px-2 font-mono text-[13px] max-md:text-[16px] [@media(pointer:coarse)]:text-[16px]')}
         value={draft} min={range?.start} max={range?.end}
         onChange={(e) => {
           const val = e.target.value
@@ -358,7 +358,7 @@ export function ScaleControls({ v, onReverse, onLog, onRange, inline = false }) 
             <input
               id={`${id}-low`} type="number" step="any" inputMode="decimal" value={low}
               onChange={(e) => setLow(e.target.value)} onBlur={() => commit(low, high)} onKeyDown={onKey}
-              className={cn(FIELD, 'font-mono text-[13px] max-md:text-base [@media(pointer:coarse)]:text-base')} data-testid="range-low"
+              className={cn(FIELD, 'font-mono text-[13px] max-md:text-[16px] [@media(pointer:coarse)]:text-[16px]')} data-testid="range-low"
             />
           </div>
           <div>
@@ -366,7 +366,7 @@ export function ScaleControls({ v, onReverse, onLog, onRange, inline = false }) 
             <input
               id={`${id}-high`} type="number" step="any" inputMode="decimal" value={high}
               onChange={(e) => setHigh(e.target.value)} onBlur={() => commit(low, high)} onKeyDown={onKey}
-              className={cn(FIELD, 'font-mono text-[13px] max-md:text-base [@media(pointer:coarse)]:text-base')} data-testid="range-high"
+              className={cn(FIELD, 'font-mono text-[13px] max-md:text-[16px] [@media(pointer:coarse)]:text-[16px]')} data-testid="range-high"
             />
           </div>
         </div>
@@ -595,7 +595,7 @@ export function ShareActions({ path, title, onCopied = null }) {
           <input
             id="viewer-share-url" ref={fieldRef} readOnly value={url}
             onFocus={(e) => e.target.select()}
-            className={cn(FIELD, 'font-mono text-xs max-md:text-base [@media(pointer:coarse)]:text-base')}
+            className={cn(FIELD, 'font-mono text-xs max-md:text-[16px] [@media(pointer:coarse)]:text-[16px]')}
           />
           <p className="mt-1 text-xs text-subtle">Your browser did not let the page copy it. Select the address above and copy it.</p>
         </div>
@@ -667,7 +667,7 @@ function ShortLinkPopover({ path, url }) {
           <input
             id={id} readOnly value={state.status === 'loading' ? '' : link} placeholder={state.status === 'loading' ? 'Making a short link…' : ''}
             aria-label={state.status === 'long' ? 'Link to this map' : 'Short link to this map'} onFocus={(e) => e.target.select()}
-            className={cn(FIELD, 'min-w-0 flex-1 font-mono text-xs max-md:text-base [@media(pointer:coarse)]:text-base')} data-testid="short-link"
+            className={cn(FIELD, 'min-w-0 flex-1 font-mono text-xs max-md:text-[16px] [@media(pointer:coarse)]:text-[16px]')} data-testid="short-link"
           />
           <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0 max-md:h-11 max-md:w-11 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11" onClick={copy} aria-label={copied ? 'Copied' : 'Copy the link'} title="Copy" disabled={state.status === 'loading'} data-testid="short-link-copy">
             {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}

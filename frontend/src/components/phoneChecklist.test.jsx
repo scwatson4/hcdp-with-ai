@@ -151,7 +151,8 @@ describe('3 · tables are stacked cards under 640 px (was: 640 / 520 px tables i
 describe('4 + 5 · 16 px fields and a Copy link that keeps its width (was: 13 px selects and a 44 px jump)', () => {
   it('every text field and select is 16 px on phones and touch screens (the stylesheet’s rule)', () => {
     const css = readFileSync(join(__dirname, '../styles/globals.css'), 'utf8')
-    expect(css).toMatch(/@media \(max-width: 767px\), \(pointer: coarse\) \{\s*input:not\(\[type="checkbox"\]\)[^{]*select, textarea:not\(\.hcdp-ask-input\) \{ font-size: 16px; \}/)
+    // :is() lifts every member to the specificity of the longest, so no text utility (this site's text-base is 15 px) wins
+    expect(css).toMatch(/@media \(max-width: 767px\), \(pointer: coarse\) \{\s*:is\(input:not\(\[type="checkbox"\]\)[^{]*select, textarea:not\(\.hcdp-ask-input\)\) \{ font-size: 16px; \}/)
   })
 })
 

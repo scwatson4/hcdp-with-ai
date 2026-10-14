@@ -12,7 +12,7 @@ export default function SiteFooter() {
     <footer className="mt-16" data-testid="site-footer">
       <div className="bg-black px-4 py-12 text-white">
         <div className="mx-auto w-full max-w-6xl">
-          <h2 className="mb-10 text-center font-sans text-[15px] font-bold uppercase tracking-[0.06em]"><Link to="/about/how-to-cite" className="hover:underline">How to Cite</Link></h2>
+          <h2 className="mb-10 text-center font-sans text-[15px] font-bold uppercase tracking-[0.06em]"><Link to="/about/how-to-cite" className="hover:underline max-md:inline-flex max-md:min-h-11 max-md:items-center">How to Cite</Link></h2>
           <div className="grid items-center gap-8 md:grid-cols-[150px_240px_minmax(0,1fr)_120px] md:gap-10">
             <img src="/footer/nsf.png" alt="National Science Foundation" width="150" height="150" loading="lazy" className="mx-auto h-[118px] w-[118px] md:h-[150px] md:w-[150px]" />
             <img src="/footer/epscor-hawaii.png" alt="Hawaiʻi EPSCoR" width="147" height="49" loading="lazy" className="mx-auto h-auto w-[240px]" />

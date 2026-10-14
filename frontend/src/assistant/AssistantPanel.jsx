@@ -407,7 +407,7 @@ export function Chips({ onPick }) {
       {CHIPS.map((c) => (
         <li key={c.label}>
           <button type="button" onClick={() => onPick(c)} data-testid="ask-chip"
-            className="inline-flex h-9 items-center rounded-full border border-border bg-card px-3.5 text-[13px] font-medium text-foreground shadow-sm hover:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:h-11">
+            className="inline-flex h-9 max-md:h-11 items-center rounded-full border border-border bg-card px-3.5 text-[13px] font-medium text-foreground shadow-sm hover:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:h-11">
             {c.label}
           </button>
         </li>

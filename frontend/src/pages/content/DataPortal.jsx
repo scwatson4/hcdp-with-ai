@@ -170,7 +170,7 @@ export function AccessData() {
                     <td className="px-3 py-2" data-label="Coverage">{row.coverage}</td>
                     <td className="px-3 py-2 font-mono text-xs" data-label="First year">{row.first || '—'}</td>
                     <td className="px-3 py-2 text-right">
-                      {v ? <Link to={formatViewerPath(v)} className="whitespace-nowrap text-accent hover:underline" aria-label={`Map ${describeViewer(v)} in the viewer`}>Map it →</Link> : <span className="text-xs text-subtle">portal</span>}
+                      {v ? <Link to={formatViewerPath(v)} className="whitespace-nowrap text-accent hover:underline max-md:inline-flex max-md:min-h-11 max-md:items-center" aria-label={`Map ${describeViewer(v)} in the viewer`}>Map it →</Link> : <span className="text-xs text-subtle">portal</span>}
                     </td>
                   </tr>
                 )

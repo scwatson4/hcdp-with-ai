@@ -64,6 +64,7 @@ describe('the landing page on a phone (M3 C)', () => {
     await tick(600)
     expect(screen.getByTestId('composer-ghost-text').textContent.length).toBeGreaterThan(partial.length)   // still typing
     expect(screen.getAllByTestId('ask-chip').map((b) => b.textContent)).toEqual(CHIPS.map((c) => c.label))
+    expect(screen.getAllByTestId('ask-chip').every((b) => b.className.includes('max-md:h-11'))).toBe(true)   // 44 px on phones
     expect(screen.getByTestId('assistant-input')).not.toHaveAttribute('readonly')   // the hero bar is a real field on phones
   })
 

@@ -10,6 +10,7 @@ import TileChoice from './TileChoice'
 import { useNarrowScreen } from '../viewer/useMediaQuery'
 import { useOverlayHistory } from '../components/overlayHistory'
 import { ASK_SHEET, openAskSheetFromTap } from './askSheetState'
+import { AnswerFeedback } from '../feedback/Thumbs'
 
 // T2 pick B (2026-10-08): the hand-off moment. The sentence is fixed (the backend writes the
 // same words into the conversation history); "here" is the link; a grey line says what to
@@ -384,6 +385,7 @@ export function Conversation({ compact = false, hideUser = false, latestOnly = f
             {tiles(m) && <TileChoice options={m.options} onChoose={(o) => choose(o, { ask: askFor(m), echoAsk: false, docked: compact })} />}
             {m.alternatives?.length > 0 && !tiles(m) && !compact && <div className="mt-2 space-y-1">{m.alternatives.map((a, j) => <Alternative key={j} a={a} />)}</div>}
             {m.alternatives?.length > 0 && !tiles(m) && compact && <div className="mt-1.5 text-xs text-subtle">Also: {m.alternatives.slice(0, 3).map((a, j) => <span key={j}>{j > 0 && ' · '}{a.url?.startsWith('/') ? <Link to={a.url} className="underline underline-offset-2 hover:text-foreground">{a.title}</Link> : <a href={a.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">{a.title}</a>}</span>)}</div>}
+            {m.role === 'assistant' && <AnswerFeedback message={m} ask={askFor(m)} />}{/* F1 A: the review-period 👍 / 👎 */}
           </div>
         </div>
       )))}

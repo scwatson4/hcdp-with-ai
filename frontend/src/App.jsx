@@ -10,6 +10,8 @@ import GooFilter from './components/GooFilter'
 import { ShellModeProvider, useShellMode } from './components/shellMode'
 import { useScrollLock, useStripOverlayOnLoad } from './components/overlayHistory'
 import { cn } from './lib/utils'
+import { FeedbackProvider } from './feedback/FeedbackProvider'
+import FeedbackLayer from './feedback/FeedbackLayer'
 
 // The shell every page shares: the sticky block (the header — whose logo row carries "Share this
 // view" and "Original HCDP version" — and, on inner pages, the docked ask bar, R1 D), the return
@@ -17,7 +19,8 @@ import { cn } from './lib/utils'
 // 14 Oct: a page may hold the shell in another mode (components/shellMode.jsx): the phone viewer ('phone-map', M1 C)
 // keeps the header but not the docked bar, the footer or Back to top, and the page never scrolls; the desktop viewer's
 // full-screen map ('map-full', QB-T3 B) hides the header too. The phone's Ask AI sheet (M2 A) lives here, as does the
-// SVG filter behind the goo.
+// SVG filter behind the goo — and the review-period feedback over all of it (F1–F5: the right-edge tab, the selection
+// pill, the composer panel; feedback/FeedbackLayer.jsx).
 export default function App() {
   return (
     <ShellModeProvider>
@@ -52,6 +55,7 @@ function Shell() {
     return () => { ro?.disconnect(); window.removeEventListener('resize', publish) }
   }, [])
   return (
+    <FeedbackProvider>
     <div className="flex min-h-screen flex-col bg-canvas text-foreground" data-shell={mode}>
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-card focus:px-3 focus:py-2 focus:text-sm focus:shadow">Skip to content</a>
       <div ref={stickyRef} className={cn('sticky top-0 z-40', full && 'hidden')} data-testid="sticky-header">
@@ -66,6 +70,8 @@ function Shell() {
       {page && <BackToTop />}
       <AskSheet />
       <GooFilter />
+      <FeedbackLayer />
     </div>
+    </FeedbackProvider>
   )
 }

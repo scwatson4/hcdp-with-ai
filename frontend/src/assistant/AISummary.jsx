@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { ChevronDown, ChevronUp, ExternalLink, X } from 'lucide-react'
 import { prefersReducedMotion, useAssistantOptional } from './AssistantProvider'
 import { cn } from '../lib/utils'
+import { OverviewFeedback } from '../feedback/Thumbs'
 
 // 13 Oct: the AI overview at the top of the page the navigator just opened. A quiet block, no card: a 3 px vertical
 // spectrum rule on the left; a header row in the "AI Overview" manner — a four-point star filled with the logo's
@@ -19,6 +20,7 @@ import { cn } from '../lib/utils'
 // "Which page did you want?" with the answer's alternatives as rows (title + why) and an "Other…" row that reveals a
 // one-line field and Send. A row reports the want (reportWrongPage) and opens that page with no AI call (choose);
 // Other reports the text and asks the assistant with it. The visitor's next page is attached to the report by the provider.
+// F1 A (13 Oct): the review-period 👍 / 👎 sit at the right of that last row (feedback/Thumbs.jsx, OverviewFeedback).
 export const CHUNK_STAGGER_MS = 350
 const SUP = '⁰¹²³⁴⁵⁶⁷⁸⁹'
 export const superscript = (n) => String(n).split('').map((d) => SUP[Number(d)] ?? d).join('')
@@ -217,7 +219,7 @@ function SummaryBlock({ summary, onDismiss, send, choose, reportWrongPage, class
               </button>
             </>
           )}
-          {reportWrongPage && <WrongPage summary={summary} send={send} choose={choose} reportWrongPage={reportWrongPage} />}
+          <OverviewFeedback summary={summary}>{reportWrongPage && <WrongPage summary={summary} send={send} choose={choose} reportWrongPage={reportWrongPage} />}</OverviewFeedback>
         </>
       )}
     </section>

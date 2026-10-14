@@ -88,7 +88,11 @@ def test_viewer_links_get_their_own_title_for_link_previews(tmp_path, monkeypatc
     html = c.get("/viewer/rainfall/day/2026-09-07/kauai").text
     assert "<title>Rainfall, September 7, 2026, Kauaʻi — Hawaiʻi Climate Data Portal</title>" in html
     assert 'property="og:title"' in html
-    assert "<title>Hawaiʻi Climate Data Portal</title>" in c.get("/about/team").text
+    assert "<title>Hawaiʻi Climate Data Portal</title>" in c.get("/data").text
+    # a mirrored HCDP page (14 Oct): its own title and the canonical link to HCDP's page
+    team = c.get("/about/team").text
+    assert "<title>Team – Hawaiʻi Climate Data Portal</title>" in team
+    assert '<link rel="canonical" href="https://www.hawaii.edu/climate-data-portal/team/" />' in team
 
 
 def test_map_png_validates_like_raster():

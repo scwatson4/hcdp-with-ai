@@ -10,10 +10,6 @@ import SiteHeader from '../components/SiteHeader'
 import { ThemeProvider } from '../components/ThemeProvider'
 import { TooltipProvider } from '../components/ui/tooltip'
 import { PageShell } from '../pages/content/PageShell'
-import ExtremeEvents from '../pages/content/ExtremeEvents'
-import ClimateTools from '../pages/content/ClimateTools'
-import Mesonet from '../pages/content/Mesonet'
-import ClimateSummary from '../pages/content/ClimateSummary'
 
 // 13 Oct: after a navigation the destination opens with the AI overview (instead of the reply strip) and the docked
 // bar's ghost cycles the overview's follow-up asks.
@@ -370,63 +366,5 @@ describe('placement helpers', () => {
   })
 })
 
-describe('placement on pages that scroll to a target on load', () => {
-  // These pages land the visitor on a storm's section, a tool's tile, the live viewers or the dashboard, so the overview
-  // must be where they land, not above a heading they never see.
-  const renderPages = (entry) => render(
-    <ThemeProvider><TooltipProvider><MemoryRouter initialEntries={[entry]}><AssistantProvider>
-      <Routes><Route element={<Shell />}>
-        <Route path="extreme-events" element={<ExtremeEvents />} /><Route path="extreme-events/:slug" element={<ExtremeEvents />} />
-        <Route path="tools/:slug" element={<ClimateTools />} /><Route path="mesonet" element={<Mesonet />} /><Route path="climate-summary" element={<ClimateSummary />} />
-        <Route path="*" element={<Page />} />
-      </Route></Routes>
-    </AssistantProvider></MemoryRouter></TooltipProvider></ThemeProvider>,
-  )
-  const arriveAt = async (path, summary = summaryB()) => { replies = [navigateReply(path)]; summaries = [summary]; renderPages('/data'); await ask('go'); await tick(150) }
-  afterEach(() => { Element.prototype.scrollIntoView = () => {} })
-
-  it('a storm page: inside the storm section the page scrolls to, below the page heading', async () => {
-    await arriveAt('/extreme-events/lowell')
-    const blocks = screen.getAllByTestId('ai-summary')
-    expect(blocks).toHaveLength(1)
-    expect(document.getElementById('lowell').contains(blocks[0])).toBe(true)
-    expect(before(screen.getByRole('heading', { level: 1 }), blocks[0])).toBe(true)
-    expect(before(within(document.getElementById('lowell')).getByRole('heading', { level: 2 }), blocks[0])).toBe(true)
-  })
-
-  it('a storm named by hash (/extreme-events#lala): the same, in that section; the index without a storm: above the heading', async () => {
-    await arriveAt('/extreme-events#lala')
-    expect(document.getElementById('lala').contains(screen.getByTestId('ai-summary'))).toBe(true)
-  })
-
-  it('the events index: above the heading', async () => {
-    await arriveAt('/extreme-events')
-    const block = screen.getByTestId('ai-summary')
-    expect(before(block, screen.getByRole('heading', { level: 1 }))).toBe(true)
-    expect([...document.querySelectorAll('section[id]')].some((sec) => sec.contains(block))).toBe(false)
-  })
-
-  it('a tool page: above the heading, and the page lands on the overview instead of centring the tile, which is still ringed', async () => {
-    const calls = []
-    Element.prototype.scrollIntoView = vi.fn(function (opts) { calls.push([this, opts]) })
-    await arriveAt('/tools/h-rip')
-    const block = screen.getByTestId('ai-summary')
-    expect(before(block, screen.getByRole('heading', { level: 1 }))).toBe(true)
-    const last = calls[calls.length - 1]
-    expect(last[0]).toBe(block)
-    expect(last[1]).toEqual({ block: 'start' })
-    expect(document.getElementById('tool-h-rip').className).toContain('ring-4')
-  })
-
-  it('a Mesonet station link: inside the live viewers section', async () => {
-    await arriveAt('/mesonet?viewer=live&station=0115&view=dashboard')
-    expect(screen.getAllByTestId('ai-summary')).toHaveLength(1)
-    expect(document.getElementById('viewers').contains(screen.getByTestId('ai-summary'))).toBe(true)
-  })
-
-  it('a summary month link: inside the dashboard section', async () => {
-    await arriveAt('/climate-summary?year=2026&month=8')
-    expect(screen.getAllByTestId('ai-summary')).toHaveLength(1)
-    expect(document.getElementById('dashboard').contains(screen.getByTestId('ai-summary'))).toBe(true)
-  })
-})
+// The overview's placement on the mirrored pages and the native embeds (14 Oct) is tested with them, in
+// src/portal/portal.test.jsx.

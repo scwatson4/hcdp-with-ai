@@ -15,13 +15,15 @@ from __future__ import annotations
 import datetime as dt
 import re
 
-from llm import FOLLOWUPS_SYSTEM, SUMMARY_SYSTEM
+from llm import FOLLOWUPS_SYSTEM, PAGE_OVERVIEW_SYSTEM, SUMMARY_SYSTEM
 from navigator import describe_view, parse_viewer_path, valid_internal_path
 
 MAX_WORDS = 60
 MAX_MORE_WORDS = 80
 MAX_FOLLOWUPS = 3
 MAX_FOLLOWUP_CHARS = 90
+MAX_BOLD = 3            # key terms the model may wrap in **…** across the summary and the "more" sentences (14 Oct)
+PAGE_EXCERPT_CHARS = 1500
 EMPTY = {"summary": "", "chunks": [], "cites": [], "more": [], "more_cites": [], "sources": [], "followups": []}
 # Intents whose answer never gets a summary: the scope guard's reply and the hand-off to the AI interface.
 NO_SUMMARY_INTENTS = {"off_topic", "analysis"}
@@ -29,17 +31,18 @@ NO_SUMMARY_INTENTS = {"off_topic", "analysis"}
 # What kind of page the destination is, told to the model so "what to do next" fits it.
 PAGE_HINTS = {
     "/data": "the Access Data page: what HCDP's data portal offers, the datasets, quick maps, and the Export form for downloading grids and station files",
-    "/data/api": "the API page: how to get a token and where the documentation is",
-    "/data/tutorials": "the tutorials page",
-    "/mesonet": "the Hawaiʻi Mesonet page, with the live station viewer embedded (a station can be picked)",
-    "/climate-summary": "the Monthly Climate Summary page, with the summary app embedded",
-    "/pacific": "the Pacific Portal page (American Samoa, Guam and the wider Pacific)",
-    "/extreme-events": "the Extreme Events page: every storm report and tracker, each with its official links and viewer maps",
-    "/tools": "the Climate Tools page: a tile per tool, each opening the tool itself",
+    "/data/api": "HCDP's API page (copied live from the portal): how to request an API token with the form, and where the documentation is",
+    "/data/tutorials": "HCDP's Tutorials page (copied live from the portal): step-by-step guides to making a map, exploring station data and exporting data",
+    "/mesonet": "HCDP's Hawaiʻi Mesonet page (copied live from the portal): what the statewide station network is, why it is needed, what each station measures and who pays for it, with a link to the live data",
+    "/climate-summary": "the Monthly Climate Summary app, embedded full screen as on the portal (a month can be chosen in it)",
+    "/pacific": "HCDP's Pacific Portal page (copied live from the portal): the Pacific Islands data, regional organizations, countries and territories, and tools",
+    "/extreme-events": "HCDP's Extreme Events page (copied live from the portal): a card per storm report — Hurricane Nolo, Hurricane Lowell, Hurricane Lala and the two March 2026 Kona lows — each opening that report",
+    "/tools": "HCDP's Climate Tools page (copied live from the portal): a picture tile per tool, each opening the tool itself",
+    "/library": "HCDP's Library: the portal's publications list from its Zotero group, by year",
 }
 KIND_HINTS = {
-    "event": "a storm's section on the Extreme Events page: the story, key figures, official HCDP links and viewer maps for its days",
-    "tool": "a tool's tile on the Climate Tools page, with its description and the link that opens the tool",
+    "event": "a storm's report: HCDP's interactive storm report embedded full screen, as on the portal (maps, charts and station data for the storm)",
+    "tool": "a tool's tile on HCDP's Climate Tools page, with its description and the link that opens the tool",
     "page": "an information page",
     "api": "the API page",
     "atlas": "an atlas tool's tile on the Climate Tools page",
@@ -57,14 +60,33 @@ _MARK_RE = re.compile(r"\[\s*\d+(?:\s*[,;]\s*\d+)*\s*\]")
 _MARK_AFTER_STOP_RE = re.compile(r"([.!?])((?:\s*\[\s*\d+(?:\s*[,;]\s*\d+)*\s*\])+)")
 
 
-def clean_text(text) -> str:
-    """Plain words only: markdown marks, links and URLs gone, whitespace collapsed; citation markers kept."""
+_BOLD_RE = re.compile(r"\*\*\s*([^*\n]{1,60}?)\s*\*\*")
+_B_OPEN, _B_CLOSE = "\x01", "\x02"
+
+
+def keep_bold(text: str, budget: list[int] | None) -> str:
+    """Up to budget[0] **key terms** (words with a letter, at most 60 characters) protected from the markdown cleaning;
+    the rest unwrapped. `budget` is a one-item list shared by the summary and the "more" sentences; None keeps none."""
+    def one(m):
+        term = m.group(1).strip()
+        if budget is not None and budget[0] > 0 and re.search(r"[A-Za-zĀĒĪŌŪāēīōūʻ]", term):
+            budget[0] -= 1
+            return f"{_B_OPEN}{term}{_B_CLOSE}"
+        return term
+    return _BOLD_RE.sub(one, text)
+
+
+def clean_text(text, bold: list[int] | None = None) -> str:
+    """Plain words only: markdown marks, links and URLs gone, whitespace collapsed; citation markers kept; up to
+    `bold` key terms kept as **term** (the client renders them bold), every other asterisk stripped."""
     if not isinstance(text, str):
         return ""
-    t = _MD_RE.sub(lambda m: m.group(1) or "", text)
+    t = keep_bold(text, bold)
+    t = _MD_RE.sub(lambda m: m.group(1) or "", t)
     t = _URL_RE.sub("", t)
     t = re.sub(r"\s+", " ", t).strip()
-    return re.sub(r"\s+([.,;:!?])", r"\1", t)
+    t = re.sub(r"\s+([.,;:!?])", r"\1", t)
+    return t.replace(_B_OPEN, "**").replace(_B_CLOSE, "**")
 
 
 def split_sentences(text: str) -> list[str]:
@@ -86,11 +108,11 @@ def extract_cites(sentence: str, n_sources: int) -> tuple[str, list[int]]:
     return text, cites
 
 
-def clean_cited(text, max_words: int, n_sources: int = 0) -> tuple[list[str], list[list[int]]]:
-    """The sentences of a model paragraph with their citations: markdown and URLs stripped, the markers pulled out
-    (aligned lists), the whole trimmed to the word budget at a sentence boundary (the first sentence is always kept,
-    cut hard if it alone is over budget)."""
-    t = _MARK_AFTER_STOP_RE.sub(lambda m: m.group(2) + m.group(1), clean_text(text))
+def clean_cited(text, max_words: int, n_sources: int = 0, bold: list[int] | None = None) -> tuple[list[str], list[list[int]]]:
+    """The sentences of a model paragraph with their citations: markdown and URLs stripped (up to `bold` key terms kept
+    as **term**), the markers pulled out (aligned lists), the whole trimmed to the word budget at a sentence boundary (the
+    first sentence is always kept, cut hard if it alone is over budget)."""
+    t = _MARK_AFTER_STOP_RE.sub(lambda m: m.group(2) + m.group(1), clean_text(text, bold))
     chunks: list[str] = []
     cites: list[list[int]] = []
     words = 0
@@ -103,6 +125,8 @@ def clean_cited(text, max_words: int, n_sources: int = 0) -> tuple[list[str], li
             break
         if not chunks and n > max_words:
             s = " ".join(s.split()[:max_words]).rstrip(",;:") + "…"
+            if s.count("**") % 2:
+                s = s.replace("**", "")   # the cut fell inside a key term: no half-bold
             n = max_words
         chunks.append(s)
         cites.append(c)
@@ -192,12 +216,50 @@ class Summarizer:
         raw = self.llm.complete(SUMMARY_SYSTEM, user)
         if not isinstance(raw, dict):
             return empty_summary()
-        chunks, cites = clean_cited(raw.get("summary"), MAX_WORDS, len(sources))
+        return self._shape(raw, sources) or empty_summary()
+
+    def _shape(self, raw: dict, sources: list[dict]) -> dict | None:
+        """The model's {summary, more, followups} cleaned and aligned with the sources (None when it wrote no sentence)."""
+        bold = [MAX_BOLD]
+        chunks, cites = clean_cited(raw.get("summary"), MAX_WORDS, len(sources), bold)
         if not chunks:
-            return empty_summary()
-        more, more_cites = clean_cited(raw.get("more"), MAX_MORE_WORDS, len(sources))
+            return None
+        more, more_cites = clean_cited(raw.get("more"), MAX_MORE_WORDS, len(sources), bold)
         return {"summary": " ".join(chunks), "chunks": chunks, "cites": cites, "more": more, "more_cites": more_cites,
                 "sources": sources, "followups": clean_followups(raw.get("followups"))}
+
+    # ----- the direct-load overview of a mirrored page (QB-O1 B, 14 Oct) -----
+    def page_sources(self, path: str, rec: dict, limit: int = 3) -> list[dict]:
+        """The page's own HCDP address first (titled as the catalog names it, else as HCDP does), then up to two related
+        catalog entries."""
+        url = rec.get("url") or ""
+        entry = self.nav.entry_for_url(url) or self.nav.destination(path)
+        out = [{"title": str((entry or {}).get("title") or rec.get("title") or url)[:120], "url": url}] if url else []
+        seen = {url}
+        if entry:
+            for e in self.nav.related_entries(entry, seen):
+                if len(out) >= limit:
+                    break
+                u = e.get("url")
+                if isinstance(u, str) and u not in seen and self.nav.allowed_url(u):
+                    seen.add(u)
+                    out.append({"title": str(e.get("title") or u)[:120], "url": u})
+        return out[:limit]
+
+    def page_overview(self, path: str, rec: dict) -> dict | None:
+        """The overview a mirrored page shows when it is opened directly (no ask): written once per copy from the catalog
+        entry and the page's own first ~1,500 characters, with three generic follow-ups. None when the model is not
+        configured or wrote nothing usable."""
+        if self.llm is None or not getattr(self.llm, "configured", False) or not isinstance(rec, dict):
+            return None
+        sources = self.page_sources(path, rec)
+        entry, grounding = self.describe_destination(path)
+        excerpt = re.sub(r"\s+", " ", rec.get("text") or "")[:PAGE_EXCERPT_CHARS]
+        numbered = "\n".join(f"{i}. {s['title']}" for i, s in enumerate(sources, 1)) or "(none)"
+        user = "\n".join([f"Page title: {rec.get('title') or ''}", f"Grey title band on HCDP: {rec.get('band') or '(none)'}", grounding,
+                          f"The page's own text (its first part):\n{excerpt}", f"Sources (cite by number):\n{numbered}"])
+        raw = self.llm.complete(PAGE_OVERVIEW_SYSTEM, user)
+        return self._shape(raw, sources) if isinstance(raw, dict) else None
 
     # ----- follow-ups alone -------------------------------------------------
     def followups_for(self, path: str, context: dict | None = None) -> list[str]:

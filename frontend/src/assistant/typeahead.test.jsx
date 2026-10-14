@@ -196,14 +196,14 @@ describe('the typeahead listbox', () => {
 
   it('an external row opens in a new tab at once, says so for one hold, and asks for no overview', async () => {
     renderApp('/data')
-    await type('rainfall mapping history')
+    await type('solar radiation')   // an atlas page this site does not mirror (the three atlases stay on HCDP, 14 Oct)
     const row = rows().find((r) => r.dataset.kind === 'external')
     expect(row).toBeTruthy()
     expect(within(row).getByTestId('typeahead-kind')).toHaveTextContent('external ↗')
     fireEvent.click(row)
     await tick(10)
-    expect(window.open).toHaveBeenCalledWith('https://www.hawaii.edu/climate-data-portal/rainfall-mapping-history/', '_blank')
-    expect(screen.getByTestId('docked-status')).toHaveTextContent('Opening Rainfall Mapping History in a new tab…')
+    expect(window.open).toHaveBeenCalledWith('https://www.hawaii.edu/climate-data-portal/solar-radiation-atlas/', '_blank')
+    expect(screen.getByTestId('docked-status')).toHaveTextContent('Opening Solar Radiation of Hawaiʻi in a new tab…')
     await tick(HOLD_MS + 20)
     expect(screen.queryByTestId('docked-working')).toBeNull()
     expect(calls.filter((c) => c.url === '/api/summary')).toHaveLength(0)

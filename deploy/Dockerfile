@@ -15,9 +15,10 @@ COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ ./
 COPY --from=web /web/dist /app/dist
-# FEEDBACK_DB (P4 A): the wrong-page feedback store, on the feedback_data volume (deploy/docker-compose.yml).
-ENV FRONTEND_DIST=/app/dist RASTER_CACHE_DIR=/app/cache FEEDBACK_DB=/app/data/feedback.sqlite TZ=Pacific/Honolulu
-RUN mkdir -p /app/cache /app/data
+# FEEDBACK_DB (P4 A): the wrong-page feedback store, on the feedback_data volume mounted at /app/state (deploy/docker-compose.yml);
+# /app/data is the image's own backend/data (the catalog, the mirror's seed) and must never be a volume.
+ENV FRONTEND_DIST=/app/dist RASTER_CACHE_DIR=/app/cache FEEDBACK_DB=/app/state/feedback.sqlite TZ=Pacific/Honolulu
+RUN mkdir -p /app/cache /app/state
 EXPOSE 8010
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8010/api/health', timeout=4).status==200 else 1)"
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8010", "--workers", "2", "--proxy-headers", "--forwarded-allow-ips", "*"]

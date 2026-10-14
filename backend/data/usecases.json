@@ -177,11 +177,11 @@
       "query": "Nolo storm tracker with rainfall totals by station",
       "expected_intent": "navigate",
       "expected_ids": [
-        "nolo",
-        "nolo-tracker-fullscreen"
+        "nolo-mesonet-viewer",
+        "nolo-tracker-fullscreen",
+        "nolo"
       ],
-      "expected_path_prefix": "/extreme-events#nolo",
-      "notes": "The live Mesonet tracker is the primary answer."
+      "notes": "The live Mesonet tracker is the primary answer. Since 13 Oct HCDP has a Hurricane Nolo report too (/extreme-events/nolo); the tracker itself is the Mesonet viewer (/mesonet?viewer=nolo)."
     },
     {
       "id": "nolo-one-word",
@@ -202,7 +202,7 @@
       "expected_ids": [
         "lowell"
       ],
-      "expected_path_prefix": "/extreme-events#lowell",
+      "expected_path_prefix": "/extreme-events/lowell",
       "notes": "Open the report; UH News story as an alternative."
     },
     {
@@ -263,7 +263,7 @@
         "lala",
         "uh-news-lala"
       ],
-      "expected_path_prefix": "/extreme-events#lala",
+      "expected_path_prefix": "/extreme-events/lala",
       "notes": "Report first, UH News story as alternative."
     },
     {
@@ -274,7 +274,7 @@
       "expected_ids": [
         "kona-low-2"
       ],
-      "expected_path_prefix": "/extreme-events#kona-lows",
+      "expected_path_prefix": "/extreme-events/kona-low-2",
       "notes": "The second Kona low viewer has the Mānoa/Pālolo highlight."
     },
     {
@@ -1183,7 +1183,7 @@
       ],
       "expected_path_prefix": "/viewer/rainfall/day/2026-09-0",
       "context": {
-        "path": "/extreme-events#lowell"
+        "path": "/extreme-events/lowell"
       },
       "notes": "On the Lowell section: a storm-day daily map (6–8 Sept 2026), Kauaʻi preferred."
     },

@@ -74,7 +74,7 @@ def test_followups_are_strings_short_distinct_and_at_most_three():
 def test_page_hint_knows_maps_pages_and_storms():
     assert page_hint("/viewer/rainfall/day/2026-09-07/kauai", None).startswith("an interactive climate map")
     assert page_hint("/data", {"kind": "tool"}).startswith("the Access Data page")
-    assert page_hint("/extreme-events/lowell", {"kind": "event"}).startswith("a storm's section")
+    assert page_hint("/extreme-events/lowell", {"kind": "event"}).startswith("a storm's report: HCDP's interactive storm report")
     assert page_hint("/tools/h-rip", {"kind": "tool"}).startswith("a tool's tile")
     assert page_hint("/about/team", None) == "a page on this site"
 
@@ -94,7 +94,7 @@ def test_summary_is_grounded_split_into_chunks_with_catalog_sources_and_validate
     assert system == SUMMARY_SYSTEM and '"more"' in system and "square brackets" in system
     assert "Visitor's ask: Take me to the Hurricane Lowell report" in user and "Navigator's reply: Taking you to the Hurricane Lowell report." in user
     assert "Page title: Hurricane Lowell report" in user and "What it is: HCDP's story of Hurricane Lowell" in user and "When it is the answer:" in user
-    assert "Page kind: a storm's section" in user
+    assert "Page kind: a storm's report" in user
     assert "Sources (cite by number):\n1. Hurricane Lowell report\n2. Hurricane Lowell Mesonet Viewer\n3. " in user   # titles only, numbered
     assert LOWELL not in user                                                               # never the URLs
 

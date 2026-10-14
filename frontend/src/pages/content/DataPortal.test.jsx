@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { render, screen, within, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { AccessData, ApiAccess, Tutorials } from './DataPortal'
+import { AccessData } from './DataPortal'
 import { lastCompleteMonth, yesterday, dayRange, hawaiiToday } from './contentUtils'
 
 const HCDP = 'https://www.hawaii.edu/climate-data-portal'
@@ -93,39 +93,4 @@ describe('AccessData', () => {
   })
 })
 
-describe('ApiAccess', () => {
-  it('mirrors the API page: token form, docs, base URL, endpoints and examples', () => {
-    renderAt(<ApiAccess />, '/data/api')
-    expect(screen.getByRole('heading', { level: 1, name: 'HCDP / Hawaiʻi Mesonet API' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Request an API token/ })).toHaveAttribute('href', expect.stringContaining('docs.google.com/forms/d/e/1FAIpQLSezcHP7aGTKsJldx0HSOBrw4hTgT9R3M-aR72BDZDbsrOJGkQ'))
-    expect(screen.getByRole('link', { name: /HCDP & Hawaiʻi Mesonet API Documentation/ })).toHaveAttribute('href', 'https://hcdp.github.io/hcdp_api_docs/')
-    for (const h of ['Get a token', 'Endpoints', 'Parameters', 'Documented examples', 'Quick start']) {
-      expect(screen.getByRole('heading', { level: 2, name: h })).toBeInTheDocument()
-    }
-    expect(screen.getAllByText('https://api.hcdp.ikewai.org').length).toBeGreaterThan(0)
-    for (const path of ['/raster', '/raster/timeseries', '/genzip/email', '/stations', '/mesonet/db/measurements', '/mesonet/db/stationMonitor']) {
-      expect(screen.getByText(path)).toBeInTheDocument()
-    }
-    const code = [...document.querySelectorAll('pre code')].map((c) => c.textContent)
-    expect(code).toHaveLength(2)
-    expect(code.every((c) => c.includes('Authorization') && c.includes('Bearer YOUR_TOKEN'))).toBe(true)
-    expect(code[1]).toMatch(/^import requests/)
-    expect(document.body.textContent).not.toMatch(/API-AUTH-TOKEN/)
-  })
-})
-
-describe('Tutorials', () => {
-  it('lists the three portal tutorials with their links', () => {
-    renderAt(<Tutorials />, '/data/tutorials')
-    expect(screen.getByRole('heading', { level: 1, name: 'Tutorials' })).toBeInTheDocument()
-    for (const t of ['Visualize Data Tutorial – Make A Map', 'Visualize Data Tutorial – Explore Station Data', 'Export Data Tutorial']) {
-      expect(screen.getByRole('heading', { level: 3, name: t })).toBeInTheDocument()
-    }
-    expect(hrefs()).toEqual(expect.arrayContaining([
-      `${HCDP}/visualize-data-tutorial/`,
-      `${HCDP}/visualize-data-tutorial-explore-station-data/`,
-      `${HCDP}/export-data-tutorial/`,
-      'mailto:HCDP@hawaii.edu',
-    ]))
-  })
-})
+// The API and Tutorials pages are HCDP's own now, mirrored live (src/portal/portal.test.jsx).

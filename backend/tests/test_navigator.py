@@ -297,7 +297,7 @@ def test_clarify_options_are_resolved_from_the_catalog_and_unknowns_dropped():
     assert [o["id"] for o in opts] == ["ignition-daily-map", "ignition-forecast", "hurricane-lane-2018", "spi-3-map"]   # unknown dropped, duplicate dropped, four at most; a path resolves through the templates
     assert opts[0] == {"id": "ignition-daily-map", "kind": "viewer", "title": "Fire ignition probability map", "url": "/viewer/ignition/day/2026-10-12/statewide", "why": "today's fire risk on a map"}
     assert opts[1]["url"] == "/data" and opts[1]["title"] == "Fire ignition probability and 1–3 day predictions"
-    assert opts[2]["url"].startswith("https://www.hawaii.edu/") and opts[2]["why"]            # a bare id: the why comes from when_to_use
+    assert opts[2]["url"] == "/research/posts/fire-and-rain-the-legacy-of-hurricane-lane-in-hawaiʻi" and opts[2]["why"]   # a bare id: its mirrored page (14 Oct); the why from when_to_use
     assert opts[3] == {"id": "spi-3-map", "kind": "viewer", "title": "Drought index SPI-3 map", "url": "/viewer/spi-3/month/2026-08/statewide", "why": "drought"}
     # a monthly template fills with the last complete month; a station template falls back to its page
     assert nav.resolve_option("spi-12-map")["url"] == "/viewer/spi-12/month/2026-09/statewide"

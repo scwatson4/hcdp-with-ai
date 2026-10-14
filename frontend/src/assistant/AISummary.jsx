@@ -25,12 +25,40 @@ export const CHUNK_STAGGER_MS = 350
 const SUP = '⁰¹²³⁴⁵⁶⁷⁸⁹'
 export const superscript = (n) => String(n).split('').map((d) => SUP[Number(d)] ?? d).join('')
 
-export default function AISummary({ className, scrollIntoView = false }) {
+// 14 Oct (QB-O1 B): a mirrored HCDP page opened directly, with no ask, shows its cached overview instead — `fallback`, the
+// same shape with `page: true` (written once per copy of the page; no "Wrong page?", there was no question); a navigation's
+// per-question overview replaces it, and ✕ on either hides both for that address until the visitor leaves it.
+// Key terms: the model wraps up to three in **…** (summary.py keeps at most three); they render bold, stray asterisks go.
+export default function AISummary({ className, scrollIntoView = false, fallback = null }) {
   const assistant = useAssistantOptional()
   const { pathname } = useLocation()
+  const [hiddenOn, setHiddenOn] = useState(null)
   const summary = assistant?.summary
-  if (!summary || summary.path !== pathname) return null
-  return <SummaryBlock key={summary.id} summary={summary} onDismiss={assistant.dismissSummary} send={assistant.send} choose={assistant.choose} reportWrongPage={assistant.reportWrongPage} className={className} scrollIntoView={scrollIntoView} />
+  if (summary && summary.path === pathname) {
+    const dismiss = () => { setHiddenOn(pathname); assistant.dismissSummary() }
+    return <SummaryBlock key={summary.id} summary={summary} onDismiss={dismiss} send={assistant.send} choose={assistant.choose} reportWrongPage={assistant.reportWrongPage} className={className} scrollIntoView={scrollIntoView} />
+  }
+  if (fallback && fallback.path === pathname && hiddenOn !== pathname) {
+    return <SummaryBlock key={fallback.id} summary={fallback} onDismiss={() => setHiddenOn(pathname)} send={assistant?.send} choose={assistant?.choose} reportWrongPage={null} className={className} scrollIntoView={false} />
+  }
+  return null
+}
+
+/** "**daily rainfall map**" → the words in bold; any other asterisk is dropped. */
+export function renderTerms(text) {
+  const out = []
+  const s = String(text ?? '')
+  const re = /\*\*([^*]+?)\*\*/g
+  let last = 0
+  let m
+  let k = 0
+  while ((m = re.exec(s)) !== null) {
+    if (m.index > last) out.push(s.slice(last, m.index).replace(/\*/g, ''))
+    out.push(<strong key={`t${k++}`} className="font-semibold text-foreground" data-testid="ai-summary-term">{m[1].trim()}</strong>)
+    last = m.index + m[0].length
+  }
+  if (last < s.length) out.push(s.slice(last).replace(/\*/g, ''))
+  return out
 }
 
 /** "Wrong page?" → "Which page did you want?": the alternatives as rows, then "Other…" with a line of text (P4 A). */
@@ -126,7 +154,7 @@ function Chunks({ chunks, cites, sources, reduce, testid, chunkTestid }) {
     <div className="max-w-3xl text-[15px] leading-relaxed" data-testid={testid}>
       {chunks.map((c, i) => (
         <p key={i} className="hcdp-ai-chunk" style={reduce ? undefined : { animationDelay: `${i * CHUNK_STAGGER_MS}ms` }} data-testid={chunkTestid}>
-          {c}<Cites cites={cites?.[i]} sources={sources} testid={`${chunkTestid}-cites`} />
+          {renderTerms(c)}<Cites cites={cites?.[i]} sources={sources} testid={`${chunkTestid}-cites`} />
         </p>
       ))}
     </div>
@@ -148,7 +176,7 @@ function SummaryBlock({ summary, onDismiss, send, choose, reportWrongPage, class
   const { status, chunks = [], cites = [], more = [], moreCites = [], sources = [], followups = [], alternatives = [] } = summary
   const hasMore = more.length > 0 || alternatives.length > 0 || followups.length > 0
   return (
-    <section ref={ref} aria-label="AI Overview" data-testid="ai-summary" data-status={status} className={cn('hcdp-ai-summary relative pl-4', className)} style={{ scrollMarginTop: 'calc(var(--hcdp-sticky-h, 7rem) + 1rem)' }}>
+    <section ref={ref} aria-label="AI Overview" data-testid="ai-summary" data-status={status} data-kind={summary.page ? 'page' : 'answer'} className={cn('hcdp-ai-summary relative pl-4', className)} style={{ scrollMarginTop: 'calc(var(--hcdp-sticky-h, 7rem) + 1rem)' }}>
       <span aria-hidden="true" className="hcdp-ai-summary-rule" />
       <div className="flex items-center gap-2" data-testid="ai-summary-header">
         <Star id={gradId} />

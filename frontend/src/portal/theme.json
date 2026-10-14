@@ -1,0 +1,21 @@
+{
+  "file": "/portal/theme.7b16806e4a.css",
+  "hash": "7b16806e4a",
+  "bytes": 430917,
+  "built_at": "2026-10-14T18:47:16+00:00",
+  "wordpress": "7.1.3",
+  "sources": [
+    "onepress-bootstrap",
+    "onepress-fa",
+    "wp-block-library",
+    "onepress-style",
+    "wp-img-auto-sizes-contain-inline-css",
+    "wp-emoji-styles-inline-css",
+    "classic-theme-styles-inline-css",
+    "global-styles-inline-css",
+    "onepress-style-inline-css",
+    "wp-custom-css",
+    "wrapper-helper"
+  ],
+  "requests": 5
+}

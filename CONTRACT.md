@@ -130,6 +130,7 @@ portal's open sidebar. The logo row carries neither "Share this view" nor "Origi
 | Site catalog + navigator test cases | `backend/data/catalog.json`, `backend/data/usecases.json`, `backend/tests/test_catalog.py`, `backend/tests/test_usecases.py` | catalog agent |
 | Use-case document | `docs/USE_CASES.md` | use-case agent |
 | Review-period feedback (F1–F5) | `frontend/src/feedback/*`, `frontend/src/pages/AdminFeedback.jsx` (+ tests), `backend/feedback.py`, `backend/tests/test_feedback.py`, `e2e/feedback_smoke.mjs`; one line each in `App.jsx`, `AISummary.jsx`, `AssistantPanel.jsx` | feedback agent |
+| The mirror of HCDP's pages | `backend/portal*.py`, `backend/data/portal_seed/*`, `scripts/portal_*.py`, `frontend/src/portal/*`, `frontend/public/portal/*` | mirror agent |
 
 Run the frontend tests with `cd frontend && npx vitest run`, the backend tests with
 `cd backend && python -m pytest -q`. Keep both green.
@@ -145,29 +146,110 @@ the URL, register the query keys / route pattern in `backend/navigator.py` (`PAG
 `ROUTE_PATTERNS`), add it to the catalog so the navigator can produce it, and map it in `original.js`.
 
 ```
-/extreme-events/{lowell|lala|nolo|kona-low-1|kona-low-2}         one storm
-/tools/{slug}                                                     one tool tile (slug = image name; also ai-data-analysis)
+/extreme-events/{lowell|lala|nolo|kona-low-1|kona-low-2}         one storm's report (HCDP's app, embedded; kona-lows → /extreme-events)
+/tools/{slug}                                                     one tool tile on HCDP's Climate Tools page, ringed (vmap-vog-forecast, vmap-fire-weather …)
 /mesonet?viewer=live|app|nolo&station={id}&view=dashboard|graphing|station-map|station-table|wind-map
-/climate-summary?year=YYYY&month=M                                one month in the summary app
+/climate-summary?year=YYYY&month=M                                one month in the summary app (follows the app's own route)
+/pacific/{slug} · /cultural-resources/{slug} · /research/posts/{slug} · /data/tutorials/{slug}   one mirrored HCDP page
 /?ask={url-encoded question}                                      asks the assistant on arrival
 ```
 
 ## Routes (internal)
 ```
-/                         landing: tools + "What are you looking for?"
-/about  /about/team  /about/history  /about/acknowledgements  /about/how-to-cite
-/data                     Access Data (the native viewer and the native Export form; the original app is linked for the rest)
-/data/api  /data/tutorials
-/mesonet                  Hawaiʻi Mesonet
-/climate-summary          Monthly Climate Summary
-/pacific                  Pacific Portal (American Samoa, Guam)
-/extreme-events           index of events (Nolo, Lowell, Lala, Kona Lows …), each with its portal links
-/tools                    Climate Tools
+/                         landing: tools + "What are you looking for?" (native)
+/about /about/history /about/team /about/acknowledgements /about/how-to-cite
+/about/rainfall-mapping-history /about/climate-monitoring-history            HCDP's About pages, mirrored
+/data                     Access Data (native: the viewer, the Export form and the AI line; the original app is linked for the rest)
+/data/api                 HCDP's API page, mirrored, with the AI-prepared download's offer card on top
+/data/tutorials (+/data/tutorials/{slug})                                   HCDP's tutorials, mirrored
+/mesonet                  HCDP's Hawaiʻi Mesonet page, mirrored; /mesonet?viewer|station|view= the live viewer (native embed)
+/climate-summary          the Monthly Climate Summary app (native embed, URL sync)
+/pacific (+/pacific/{slug})  HCDP's Pacific Portal and American Samoa pages, mirrored; /pacific/guam the Guam viewer (native embed)
+/extreme-events           HCDP's Extreme Events page (the cards), mirrored; /extreme-events/{storm} the report (native embed)
+/tools (+/tools/{slug})   HCDP's Climate Tools page, mirrored (the tile ringed)
+/cultural-resources (+/{slug}) · /library · /research/highlights · /research/external-resources · /research/presentations ·
+/research/posts/{slug} · /conditions-of-use                                    HCDP's pages, mirrored (the Library's list is native)
 /viewer/...               the deep-linkable climate viewer (grammar below)
 /admin/feedback           the feedback review table (linked nowhere; the admin key — "Feedback" below)
+/download                 the AI-prepared download's page
 ```
 Anything the prototype does not replicate links out to the real page on www.hawaii.edu/climate-data-portal
 (open in a new tab, marked with an external-link icon).
+
+## Mirrored pages (14 Oct; the user's pick DEC-20261013-MIRROR-M1 A)
+"If you can see these subpages on HCDP's website, I need you to replicate them exactly. All we are adding is the AI overview
+at the top." HCDP's WordPress pages are copied live into this site; its app shells are rebuilt as native embeds of the same
+apps; everything else keeps its HCDP address (new tab, ↗).
+- **Where each page lives** — `backend/portal_routes.py`, the one table: `MIRRORED` (our path → HCDP slug), the families
+  (`/data/tutorials/`, `/pacific/` — the Pacific Portal, its country pages and the American Samoa portal, `/pacific/american-samoa`
+  and `/pacific/countries-and-territories` being friendlier names — and `/cultural-resources/`), every HCDP post at
+  `/research/posts/<slug>` (the list moves with HCDP's REST listing), `EMBEDS` (the five storm reports → cherryleh routes
+  hurricane-nolo, hurricane-lowell, hurricane-lala, storm-viewer, storm-viewer-march2026-2; `/pacific/guam` → hcdp.github.io/gcdp;
+  `/climate-summary`), `NATIVE` (data-portal → /data, hawaii-mesonet-data → /mesonet?viewer=live, …) and the title overrides.
+  `navigator.py` validates the families through it (`ROUTE_PATTERNS`, posts by `slug_for_path`); `site/original.js` mirrors its
+  families and aliases for "Original HCDP version" (keep the two in step); the catalog's entries carry the paths.
+- **The job** (`backend/portal.py`, started with the app; it runs in the one uvicorn worker holding the flock
+  `CACHE_DIR/portal/leader.lock`): every 30 min it lists `wp-json/wp/v2/pages` and `posts` (`_fields=id,slug,link,modified_gmt`,
+  100 a page) and re-fetches the HTML of every mirrored page whose `modified_gmt` moved; a full sweep daily (oldest copy first);
+  the pictures the pages show; the overviews; the Library daily. **Every request to www.hawaii.edu goes out one at a time, at
+  least 3 s after the previous one ended** (robots.txt Crawl-delay; redirects followed by hand, each hop spaced), User-Agent
+  `HCDP-with-AI mirror (+https://hcdp-with-ai.cis251375.projects.jetstream-cloud.org)`, 15 s timeout. Never on a visitor's
+  request. `PORTAL_JOB=0` turns it off (the tests always do, `backend/tests/conftest.py`).
+- **A copy** (`CACHE_DIR/portal/pages/<slug>.json`, WordPress's percent-encoded slug; atomic writes; the two previous copies as
+  `.1`/`.2`): `{slug, path, url, final_url, fetched_at, checked_at, modified_gmt, title, band, kind, body_class, article_class,
+  html, css, text (2,000 characters), text_len, has_h1, embeds, images, sha256, post?}`. Accepted only if HCDP answered 200, the
+  title is not "Page not found", `.entry-content` is there and the text is at least half the last good copy's; a refused copy
+  is logged under `failures` and the last good one stays.
+- **The sanitiser** (`backend/portal_sanitize.py`, BeautifulSoup + nh3's allow-list last): `article .entry-content` only (a
+  post keeps its title, date and thumbnail — no byline, comments or tags); scripts, links, meta, comments, `on*`, `javascript:`,
+  search forms, Zotpress, `iframe.wp-embedded-content` (its blockquote link stays) removed; block markup, classes and inline
+  styles kept; content `<style>` kept minus rules aimed at html/body/*/bare div/iframe; Jetpack slideshows → a figure list.
+  Links: the link map → our route (`data-mirror="internal"`, same tab); else HCDP's address as written (utm dropped) in a new
+  tab with `↗` and "(opens in a new tab)"; mailto/#hash kept. Pictures: one source per picture (the narrowest candidate ≥ 800 px)
+  through `/api/portal/img?u=<encoded>&w=<n>` in src and srcset (400 and 800 wide), width/height kept, `loading=lazy
+  decoding=async`; inline `url()` likewise. Iframes only from youtube, player.vimeo, docs.google, drive.google, wordwall.net,
+  uhm.maps.arcgis, experience.arcgis, cherryleh.github.io, hcdp.github.io, rainfall.ikewai.org, ikewai.github.io — lazy, titled,
+  `allow="fullscreen"`, fixed sizes → width 100 % + aspect-ratio; the Google Form 1400 px tall, an "Open the form ↗" button
+  under 640 px; any other frame becomes a link. One h1 per page: with a band every content h1 reads as level 2.
+- **CSS for the shadow root** (`shadow_css`): `html`/`:root` → `:host`, `body` → `.hcdp-body` (the wrapper carrying HCDP's
+  body classes), `rem` → `calc(n * var(--hcdp-rem, 16px))` with HCDP's root sizes (16/15/14 px by breakpoint) as `--hcdp-rem`;
+  `@import`/`@font-face` dropped. The page's CSS = the head's per-page styles (core-block-supports, its global-styles variant …)
+  + the content `<style>`s. **The theme bundle** — `scripts/portal_theme.py`, run once: bootstrap.min.css, OnePress style.css,
+  Font Awesome 4.7's classes, the full block library, classic-theme-styles, global-styles, wp-custom-css, the customizer CSS and
+  the `.wrapper` helper, through the same transform → `frontend/public/portal/theme.<hash>.css` (committed, immutable;
+  `frontend/src/portal/theme.json` names it). Google Fonts Roboto, Raleway and Open Sans load at document level
+  (`index.html`); Font Awesome's `@font-face` is added to the document only when a page uses its classes.
+- **Endpoints**: `GET /api/portal/page?path=<our path>` → the copy plus `source` (cache | seed), `copied_at` when the copy is
+  not known to be current (a seed copy, or none confirmed for two days) and the cached `overview`; `ETag`, `Cache-Control:
+  public, max-age=300, stale-while-revalidate=86400`; 404 `{detail, hcdp_url}` (HCDP's address when the page is ours but no copy
+  exists; null for an address that mirrors nothing). Fallback order: the fresh copy → the last good one (with `copied_at`) →
+  the committed seed (`backend/data/portal_seed/*.json` + `index.json` + `library.json`, written once by
+  `scripts/portal_seed.py` with the same spacing; `--from-raw` rebuilds it without fetching) → the 404. `GET /api/portal/img`
+  — only `https://www.hawaii.edu/climate-data-portal/wp-content/uploads/…` (else 400); the width rounded up to 100…800; a cached
+  WebP (never enlarged) with `Cache-Control: public, max-age=31536000, immutable` and an ETag; a picture not cached yet → 302 to
+  HCDP's own file (`no-store`; the visitor's browser fetches it) and a note for the job, which fetches only pictures a mirrored
+  page shows and revalidates them weekly (ETag/Last-Modified). `GET /api/portal/library` → the Zotero group 2846077's top-level
+  items `{key, year, title, authors, venue, type, url, zotero}` (cached daily, 100 a request). `/api/health` → `portal`: mirrored,
+  cached, seed, newest/oldest `fetched_at`, the job's last runs, `failures_24h`, fetch counts, pictures, overviews, the leader.
+  `index.html` on a mirrored or embedded address carries its title and `<link rel="canonical">` to HCDP's page.
+- **The client** (`frontend/src/portal/`): `MirroredPage` renders the copy in an **open shadow root** inside HCDP's own page
+  structure (`.hcdp-body > #content.site-content > #content-inside.container.no-sidebar > #primary > .site-main > article`) with
+  three adopted sheets — the theme bundle, `HOST_CSS` (`:host{display:block;font:400 14px/1.7 <system stack>;color:#777;
+  background:#fff;overflow-x:clip}` and the sanitiser's classes), the page's CSS — one shared `CSSStyleSheet` each (`<style>`
+  elements where the browser cannot adopt); clicks on internal links → `navigate()` (modified clicks and external links are the
+  browser's); `#hash` targets scroll to just below the sticky header (also for a click on the hash already in the address);
+  our shell around it unchanged; the grey band drawn outside the shadow root only when HCDP has one (`padding:30px 0;
+  background:#f8f9f9; 1px #e9e9e9 rules; h1 24px/600, 1px tracking, uppercase, #777`) in a Bootstrap-width column; an
+  sr-only h1 when there is neither a band nor a content h1; `document.title` "<title> – Hawaiʻi Climate Data Portal" (HCDP's
+  title, or the override) and the canonical link while the page shows; "Copied from HCDP on <date> · see the original" when
+  `copied_at` is set; "This page is on HCDP ↗" for a 404 with an address. `AppEmbed`: the app at `calc(100dvh -
+  var(--hcdp-sticky-h))` under a slim strip (the title as the page's h1, "Open full screen ↗"), a tap-to-interact cover on coarse
+  pointers, the per-question overview above the strip; the Climate Summary (`{type:'routeChange', hash}`) and the Mesonet live
+  viewer (a `#/<view>?id=<station>` string) post their route — origin `https://cherryleh.github.io`, from our frame only — and our
+  address follows with `replace` without reloading the frame. Old addresses keep working: `/pacific#american-samoa|#guam`,
+  `/extreme-events#<storm>` and `/extreme-events/kona-lows` land on the pages that replaced them. `Library` = the mirrored
+  Publications List (band, "Search Publications ↗") + the native list by year with a filter. The three atlas pages and
+  Publications Search stay on HCDP.
 
 ## Deep-link grammar for the viewer (shareable, human-readable, stable)
 ```
@@ -461,8 +543,9 @@ wanted: {title, url} | {text} }` → `{ id }` (400 for anything that is not a pa
 `RateLimiter`, `FEEDBACK_PER_MINUTE` 6 / `FEEDBACK_PER_HOUR` 40). Within the next ten minutes (`WRONG_PAGE_WINDOW_MS`, tab memory
 only) the **next navigation the visitor makes** — an AI answer, a typeahead row, a tile, an open, or a rail change in the
 viewer — is attached once with `POST /api/feedback/wrong-page/{id}/chose` `{ path }` (fire-and-forget; the wanted page itself
-is not "instead"). Storage: `backend/feedback.py`, SQLite at `FEEDBACK_DB` — `/app/data/feedback.sqlite` in the container, on
-the `feedback_data` volume (`deploy/docker-compose.yml`), `backend/cache/feedback.sqlite` in development — WAL, one short
+is not "instead"). Storage: `backend/feedback.py`, SQLite at `FEEDBACK_DB` — `/app/state/feedback.sqlite` in the container, on
+the `feedback_data` volume mounted at `/app/state` (`deploy/docker-compose.yml`; never at `/app/data`, which is the image's own
+`backend/data` — a volume there froze the catalog and the mirror's seed at the first deploy's copy), `backend/cache/feedback.sqlite` in development — WAL, one short
 connection per call behind a lock; **no IP, user agent or cookie is stored**. The admin view: `/admin/feedback` (linked
 nowhere; type the address) asks for the admin key — a password field, sent as `X-Admin-Key`, kept in `sessionStorage` for the
 tab — then (since F3 A, 13 Oct) the review table over these reports and the reviewers' feedback ("Feedback" below), where a
@@ -552,9 +635,17 @@ floating under the reading chips (M1 C; the full-screen desktop map holds it bac
 by the data page above its Export form, which then scrolls into view on arrival; and, on the pages that scroll to a target on
 load, where the visitor lands: a storm's own section on `/extreme-events/<slug>` or `#<id>`, the live viewers section on
 `/mesonet?viewer|station|view=`, the dashboard section on `/climate-summary?year&month`, and on `/tools/<slug>` the page lands
-on the overview with the tile ringed below it). It shows only while the provider holds an
-overview for that very pathname — never on a direct load — and is keyed by the answer, so a follow-up that lands on the same
-page fades a new one in. A quiet block, no card: a 3 px vertical spectrum rule on the left; a header row with a four-point
+on the overview with the tile ringed below it). It shows while the provider holds an
+overview for that very pathname, keyed by the answer, so a follow-up that lands on the same page fades a new one in. On the
+mirrored HCDP pages (below) the overview sits at the very top, in the content column above HCDP's grey band; on the native
+embeds above the strip; `/tools/<slug>` lands on it with the tile ringed below. **Direct loads (QB-O1 B, 14 Oct):** a mirrored
+page opened without an ask shows its own cached overview instead (`fallback`, `data-kind="page"`): written once per copy of
+the page by `Summarizer.page_overview` (the catalog entry + the page's first ~1,500 characters, `llm.PAGE_OVERVIEW_SYSTEM`,
+"describe this page"), regenerated when the copy changes; its sources are the page's own HCDP address first, then up to two
+related entries; three generic follow-ups go to the docked bar's ghost; no "Wrong page?" (there was no question). A
+navigation's per-question overview replaces it; ✕ on either hides both for that visit to the page. **Key terms (14 Oct):**
+both prompts ask for up to three key terms wrapped in `**…**`; `summary.py` keeps at most three across the summary and the
+"more" sentences (none in follow-ups) and strips every other asterisk; the client renders them bold (`renderTerms`). A quiet block, no card: a 3 px vertical spectrum rule on the left; a header row with a four-point
 star in the logo's spectrum, the words **"AI Overview"** and, at the right, the small **"Generated by HCDP AI"** (the AI words
 carry a thin spectrum rule) and a ✕; then the numbered **sources first** — "From HCDP: ¹ Hurricane Lowell report ↗ · ² Access
 Data ↗", real HCDP pages resolved from the catalog, external, new tab; then the summary's two or three sentences, each fading
@@ -668,7 +759,10 @@ Viewer entries carry `internal_path` templates such as `/viewer/rainfall/day/{da
 ## Design rules
 - Reuse the primitives and tokens; no new colours (the portal's own image treatments, e.g. the tool tiles, are fine). Headings in `font-display`, menus in `font-nav`.
 - Match the real HCDP site's section names and order: Access Data, Hawaiʻi Mesonet, Climate Summary,
-  Pacific Portal, Extreme Events, Climate Tools; top nav Home · About · Data Portal · Research · Climate Tools.
+  Pacific Portal, Extreme Events, Climate Tools; the header menu is HCDP's own, item for item (`NAV` in `site/nav.js`):
+  Home · About (Team, HCDP History, Rainfall Mapping History, Climate Monitoring History, Acknowledgements, How to Cite) ·
+  Data Portal (Access Data, HCDP / Hawaiʻi Mesonet API, Tutorials, How to Cite) · Cultural Resources · Library · Research
+  (Research Highlights, External Resources, Presentations) · Climate Tools — every entry a page of this site.
 - Every page works at phone width. External links open in a new tab and say so.
 - No cookies, no analytics, no sign-in, no theme (the site is always light; a `hcdp-theme` key left by an earlier
   visit is removed), nothing persisted — with three exceptions: the viewer's unit

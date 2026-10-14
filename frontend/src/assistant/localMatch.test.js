@@ -27,7 +27,8 @@ describe('the committed catalog index', () => {
     expect(INDEX.find((e) => e.id === 'ask-link')).toBeUndefined()                        // a question link is not a place
     expect(INDEX.find((e) => e.id === 'mesonet-station-live').path).toBe('/mesonet')       // a station template falls back to its page
     expect(INDEX.find((e) => e.id === 'rainfall-daily-map').path).toBe('/viewer/rainfall/day/{date}/{extent}')
-    expect(INDEX.find((e) => e.id === 'rainfall-mapping-history').url).toMatch(/rainfall-mapping-history/)
+    expect(INDEX.find((e) => e.id === 'solar-radiation-atlas').url).toMatch(/solar-radiation-atlas/)        // an HCDP page this site does not mirror
+    expect(INDEX.find((e) => e.id === 'rainfall-mapping-history').path).toBe('/about/rainfall-mapping-history')   // a mirrored one (14 Oct)
     expect(INDEX.every((e) => !e.tags.includes('hilo') && !e.tags.includes('rainfall'))).toBe(true)   // generic tags are left out
     const bytes = Buffer.byteLength(JSON.stringify(INDEX))
     expect(bytes).toBeLessThan(60 * 1024)

@@ -12,8 +12,10 @@ services:
     ports:
       - "127.0.0.1:8010:8010"   # local only; Caddy fronts it
     volumes:
-      - raster_cache:/app/cache
-      - feedback_data:/app/data     # the wrong-page feedback SQLite (P4 A) survives rebuilds
+      - raster_cache:/app/cache     # rasters, previews and the mirror of HCDP's pages (/app/cache/portal) survive rebuilds
+      # the wrong-page feedback SQLite (P4 A) survives rebuilds. Mounted at /app/state, not /app/data: a named volume over
+      # /app/data froze the image's backend/data (catalog.json, the portal seed …) at the first deploy's copy (14 Oct).
+      - feedback_data:/app/state
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped

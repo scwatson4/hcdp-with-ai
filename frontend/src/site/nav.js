@@ -11,13 +11,15 @@ export const HCDP = 'https://www.hawaii.edu/climate-data-portal'
 // "AI Data Analysis Tool", one line, no arrow).
 export const AI_TOOL = { label: 'AI Data Analysis Tool', href: handoffUrl({}) }
 
+// HCDP's own menu, item for item (its header on 13 Oct 2026); every entry is a page this site mirrors (or, for Access
+// Data, its native page), so nothing here leaves the site (CONTRACT.md "Mirrored pages", 14 Oct).
 export const NAV = [
   { label: 'Home', to: '/' },
   { label: 'About', items: [
     { label: 'Team', to: '/about/team' },
     { label: 'HCDP History', to: '/about/history' },
-    { label: 'Rainfall Mapping History', external: `${HCDP}/rainfall-mapping-history/` },
-    { label: 'Climate Monitoring History', external: `${HCDP}/climate-monitoring-history/` },
+    { label: 'Rainfall Mapping History', to: '/about/rainfall-mapping-history' },
+    { label: 'Climate Monitoring History', to: '/about/climate-monitoring-history' },
     { label: 'Acknowledgements', to: '/about/acknowledgements' },
     { label: 'How to Cite', to: '/about/how-to-cite' },
   ] },
@@ -26,15 +28,13 @@ export const NAV = [
     { label: 'HCDP / Hawaiʻi Mesonet API', to: '/data/api' },
     { label: 'Tutorials', to: '/data/tutorials' },
     { label: 'How to Cite', to: '/about/how-to-cite' },
-    { label: 'Cultural Resources', external: `${HCDP}/news/` },
-    { label: 'Library', external: `${HCDP}/publications-list/` },
   ] },
-  { label: 'Cultural Resources', external: `${HCDP}/news/` },
-  { label: 'Library', external: `${HCDP}/publications-list/` },
+  { label: 'Cultural Resources', to: '/cultural-resources' },
+  { label: 'Library', to: '/library' },
   { label: 'Research', items: [
-    { label: 'Research Highlights', external: `${HCDP}/research-highlights/` },
-    { label: 'External Resources', external: `${HCDP}/contact/` },
-    { label: 'Presentations', external: `${HCDP}/presentations/` },
+    { label: 'Research Highlights', to: '/research/highlights' },
+    { label: 'External Resources', to: '/research/external-resources' },
+    { label: 'Presentations', to: '/research/presentations' },
   ] },
   { label: 'Climate Tools', to: '/tools' },
 ]

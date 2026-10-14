@@ -104,6 +104,11 @@ from summary import Summarizer, empty_summary  # noqa: E402
 import download_plan as dl  # noqa: E402
 app.state.narrator = NarrationLLM()
 app.state.summarizer = Summarizer(app.state.navigator, SummaryLLM())
+# The live mirror of HCDP's pages (CONTRACT.md "Mirrored pages", 14 Oct): the copies on the cache volume, the endpoints
+# (/api/portal/page, /api/portal/img, /api/portal/library) and the background job (one worker leads it).
+import portal  # noqa: E402
+portal.setup(app, CACHE_DIR)
+app.include_router(portal.router)
 # The AI-prepared download's planner (13 Oct): gpt-6.1-sol (DOWNLOAD_MODEL) through the navigator's route; its own limiter.
 app.state.planner = dl.DownloadPlanner(PlannerLLM(), app.state.navigator)
 app.state.download_limiter = RateLimiter(per_minute=int(os.environ.get("DOWNLOAD_PER_MINUTE", "6")), per_hour=int(os.environ.get("DOWNLOAD_PER_HOUR", "40")), global_per_day=int(os.environ.get("DOWNLOAD_GLOBAL_PER_DAY", "800")))
@@ -257,6 +262,8 @@ async def api_health(request: Request):
         # the download planner (13 Oct): model, fallback model, timeout, token budget and its client stats
         "planner": {"model": getattr(planner_llm, "model", None), "fallback_model": getattr(planner_llm, "fallback_model", None), "timeout": getattr(planner_llm, "timeout", None),
                     "max_completion_tokens": getattr(planner_llm, "max_completion_tokens", None), "stats": getattr(planner_llm, "stats", None)},
+        # the mirror of HCDP's pages (14 Oct): copies cached / in the seed, the newest and oldest copy, the job's last runs, failures
+        "portal": portal.health(request.app.state.portal),
         "catalog_entries": len(request.app.state.navigator.catalog),
         "raster_cache_files": len(list(CACHE_DIR.glob("*.tif"))) if CACHE_DIR.exists() else 0,
         "frontend_built": (DIST / "index.html").exists(),
@@ -1366,6 +1373,21 @@ async def spa(full_path: str, request: Request):
 _index_cache = {}
 
 
+def _mirrored_head(html: str, path: str) -> str:
+    """index.html for a mirrored or embedded HCDP page: its title ("<title> – Hawaiʻi Climate Data Portal") and the
+    canonical link to HCDP's own page (the original of the copy)."""
+    try:
+        head = portal.head_for(app.state.portal, path)
+    except Exception:  # noqa: BLE001
+        head = None
+    if not head:
+        return html
+    e = lambda s: htmlmod.escape(s, quote=True)  # noqa: E731
+    if head.get("title"):
+        html = re.sub(r"<title>.*?</title>", f"<title>{e(head['title'])} – Hawaiʻi Climate Data Portal</title>", html, count=1, flags=re.S)
+    return html.replace("</head>", f'<link rel="canonical" href="{e(head["canonical"])}" /></head>', 1)
+
+
 def index_html_for(path: str, host: str | None = None) -> str:
     """index.html with a title and description that describe a viewer deep link, so a pasted link previews as
     'Rainfall, September 7, 2026, Kauaʻi' instead of the generic site title — plus the canonical link, og:url/og:image
@@ -1377,7 +1399,7 @@ def index_html_for(path: str, host: str | None = None) -> str:
     html = _index_cache["html"]
     v = parse_viewer_path(path)
     if not v:
-        return html
+        return _mirrored_head(html, path)
     e = lambda s: htmlmod.escape(s, quote=True)  # noqa: E731
     what = describe_view(v)
     title = f"{what} — Hawaiʻi Climate Data Portal"

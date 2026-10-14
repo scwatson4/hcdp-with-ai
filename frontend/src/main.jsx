@@ -8,13 +8,11 @@ import { AssistantProvider } from './assistant/AssistantProvider'
 import App from './App'
 import Landing from './pages/Landing'
 import ViewerPage from './viewer/ViewerPage'
-import { AboutTeam, AboutHistory, AboutAcknowledgements, HowToCite } from './pages/content/About'
-import { AccessData, ApiAccess, Tutorials } from './pages/content/DataPortal'
-import Mesonet from './pages/content/Mesonet'
-import ClimateSummary from './pages/content/ClimateSummary'
-import Pacific from './pages/content/Pacific'
-import ExtremeEvents from './pages/content/ExtremeEvents'
-import ClimateTools from './pages/content/ClimateTools'
+import { AccessData } from './pages/content/DataPortal'
+// HCDP's own pages, mirrored live (CONTRACT.md "Mirrored pages", 14 Oct), and its app shells as native embeds
+import { Mirror } from './portal/MirroredPage'
+import LibraryPage from './portal/Library'
+import { ApiRoute, ClimateSummaryEmbed, ExtremeEventsRoute, GuamEmbed, MesonetRoute, PacificRoute, StormRoute, ToolsRoute } from './portal/routes'
 import DownloadPage from './download/DownloadPage'
 import NotFound from './pages/NotFound'
 import AdminFeedback from './pages/AdminFeedback'
@@ -28,21 +26,29 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Routes>
             <Route element={<App />}>
               <Route index element={<Landing />} />
-              <Route path="about" element={<AboutHistory />} />
-              <Route path="about/team" element={<AboutTeam />} />
-              <Route path="about/history" element={<AboutHistory />} />
-              <Route path="about/acknowledgements" element={<AboutAcknowledgements />} />
-              <Route path="about/how-to-cite" element={<HowToCite />} />
+              <Route path="about" element={<Mirror />} />
+              <Route path="about/:page" element={<Mirror />} />
               <Route path="data" element={<AccessData />} />
-              <Route path="data/api" element={<ApiAccess />} />
-              <Route path="data/tutorials" element={<Tutorials />} />
-              <Route path="mesonet" element={<Mesonet />} />
-              <Route path="climate-summary" element={<ClimateSummary />} />
-              <Route path="pacific" element={<Pacific />} />
-              <Route path="extreme-events" element={<ExtremeEvents />} />
-              <Route path="extreme-events/:slug" element={<ExtremeEvents />} />
-              <Route path="tools" element={<ClimateTools />} />
-              <Route path="tools/:slug" element={<ClimateTools />} />
+              <Route path="data/api" element={<ApiRoute />} />
+              <Route path="data/tutorials" element={<Mirror />} />
+              <Route path="data/tutorials/:slug" element={<Mirror />} />
+              <Route path="mesonet" element={<MesonetRoute />} />
+              <Route path="climate-summary" element={<ClimateSummaryEmbed />} />
+              <Route path="pacific" element={<PacificRoute />} />
+              <Route path="pacific/guam" element={<GuamEmbed />} />
+              <Route path="pacific/:slug" element={<Mirror />} />
+              <Route path="extreme-events" element={<ExtremeEventsRoute />} />
+              <Route path="extreme-events/:slug" element={<StormRoute />} />
+              <Route path="tools" element={<ToolsRoute />} />
+              <Route path="tools/:slug" element={<ToolsRoute />} />
+              <Route path="cultural-resources" element={<Mirror />} />
+              <Route path="cultural-resources/:slug" element={<Mirror />} />
+              <Route path="library" element={<LibraryPage />} />
+              <Route path="research/highlights" element={<Mirror />} />
+              <Route path="research/external-resources" element={<Mirror />} />
+              <Route path="research/presentations" element={<Mirror />} />
+              <Route path="research/posts/:slug" element={<Mirror />} />
+              <Route path="conditions-of-use" element={<Mirror />} />
               <Route path="download" element={<DownloadPage />} />
               <Route path="viewer/*" element={<ViewerPage />} />
               <Route path="admin/feedback" element={<AdminFeedback />} />   {/* P4 A: linked nowhere; type the address */}

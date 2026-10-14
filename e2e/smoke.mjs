@@ -13,9 +13,22 @@ const browser = await chromium.launch()
 try {
   for (const [label, viewport] of [['desktop', { width: 1280, height: 800 }], ['desktop-1440', { width: 1440, height: 900 }], ['phone', { width: 390, height: 844 }]]) {
     const page = await browser.newPage({ viewport })
+    // The mirror's picture proxy sends a picture it has not cached yet to HCDP's own file; the smoke never pulls those
+    // (every fetch of www.hawaii.edu stays the mirror job's, one at a time, 3 s apart).
+    let notCached = 0
+    await page.route('**/api/portal/img**', async (route) => {
+      const resp = await route.fetch({ maxRedirects: 0 }).catch(() => null)
+      if (!resp || (resp.status() >= 300 && resp.status() < 400)) { notCached += 1; return route.abort() }
+      return route.fulfill({ response: resp })
+    })
     const errors = []
     // errors thrown inside embedded third-party frames (the Mesonet dashboard's Leaflet plugin) are not ours
     page.on('pageerror', (e) => { const t = String(e); if (!/reading 'Control'/.test(t)) errors.push(t) })
+    const shadowInfo = () => page.evaluate(() => {
+      const sr = document.querySelector('[data-testid="mirror-host"]')?.shadowRoot
+      return sr ? { text: sr.querySelector('.entry-content')?.textContent || '', sheets: sr.adoptedStyleSheets?.length || sr.querySelectorAll('style').length, html: sr.innerHTML } : null
+    })
+    const mirrorReady = () => page.waitForFunction(() => document.querySelector('[data-testid="mirror-host"]')?.shadowRoot?.querySelector('.entry-content'), null, { timeout: 20000 }).then(() => true).catch(() => false)
     await page.goto(BASE + '/', { waitUntil: 'networkidle' })
     check(`${label}: landing loads`, (await page.locator('h1').first().textContent()) === 'Hawaiʻi Climate Data Portal')   // the sr-only h1 (L1 B: no heading over the map)
     check(`${label}: six tool cards`, (await page.locator('[data-testid^="tool-"]').count()) === 6)
@@ -99,12 +112,43 @@ try {
     const shown = await page.locator('[data-testid="share-panel"] input').inputValue().catch(() => '')
     const clip = await page.evaluate(() => navigator.clipboard.readText().catch(() => '')).catch(() => '')
     check(`${label}: share panel shows and copies the link`, shown === page.url() && (clip === page.url() || clip === '') && (await page.locator('[data-testid="share-copy"]').count()) === 1, `${shown.slice(-40)} | clipboard ${clip ? 'ok' : 'n/a'}`)
-    await page.goto(BASE + '/extreme-events/lowell', { waitUntil: 'networkidle' })
-    check(`${label}: storm route`, (await page.locator('#lowell').count()) === 1 && (await page.locator('[data-testid="original-link"]').getAttribute('href')).includes('hurricane-lowell'))
-    // The embedded Mesonet dashboard keeps the network busy, so do not wait for idle here; wait for our station picker instead.
+    // 14 Oct: the storm reports are HCDP's apps, embedded full height under the header (the old sections are gone).
+    await page.goto(BASE + '/extreme-events/lowell', { waitUntil: 'domcontentloaded' })
+    await page.waitForSelector('[data-testid="embed-frame"]', { timeout: 20000 }).catch(() => {})
+    check(`${label}: storm route (the report embedded, the strip, the original link)`, ((await page.locator('[data-testid="embed-frame"]').getAttribute('src').catch(() => '')) || '').endsWith('#/hurricane-lowell')
+      && (await page.locator('[data-testid="embed-strip"] h1').textContent().catch(() => '')) === 'Hurricane Lowell'
+      && (await page.locator('[data-testid="original-link"]').getAttribute('href')).includes('hurricane-lowell'))
+    // The embedded Mesonet dashboard keeps the network busy, so do not wait for idle; the station is in the app's address.
     await page.goto(BASE + '/mesonet?viewer=live&station=0115&view=dashboard', { waitUntil: 'domcontentloaded' })
-    await page.waitForSelector('[data-testid="station-picker"] select', { timeout: 30000 }).catch(() => {})
-    check(`${label}: mesonet station link`, (await page.locator('[data-testid="original-link"]').getAttribute('href')).includes('#/dashboard?id=0115') && (await page.locator('[data-testid="station-picker"] select').first().inputValue()) === '0115')
+    await page.waitForSelector('[data-testid="embed-frame"]', { timeout: 30000 }).catch(() => {})
+    check(`${label}: mesonet station link`, (await page.locator('[data-testid="original-link"]').getAttribute('href')).includes('#/dashboard?id=0115')
+      && ((await page.locator('[data-testid="embed-frame"]').getAttribute('src').catch(() => '')) || '').includes('#/dashboard?id=0115'))
+    // The mirrored HCDP pages (CONTRACT.md "Mirrored pages"): HCDP's copy inside a shadow root, the band, one h1, the menu.
+    await page.goto(BASE + '/extreme-events', { waitUntil: 'domcontentloaded' })
+    const eeReady = await mirrorReady()
+    const ee = await shadowInfo()
+    const cards = ee ? [...ee.html.matchAll(/href="\/extreme-events\/([a-z0-9-]+)"/g)].map((m) => m[1]) : []
+    check(`${label}: Extreme Events is HCDP's page (band, five cards, Nolo first)`, eeReady && (await page.locator('[data-testid="mirror-band"]').textContent()) === 'Extreme Events'
+      && JSON.stringify(cards) === JSON.stringify(['nolo', 'lowell', 'lala', 'kona-low-2', 'kona-low-1']), cards.join(','))
+    await page.goto(BASE + '/tools', { waitUntil: 'domcontentloaded' })
+    await mirrorReady()
+    const tools = await shadowInfo()
+    const tiles = tools ? (tools.html.match(/border-radius: 10px/g) || []).length : 0
+    check(`${label}: Climate Tools shows HCDP's 12 tiles incl. the two VMAP ones`, tiles === 12 && /VMAP Vog Forecast Dashboard/.test(tools.text) && /VMAP Fire Weather Dashboard/.test(tools.text), `${tiles} tiles`)
+    await page.goto(BASE + '/about/team', { waitUntil: 'domcontentloaded' })
+    await mirrorReady()
+    const team = await shadowInfo()
+    check(`${label}: Team is HCDP's page in a shadow root with its theme`, Boolean(team && /Ryan Longman/.test(team.text) && team.sheets >= 3) && (await page.title()) === 'Team – Hawaiʻi Climate Data Portal'
+      && (await page.locator('h1').count()) === 1 && await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1))
+    await page.screenshot({ path: `${OUT}/mirror-team-${label}.png`, fullPage: true })
+    await page.goto(BASE + '/library', { waitUntil: 'domcontentloaded' })
+    await page.waitForSelector('[data-testid="library-item"]', { timeout: 20000 }).catch(() => {})
+    check(`${label}: Library lists the Zotero group by year`, (await page.locator('[data-testid="library-item"]').count()) > 500 && (await page.locator('[data-testid="mirror-band"]').textContent()) === 'Publications List')
+    await page.goto(BASE + '/research/posts/a-century-of-drought-in-hawaii', { waitUntil: 'domcontentloaded' })
+    await mirrorReady()
+    const post = await shadowInfo()
+    check(`${label}: a research post (title, date, no byline)`, Boolean(post && /A Century of Drought/.test(post.html) && /Posted on/.test(post.html) && !/byline/.test(post.html)))
+    if (notCached) console.log(`  (${notCached} pictures not cached yet on ${label}: not fetched from HCDP by the smoke)`)
     await page.goto(BASE + '/nope', { waitUntil: 'networkidle' })
     check(`${label}: 404 page`, (await page.locator('body').innerText()).includes('not here'))
     check(`${label}: no page errors`, errors.length === 0, errors.slice(0, 2).join(' | '))

@@ -14,11 +14,16 @@ export const PORTAL_DATATYPE = {
 const STORM_PAGES = {
   lowell: `${HCDP}/hurricane-lowell/`,
   lala: `${HCDP}/hurricane-lala/`,
-  nolo: `${HCDP}/nolo-mesonet-viewer/`,
+  nolo: `${HCDP}/hurricane-nolo/`,
   'kona-low-1': `${HCDP}/2026-kona-low-1/`,
   'kona-low-2': `${HCDP}/2026-kona-low-2/`,
   'kona-lows': `${HCDP}/extreme-events/`,
 }
+
+// The mirrored pages' families (backend/portal_routes.py is the source of truth; keep the two in step): /<prefix><slug>
+// is HCDP's /<slug>/, except the friendlier names below.
+const FAMILY_PREFIXES = ['/pacific/', '/cultural-resources/', '/research/posts/', '/data/tutorials/']
+const FAMILY_ALIASES = { '/pacific/american-samoa': 'americansamoaportal', '/pacific/countries-and-territories': '2826-2', '/pacific/guam': 'guam-data-viewer' }
 
 const STATIC = {
   '/': `${HCDP}/`,
@@ -36,6 +41,14 @@ const STATIC = {
   '/pacific': `${HCDP}/pacific-portal/`,
   '/extreme-events': `${HCDP}/extreme-events/`,
   '/tools': `${HCDP}/climate-tools/`,
+  '/about/rainfall-mapping-history': `${HCDP}/rainfall-mapping-history/`,
+  '/about/climate-monitoring-history': `${HCDP}/climate-monitoring-history/`,
+  '/cultural-resources': `${HCDP}/news/`,
+  '/library': `${HCDP}/publications-list/`,
+  '/research/highlights': `${HCDP}/research-highlights/`,
+  '/research/external-resources': `${HCDP}/contact/`,
+  '/research/presentations': `${HCDP}/presentations/`,
+  '/conditions-of-use': `${HCDP}/conditions-of-use/`,
 }
 
 /** The original HCDP URL for a location on this site, and a short label of what it is. */
@@ -72,5 +85,8 @@ export function originalFor(pathname, search = '', hash = '') {
   if (path.startsWith('/extreme-events')) return { url: STATIC['/extreme-events'], label: 'Extreme Events on HCDP' }
   if (path.startsWith('/tools')) return { url: STATIC['/tools'], label: 'Climate Tools on HCDP' }
   if (STATIC[path]) return { url: STATIC[path], label: path === '/' ? 'HCDP home page' : 'this page on HCDP' }
+  if (FAMILY_ALIASES[path]) return { url: `${HCDP}/${FAMILY_ALIASES[path]}/`, label: 'this page on HCDP' }
+  const prefix = FAMILY_PREFIXES.find((p) => path.startsWith(p) && path.length > p.length && !path.slice(p.length).includes('/'))
+  if (prefix) return { url: `${HCDP}/${path.slice(prefix.length)}/`, label: 'this page on HCDP' }
   return { url: `${HCDP}/`, label: 'HCDP' }
 }

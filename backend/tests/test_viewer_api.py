@@ -285,7 +285,7 @@ def test_viewer_links_get_canonical_and_og_tags(tmp_path, monkeypatch, client):
     assert '<meta property="og:image:width" content="1200" />' in html and '<meta property="og:image:height" content="630" />' in html
     assert '<meta name="twitter:card" content="summary_large_image" />' in html and '<meta name="twitter:image" content="https://hcdp.example.org/api/og.png' in html
     assert 'property="og:title"' in html and 'property="og:description"' in html
-    plain = client.get("/about/team").text
+    plain = client.get("/data").text   # a native page: the generic head (a mirrored one gets HCDP's canonical, test_portal.py)
     assert 'rel="canonical"' not in plain and "<title>Hawaiʻi Climate Data Portal</title>" in plain
     monkeypatch.setattr(appmod, "SITE_ADDRESS", "")                     # no SITE_ADDRESS: the request's Host serves
     html = client.get("/viewer/rainfall/day/2026-09-07/kauai", headers={"host": "preview.example.net"}).text

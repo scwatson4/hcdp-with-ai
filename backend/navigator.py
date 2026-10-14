@@ -18,6 +18,7 @@ from zoneinfo import ZoneInfo
 from pathlib import Path
 from urllib.parse import quote, urlparse
 
+import portal_routes  # where each HCDP page lives on this site (the mirror, 14 Oct)
 from ramps_data import NAMED_RAMPS  # the viewer's colour ramps (generated from ramps.js); only the names are used here
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
@@ -71,14 +72,24 @@ HST = "Pacific/Honolulu"
 
 ROUTES = [
     "/", "/about", "/about/team", "/about/history", "/about/acknowledgements", "/about/how-to-cite",
+    "/about/rainfall-mapping-history", "/about/climate-monitoring-history",
     "/data", "/data/api", "/data/tutorials", "/mesonet", "/climate-summary", "/pacific", "/extreme-events", "/tools",
-    "/download",
+    "/cultural-resources", "/library", "/research/highlights", "/research/external-resources", "/research/presentations",
+    "/conditions-of-use", "/download",
 ]
 # Deep-link routes beyond ROUTES: per-storm and per-tool pages — only the slugs that exist.
 STORM_SLUGS = ("lowell", "lala", "nolo", "kona-low-1", "kona-low-2", "kona-lows")
 TOOL_SLUGS = ("rainfall-atlas", "ccvd-portfolios", "h-rip", "groundwater-recharge", "monthly-climate-summary", "sea-level-rise-viewer",
-              "american-samoa-data-viewer", "soest-coastal-viewer", "climate-of-hawaii", "ai-data-analysis", "avian-malaria")
-ROUTE_PATTERNS = [re.compile(r"^/extreme-events/(" + "|".join(STORM_SLUGS) + r")$"), re.compile(r"^/tools/(" + "|".join(TOOL_SLUGS) + r")$")]
+              "american-samoa-data-viewer", "soest-coastal-viewer", "climate-of-hawaii", "vmap-vog-forecast", "vmap-fire-weather",
+              "ai-data-analysis", "avian-malaria")
+# The mirrored HCDP pages' families (CONTRACT.md "Mirrored pages", 14 Oct): only the slugs portal_routes lists; the
+# research posts (/research/posts/<slug>) are checked against the live or seed list by portal_routes.slug_for_path.
+ROUTE_PATTERNS = [
+    re.compile(r"^/extreme-events/(" + "|".join(STORM_SLUGS) + r")$"),
+    re.compile(r"^/tools/(" + "|".join(TOOL_SLUGS) + r")$"),
+    *(re.compile("^" + re.escape(prefix) + "(" + "|".join(re.escape(s) for s in slugs) + ")$") for prefix, slugs in portal_routes.FAMILIES.items()),
+    re.compile(r"^/pacific/(" + "|".join(re.escape(a.rsplit("/", 1)[1]) for a in [*portal_routes.ALIASES, "/pacific/guam"]) + r")$"),
+]
 # Query keys each page understands (everything else is dropped as invalid).
 PAGE_QUERY_KEYS = {"/": {"ask"}, "/mesonet": {"viewer", "station", "view"}, "/climate-summary": {"year", "month"}, "/download": {"ask", "picks"}}
 STATIONS_PATH = DATA_DIR / "mesonet_stations.json"
@@ -410,12 +421,17 @@ def valid_internal_path(path: str) -> bool:
     base, _, query = no_hash.partition("?")
     if parse_viewer_path(no_hash) is not None:
         return True
-    if base not in ROUTES and not any(p.match(base) for p in ROUTE_PATTERNS):
+    if base not in ROUTES and not any(p.match(base) for p in ROUTE_PATTERNS) and not _mirrored_post(base):
         return False
     if query:
         allowed = PAGE_QUERY_KEYS.get(base, set())
         return all(part.split("=", 1)[0] in allowed for part in query.split("&") if part)
     return True
+
+
+def _mirrored_post(base: str) -> bool:
+    """/research/posts/<slug> for an HCDP post the mirror carries (the list moves with HCDP, so no fixed pattern)."""
+    return base.startswith(portal_routes.POSTS_PREFIX) and portal_routes.slug_for_path(base) is not None
 
 
 def short_title(title: str) -> str:
@@ -525,8 +541,9 @@ VIEWER DEEP LINKS: /viewer/{{dataset}}/{{period}}/{{date}}/{{extent}}
   Examples: /viewer/rainfall/day/2026-09-07/kauai   /viewer/spi-3/month/2026-08/statewide   /viewer/temperature-max/month/2026-08/oahu
   A storm's rainfall is best shown as daily rainfall on its peak day for the island hit hardest; a drought question as spi-3 for the last complete month (SPI links may name an island: the statewide grid is shown zoomed to it).
 MORE SHAREABLE LINKS (every state on this site has a URL; use ONLY these forms — an invented path is dropped):
-  /extreme-events/{{{"|".join(STORM_SLUGS)}}}   one storm's section
-  /tools/{{{"|".join(TOOL_SLUGS)}}}   one tool's tile — only these eleven slugs; any other catalog entry is reached with an open action on its url
+  /extreme-events/{{{"|".join(STORM_SLUGS)}}}   one storm's report (HCDP's interactive storm report, full screen; kona-lows is the Extreme Events page)
+  /tools/{{{"|".join(TOOL_SLUGS)}}}   one tool's tile on Climate Tools — only these {len(TOOL_SLUGS)} slugs; any other catalog entry is reached with an open action on its url
+  /pacific/<slug>, /cultural-resources/<slug>, /research/posts/<slug>, /data/tutorials/<slug>   HCDP's own pages, copied live onto this site: use the exact path a catalog entry gives
   /mesonet?viewer=live|app|nolo&station={{id}}&view=dashboard|graphing|station-map|station-table|wind-map   the live Mesonet viewer on one station (use viewer=live with a station id; view=graphing for charts; app = the phone app)
   /climate-summary?year=YYYY&month=M   the monthly summary for one month
   /?ask={{url-encoded question}}   a link that asks this assistant a question on arrival (for sharing a question)
@@ -542,7 +559,7 @@ RULES
 - Reply in one or two plain sentences, no markdown, no lists in the reply. Describe exactly the actions you return and nothing more: for a navigate action say "Taking you to …" (a page on this site); for an open action say "Opening … in a new tab"; never say you opened something you did not put in actions.
 - At most one navigate action, plus optional open actions. Never invent URLs or paths.
 - Always offer 2–4 alternatives (title, url or internal path, one-clause why) so the visitor can choose.
-- Prefer this site's own pages/viewer for maps; prefer the real HCDP page (open) for reports, downloads and tools this site does not replicate.
+- Prefer this site's own pages/viewer for maps. Every HCDP page this site carries (a live copy of HCDP's page) has a path in the catalog: navigate there; open the real HCDP page only for an entry without a path.
 - If the visitor asks what you can do, answer with intent info and list the main tools as alternatives.
 - If a request is about a storm in the catalog, the storm's report/tracker is the primary answer; a viewer deep link for its dates is an alternative (or the primary if they ask for a map) — but a request for the storm's DATA FILES is intent download (rule 7), with the report as an alternative.
 - Set minimize=true whenever you navigate or open.

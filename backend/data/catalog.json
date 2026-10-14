@@ -117,7 +117,7 @@
    "kind": "page",
    "title": "Rainfall Mapping History",
    "url": "https://www.hawaii.edu/climate-data-portal/rainfall-mapping-history/",
-   "internal_path": null,
+   "internal_path": "/about/rainfall-mapping-history",
    "summary": "How rainfall has been mapped in Hawaiʻi since the first gauge in Honolulu in 1837: early island maps, the Rainfall Atlas, the 1920–2012 month-year maps (Frazier et al. 2016), daily maps 1990–2014 (Longman et al. 2019), monthly maps 1990–2019 (Lucas et al. 2022) and HCDP's near-real-time mapping since 2022.",
    "when_to_use": "The visitor asks how HCDP rainfall maps are made or about the history and methods of rainfall mapping in Hawaiʻi.",
    "example_queries": [
@@ -146,7 +146,7 @@
    "kind": "page",
    "title": "Climate Monitoring History",
    "url": "https://www.hawaii.edu/climate-data-portal/climate-monitoring-history/",
-   "internal_path": null,
+   "internal_path": "/about/climate-monitoring-history",
    "summary": "The research station networks that preceded and feed HCDP: HaleNet on Haleakalā (since 1988), HavoNet in Hawaiʻi Volcanoes National Park, Little HaleNet, HIPPNET, CraterNet, and the Hawaiʻi Mesonet.",
    "when_to_use": "The visitor asks about the history of weather stations and climate networks in Hawaiʻi.",
    "example_queries": [
@@ -230,7 +230,7 @@
    "kind": "page",
    "title": "Conditions of Use",
    "url": "https://www.hawaii.edu/climate-data-portal/conditions-of-use/",
-   "internal_path": null,
+   "internal_path": "/conditions-of-use",
    "summary": "HCDP's Conditions of Use page (first written for the Rainfall Atlas): images may be reproduced with the source credited; gridded and tabular data may be reproduced and distributed for non-commercial use with the source prominently stated; everything is provided without warranty. (Hawaiʻi Mesonet station downloads are licensed CC BY-NC-ND 4.0.)",
    "when_to_use": "The visitor asks whether the data is free, how it may be used or shared, or about licensing and commercial use.",
    "example_queries": [
@@ -871,7 +871,7 @@
    "kind": "page",
    "title": "Tutorial: make and download a map",
    "url": "https://www.hawaii.edu/climate-data-portal/visualize-data-tutorial/",
-   "internal_path": "/data/tutorials",
+   "internal_path": "/data/tutorials/visualize-data-tutorial",
    "summary": "How to navigate the map, choose a variable, time step and date, change the base layer, opacity and colour scheme, and download the map as a PNG in Access Data.",
    "when_to_use": "The visitor wants to make a map image or learn the map controls.",
    "example_queries": [
@@ -899,7 +899,7 @@
    "kind": "page",
    "title": "Tutorial: explore station data",
    "url": "https://www.hawaii.edu/climate-data-portal/visualize-data-tutorial-explore-station-data/",
-   "internal_path": "/data/tutorials",
+   "internal_path": "/data/tutorials/visualize-data-tutorial-explore-station-data",
    "summary": "How to select a station on the map or in the table, view its metadata, plot a time series (current month, year or all values) and download the chart in Access Data.",
    "when_to_use": "The visitor wants to see a station's data or time series in the portal.",
    "example_queries": [
@@ -926,7 +926,7 @@
    "kind": "page",
    "title": "Tutorial: export data",
    "url": "https://www.hawaii.edu/climate-data-portal/export-data-tutorial/",
-   "internal_path": "/data/tutorials",
+   "internal_path": "/data/tutorials/export-data-tutorial",
    "summary": "How to export files from Access Data: choose dataset, time period and date range, tick the files to include, and enter an email address (required for large requests).",
    "when_to_use": "The visitor wants to know how to download data files from the portal.",
    "example_queries": [
@@ -955,7 +955,7 @@
    "kind": "page",
    "title": "Cultural Resources",
    "url": "https://www.hawaii.edu/climate-data-portal/news/",
-   "internal_path": null,
+   "internal_path": "/cultural-resources",
    "summary": "Hawaiian and place-based climate knowledge: dryland agriculture, the Hawaiian moon calendar, indigenous drought perspectives, archival Hawaiian-language newspapers, a climate glossary, books, videos, courses and PDKE climate factsheets in English and Hawaiian.",
    "when_to_use": "The visitor is interested in Hawaiian cultural knowledge of weather, climate, rain or drought, or teaching resources.",
    "example_queries": [
@@ -984,7 +984,7 @@
    "kind": "page",
    "title": "Climate Glossary (Hawaiian weather terms)",
    "url": "https://www.hawaii.edu/climate-data-portal/climate-glossary/",
-   "internal_path": null,
+   "internal_path": "/cultural-resources/climate-glossary",
    "summary": "Hawaiian words for sky, rain, rainbows, wind and other weather, e.g. ua (rain), ua lanipili (torrential rain), kualau (rain over the ocean), makani (wind), with their meanings.",
    "when_to_use": "The visitor asks for Hawaiian names for rain, wind or weather, or the meaning of a Hawaiian weather word.",
    "example_queries": [
@@ -1013,7 +1013,7 @@
    "kind": "page",
    "title": "Hawaiian Moon Calendar",
    "url": "https://www.hawaii.edu/climate-data-portal/hawaiian-lunar-calendar/",
-   "internal_path": null,
+   "internal_path": "/cultural-resources/hawaiian-lunar-calendar",
    "summary": "The Hawaiian lunar calendar: moon phases, the twelve months, the Hoʻoilo (cool, wet) and Kauwela (hot, dry) seasons, and how moon phases guided traditional planting and fishing.",
    "when_to_use": "The visitor asks about the Hawaiian moon calendar, moon phases or traditional seasons.",
    "example_queries": [
@@ -1042,7 +1042,7 @@
    "kind": "page",
    "title": "Indigenous Drought Perspective",
    "url": "https://www.hawaii.edu/climate-data-portal/climate-perspective/",
-   "internal_path": null,
+   "internal_path": "/cultural-resources/climate-perspective",
    "summary": "How Kānaka Maoli experienced and responded to drought and what indigenous and local knowledge offers drought preparedness today, from a statewide survey, interviews and workshops.",
    "when_to_use": "The visitor is interested in Native Hawaiian perspectives on drought.",
    "example_queries": [
@@ -1069,7 +1069,7 @@
    "kind": "page",
    "title": "Dryland Agriculture",
    "url": "https://www.hawaii.edu/climate-data-portal/dryland-agriculture/",
-   "internal_path": null,
+   "internal_path": "/cultural-resources/dryland-agriculture",
    "summary": "Rain-fed (unirrigated) Hawaiian field systems such as Puanui in leeward Kohala, with the Ulu Mau Puanui organisation and papers on their restoration.",
    "when_to_use": "The visitor asks about traditional rain-fed farming in Hawaiʻi.",
    "example_queries": [
@@ -1098,7 +1098,7 @@
    "kind": "page",
    "title": "Hawaiian Newspapers (archival weather records)",
    "url": "https://www.hawaii.edu/climate-data-portal/hawaiian-connection/",
-   "internal_path": null,
+   "internal_path": "/cultural-resources/hawaiian-connection",
    "summary": "How 1800s and 1900s Hawaiian-language newspapers record storms, floods and droughts (e.g. an 1871 hurricane), with links to the Kahua Aʻo project and the Ulukau newspaper collection.",
    "when_to_use": "The visitor wants historical accounts of storms or weather from Hawaiian-language newspapers.",
    "example_queries": [
@@ -1184,7 +1184,7 @@
    "kind": "page",
    "title": "Library (publications)",
    "url": "https://www.hawaii.edu/climate-data-portal/publications-list/",
-   "internal_path": null,
+   "internal_path": "/library",
    "summary": "HCDP's reference library of peer-reviewed articles and technical reports on Hawaiʻi's climate (400+), browsable and searchable (Publications Search page); authors can send missing PDFs to hcdp@hawaii.edu.",
    "when_to_use": "The visitor wants scientific papers or reports about Hawaiʻi's climate, rainfall, drought or related research.",
    "example_queries": [
@@ -1214,7 +1214,7 @@
    "kind": "page",
    "title": "Research Highlights",
    "url": "https://www.hawaii.edu/climate-data-portal/research-highlights/",
-   "internal_path": null,
+   "internal_path": "/research/highlights",
    "summary": "Short summaries of research using Hawaiʻi climate data: drought history, SPI, temperature trends, hourly rainfall, avian malaria, groundwater recharge, cloud water, station networks and more; researchers can submit their own.",
    "when_to_use": "The visitor wants examples of research done with HCDP data or summaries of recent studies.",
    "example_queries": [
@@ -1241,7 +1241,7 @@
    "kind": "page",
    "title": "External Resources",
    "url": "https://www.hawaii.edu/climate-data-portal/contact/",
-   "internal_path": null,
+   "internal_path": "/research/external-resources",
    "summary": "Links to partner agencies and organisations: WRRC, Pacific Fire Exchange, USGS Pacific Islands Water Science Center, the State climate portal, PDKE, NWS Honolulu, PI-CASC, NCEI, RAWS, PacIOOS, UH Sea Level Center, watershed partnerships and county water departments.",
    "when_to_use": "The visitor is looking for other climate, water or fire agencies and organisations in Hawaiʻi.",
    "example_queries": [
@@ -1270,7 +1270,7 @@
    "kind": "page",
    "title": "Presentations (videos and webinars)",
    "url": "https://www.hawaii.edu/climate-data-portal/presentations/",
-   "internal_path": null,
+   "internal_path": "/research/presentations",
    "summary": "Recorded talks and webinars about HCDP: the portal launch, 'From soup to nuts' (PI-CASC), 'Unlocking Hawaiʻi's Climate Data' webinar, the climate data lifecycle, drought assessment, the Pacific Drought Knowledge Exchange, and new data tools for resource managers.",
    "when_to_use": "The visitor wants a video or talk introducing HCDP or its tools.",
    "example_queries": [
@@ -1298,7 +1298,7 @@
    "kind": "page",
    "title": "Research: long-term gridded SPI for Hawaiʻi",
    "url": "https://www.hawaii.edu/climate-data-portal/long-term-gridded-standardized-precipitation-index-for-hawai/",
-   "internal_path": null,
+   "internal_path": "/research/posts/long-term-gridded-standardized-precipitation-index-for-hawai",
    "summary": "Lucas et al. derived gridded monthly Standardized Precipitation Index maps at 250 m for timescales from 1 month upward, from 93 years (1920–2012) of monthly rainfall maps, and compared SPI-3 drought area with the U.S. Drought Monitor.",
    "when_to_use": "The visitor asks how HCDP's SPI drought maps were developed or wants the SPI method paper.",
    "example_queries": [
@@ -1325,7 +1325,7 @@
    "kind": "page",
    "title": "Research: a century of drought in Hawaiʻi",
    "url": "https://www.hawaii.edu/climate-data-portal/a-century-of-drought-in-hawaii/",
-   "internal_path": null,
+   "internal_path": "/research/posts/a-century-of-drought-in-hawaii",
    "summary": "Frazier et al. synthesise a century of drought effects in Hawaiʻi using a 100-year (1920–2019) gridded SPI dataset, identifying major droughts from statewide SPI-12 and their meteorological, agricultural, hydrological, ecological and socioeconomic effects.",
    "when_to_use": "The visitor asks about the history of drought in Hawaiʻi or the worst droughts on record.",
    "example_queries": [
@@ -1352,7 +1352,7 @@
    "kind": "page",
    "title": "Research: temperature trends 1917–2016",
    "url": "https://www.hawaii.edu/climate-data-portal/temperature-trends-in-hawai%ca%bbi-a-century-of-change-1917-2016/",
-   "internal_path": null,
+   "internal_path": "/research/posts/temperature-trends-in-hawaiʻi-a-century-of-change-1917-2016",
    "summary": "Mean air temperature in Hawaiʻi warmed about 0.05 °C per decade over 1917–2016 (Hawaiʻi Temperature Index), with signs of rapid warming at high elevations above the trade wind inversion.",
    "when_to_use": "The visitor asks whether Hawaiʻi is getting warmer or about long-term temperature trends.",
    "example_queries": [
@@ -1380,7 +1380,7 @@
    "kind": "page",
    "title": "Research: gridded hourly rainfall on Oʻahu (gauges + radar)",
    "url": "https://www.hawaii.edu/climate-data-portal/deriving-gridded-hourly-rainfall-on-o%ca%bbahu-by-combining-gauge-network-and-radar-rainfall/",
-   "internal_path": null,
+   "internal_path": "/research/posts/deriving-gridded-hourly-rainfall-on-oʻahu-by-combining-gauge-network-and-radar-rainfall",
    "summary": "Huang et al. combined rain-gauge networks with weather radar to build gridded hourly rainfall for Oʻahu, with a published hourly gauge and radar dataset through 2020.",
    "when_to_use": "The visitor wants hourly or sub-daily rainfall grids, radar rainfall or flash-flood research for Oʻahu.",
    "example_queries": [
@@ -1409,7 +1409,7 @@
    "kind": "page",
    "title": "Research: drought effects on Maui drinking water",
    "url": "https://www.hawaii.edu/climate-data-portal/drought-effects-on-drinking-water-supply-on-maui/",
-   "internal_path": null,
+   "internal_path": "/research/posts/drought-effects-on-drinking-water-supply-on-maui",
    "summary": "Surface water supplies about 27 percent of Maui's water, and most of upcountry and west Maui's; drought-reduced streamflow leads to frequent water-shortage declarations.",
    "when_to_use": "A water utility, planner or resident asks how drought affects water supply, especially on Maui.",
    "example_queries": [
@@ -1438,7 +1438,7 @@
    "kind": "page",
    "title": "UH Sea Level Center sea level forecasts",
    "url": "https://www.hawaii.edu/climate-data-portal/uh-slc-sea-level-forecasts/",
-   "internal_path": null,
+   "internal_path": "/research/posts/uh-slc-sea-level-forecasts",
    "summary": "The UH Sea Level Center's outlook of monthly sea level anomalies one to two seasons ahead, combined with tide predictions for coastal water levels (HCDP itself does not produce sea level data).",
    "when_to_use": "The visitor asks about sea level outlooks, high tides or coastal water level forecasts.",
    "example_queries": [
@@ -1467,7 +1467,7 @@
    "title": "Climate Tools",
    "url": "https://www.hawaii.edu/climate-data-portal/climate-tools/",
    "internal_path": "/tools",
-   "summary": "HCDP's list of decision tools: Rainfall Atlas, CCVD climate portfolios, H-RIP rangeland drought portal, Groundwater Recharge Tool, Monthly Climate Summary, State sea level rise viewer, American Samoa data viewer, SOEST coastal viewer, Climate of Hawaiʻi maps, and an avian malaria risk tool (coming soon).",
+   "summary": "HCDP's list of decision tools: Rainfall Atlas, CCVD climate portfolios, H-RIP rangeland drought portal, Groundwater Recharge Tool, Monthly Climate Summary, State sea level rise viewer, American Samoa data viewer, SOEST coastal viewer, Climate of Hawaiʻi maps, and an avian malaria risk tool (coming soon); since October 2026 also the VMAP Vog Forecast and Fire Weather dashboards.",
    "when_to_use": "The visitor wants a specialised tool rather than raw data, or asks what tools HCDP has.",
    "example_queries": [
     "what tools do you have",
@@ -1637,7 +1637,7 @@
    "kind": "tool",
    "title": "Avian Malaria-Risk & Warning (coming soon)",
    "url": null,
-   "internal_path": "/tools",
+   "internal_path": "/tools/avian-malaria",
    "summary": "Listed on HCDP's Climate Tools page as coming soon and not yet available. A related research highlight describes a USGS-led tool combining HCDP daily temperature with mosquito development models to target mosquito control that protects native forest birds.",
    "when_to_use": "The visitor asks about avian malaria, mosquitoes or risk to native Hawaiian birds.",
    "example_queries": [
@@ -1656,6 +1656,54 @@
     "conservation",
     "coming soon",
     "temperature"
+   ]
+  },
+  {
+   "id": "vmap-vog-forecast",
+   "kind": "tool",
+   "title": "VMAP Vog Forecast Dashboard",
+   "url": null,
+   "internal_path": "/tools/vmap-vog-forecast",
+   "summary": "UH Mānoa's Vog Measurement and Prediction (VMAP) dashboard, a tile on HCDP's Climate Tools page: forecasts of near-surface air quality from volcanic gas emissions (vog) across the islands.",
+   "when_to_use": "The visitor asks about vog, volcanic smog or volcanic air quality forecasts.",
+   "example_queries": [
+    "vog forecast",
+    "volcanic air quality Hawaii",
+    "VMAP vog dashboard"
+   ],
+   "region": "hawaii",
+   "dates": null,
+   "tags": [
+    "vog",
+    "volcano",
+    "air quality",
+    "forecast",
+    "vmap",
+    "tools"
+   ]
+  },
+  {
+   "id": "vmap-fire-weather",
+   "kind": "tool",
+   "title": "VMAP Fire Weather Dashboard",
+   "url": null,
+   "internal_path": "/tools/vmap-fire-weather",
+   "summary": "The VMAP Fire Weather Dashboard, a tile on HCDP's Climate Tools page: information on near-surface fire weather conditions across Hawaiʻi.",
+   "when_to_use": "The visitor asks about fire weather conditions or a fire weather forecast (rather than the ignition probability map).",
+   "example_queries": [
+    "fire weather dashboard",
+    "fire weather conditions Hawaii",
+    "VMAP fire weather"
+   ],
+   "region": "hawaii",
+   "dates": null,
+   "tags": [
+    "fire",
+    "fire weather",
+    "wildfire",
+    "forecast",
+    "vmap",
+    "tools"
    ]
   },
   {
@@ -2257,7 +2305,7 @@
    "kind": "tool",
    "title": "American Samoa Mesonet Live Data Access",
    "url": "https://www.hawaii.edu/climate-data-portal/american-samoa-mesonet-live-data-access/",
-   "internal_path": "/pacific",
+   "internal_path": "/mesonet?viewer=live&view=american-samoa",
    "summary": "Live readings from the American Samoa Mesonet (10 active sites: weather stations and stream gauges on Tutuila and Aunuʻu), with station dashboards and graphs.",
    "when_to_use": "The visitor wants current weather or stream gauge readings in American Samoa.",
    "example_queries": [
@@ -2316,7 +2364,7 @@
    "kind": "page",
    "title": "Pacific Portal: Data",
    "url": "https://www.hawaii.edu/climate-data-portal/pacific-islands-data/",
-   "internal_path": "/pacific",
+   "internal_path": "/pacific/pacific-islands-data",
    "summary": "Regional data sources for the Pacific Islands: Pacific Climate Change Portal, Pacific Environment Portal (SPREP), the USFS PNW-FIA Pacific Islands database, the Pacific Regional Data Repository and NIWA.",
    "when_to_use": "The visitor wants climate or environmental data for Pacific island countries outside Hawaiʻi.",
    "example_queries": [
@@ -2346,7 +2394,7 @@
    "kind": "page",
    "title": "Pacific Portal: Regional Organizations",
    "url": "https://www.hawaii.edu/climate-data-portal/pacific-portal-regional-partners/",
-   "internal_path": "/pacific",
+   "internal_path": "/pacific/pacific-portal-regional-partners",
    "summary": "Pacific regional organisations such as SPREP, the Pacific Community (SPC), the Pacific Islands Forum, FFA, USP and PI-CASC.",
    "when_to_use": "The visitor is looking for Pacific regional agencies or organisations.",
    "example_queries": [
@@ -2374,7 +2422,7 @@
    "kind": "page",
    "title": "Pacific Portal: country and territory pages (Palau, Marshall Islands, FSM, Fiji, Samoa and more)",
    "url": "https://www.hawaii.edu/climate-data-portal/2826-2/",
-   "internal_path": "/pacific",
+   "internal_path": "/pacific/countries-and-territories",
    "summary": "Country and territory resource pages (under development) for Guam, Marshall Islands, FSM, Kiribati, Fiji, Tonga, Nauru, Palau, Northern Mariana Islands, Cook Islands, Tokelau, Papua New Guinea, Solomon Islands, Vanuatu, New Caledonia, Tuvalu, Samoa, American Samoa, Niue and French Polynesia.",
    "when_to_use": "The visitor wants climate resources for a specific Pacific island country or territory.",
    "example_queries": [
@@ -2409,7 +2457,7 @@
    "kind": "page",
    "title": "Pacific Portal: Tools & Resources",
    "url": "https://www.hawaii.edu/climate-data-portal/pacific-islands-tools-and-resources/",
-   "internal_path": "/pacific",
+   "internal_path": "/pacific/pacific-islands-tools-and-resources",
    "summary": "Regional documents, country-specific NGOs, video resources (NIWA Island Climate Updates) and the Pacific Marine National Monuments weather stations.",
    "when_to_use": "The visitor wants Pacific regional documents, NGOs or climate outlook videos.",
    "example_queries": [
@@ -2438,7 +2486,7 @@
    "kind": "page",
    "title": "Pacific Marine National Monuments weather stations",
    "url": "https://www.hawaii.edu/climate-data-portal/pacific-marine-national-monuments-weather-stations/",
-   "internal_path": "/pacific",
+   "internal_path": "/pacific/pacific-marine-national-monuments-weather-stations",
    "summary": "US Fish and Wildlife Service weather stations in the Papahānaumokuākea, Pacific Remote Islands and Rose Atoll marine national monuments, monitored in real time, and how their data support wildlife management (albatross heat stress, nest flooding, invasive plants).",
    "when_to_use": "The visitor asks about weather data from the Northwestern Hawaiian Islands or other remote Pacific monuments and atolls.",
    "example_queries": [
@@ -2470,7 +2518,7 @@
    "kind": "page",
    "title": "American Samoa Climate Data Portal",
    "url": "https://www.hawaii.edu/climate-data-portal/americansamoaportal/",
-   "internal_path": "/pacific",
+   "internal_path": "/pacific/american-samoa",
    "summary": "A partner portal of HCDP for American Samoa: geospatial, environmental and real-time monitoring and gridded data portals, top climate datasets, future climate projections, the CRAG coral reef library and other American Samoa data tools.",
    "when_to_use": "Anything about climate data for American Samoa.",
    "example_queries": [
@@ -2530,7 +2578,7 @@
    "kind": "page",
    "title": "American Samoa live and gridded climate data",
    "url": "https://www.hawaii.edu/climate-data-portal/as-live-climate-data/",
-   "internal_path": "/pacific",
+   "internal_path": "/pacific/as-live-climate-data",
    "summary": "American Samoa's real-time climate (5 weather sites) and streamflow (4 gauges) data via the NWS, Synoptic and the AS Mesonet viewer, gridded rainfall 1980–2024, historical station data since 2015, and ASPA water-use data by village.",
    "when_to_use": "The visitor wants current, historical or water-use data for American Samoa.",
    "example_queries": [
@@ -2559,7 +2607,7 @@
    "kind": "page",
    "title": "American Samoa historical climate data",
    "url": "https://www.hawaii.edu/climate-data-portal/as-historical-climate-data/",
-   "internal_path": "/pacific",
+   "internal_path": "/pacific/as-historical-climate-data",
    "summary": "Raw 15- and 5-minute records from UH–ASPA weather stations (since 2015) and stream gauges, gap-filled series, daily summaries, and links to NWS, RAWS and NOAA observatory data for American Samoa.",
    "when_to_use": "The visitor wants past station records for American Samoa.",
    "example_queries": [
@@ -2590,7 +2638,7 @@
    "kind": "page",
    "title": "American Samoa future climate projections",
    "url": "https://www.hawaii.edu/climate-data-portal/future-climate-projections/",
-   "internal_path": "/pacific",
+   "internal_path": "/pacific/future-climate-projections",
    "summary": "Downscaled future climate projections for American Samoa (CHELSA CMIP5/CMIP6 and Wang and Zhang 2016 dynamical downscaling), annual and wet/dry season maps, with an explainer on downscaling.",
    "when_to_use": "The visitor asks about future rainfall or temperature in American Samoa.",
    "example_queries": [
@@ -2617,7 +2665,7 @@
    "kind": "page",
    "title": "American Samoa top climate datasets",
    "url": "https://www.hawaii.edu/climate-data-portal/american-samoa-explore-data/",
-   "internal_path": "/pacific",
+   "internal_path": "/pacific/american-samoa-explore-data",
    "summary": "Key reports, papers and datasets for American Samoa, e.g. sea level rise after the 2009 earthquake, 21st-century projections for Guam and American Samoa, groundwater recharge on Tutuila and the PIRCA report.",
    "when_to_use": "The visitor wants key studies or datasets about American Samoa's climate.",
    "example_queries": [
@@ -2643,7 +2691,7 @@
    "kind": "page",
    "title": "CRAG (Coral Reef Advisory Group) Library",
    "url": "https://www.hawaii.edu/climate-data-portal/crag-coral-reef-advisory-group-library/",
-   "internal_path": "/pacific",
+   "internal_path": "/pacific/crag-coral-reef-advisory-group-library",
    "summary": "Literature on coral reefs in American Samoa, collected in the American Samoa Climate Data Portal.",
    "when_to_use": "The visitor wants coral reef research or reports for American Samoa.",
    "example_queries": [
@@ -2669,7 +2717,7 @@
    "kind": "page",
    "title": "Guam Data Viewer (portal page)",
    "url": "https://www.hawaii.edu/climate-data-portal/guam-data-viewer/",
-   "internal_path": "/pacific",
+   "internal_path": "/pacific/guam",
    "summary": "HCDP's page for the Guam Climate Data Portal viewer: rainfall maps (1980–2024, including monthly), PRISM mean rainfall and min/max temperature climatologies, and CHELSA downscaled rainfall and temperature projections.",
    "when_to_use": "Anything about climate data for Guam.",
    "example_queries": [
@@ -2700,7 +2748,7 @@
    "kind": "tool",
    "title": "Guam Climate Data Portal (viewer, full screen)",
    "url": "https://hcdp.github.io/gcdp/",
-   "internal_path": "/pacific",
+   "internal_path": "/pacific/guam",
    "summary": "The Guam Climate Data Portal map viewer itself: rainfall 1980–2024, PRISM climatologies and CHELSA projections, with downloads (rainfall flagged experimental).",
    "when_to_use": "The visitor wants the Guam viewer directly, full screen.",
    "example_queries": [
@@ -2998,21 +3046,21 @@
   {
    "id": "nolo",
    "kind": "event",
-   "title": "Tropical Storm Nolo Mesonet Viewer (live tracker)",
-   "url": "https://www.hawaii.edu/climate-data-portal/nolo-mesonet-viewer/",
+   "title": "Hurricane Nolo report",
+   "url": "https://www.hawaii.edu/climate-data-portal/hurricane-nolo/",
    "internal_path": "/extreme-events/nolo",
-   "summary": "Live tracker for Tropical Storm Nolo (from 22 September 2026, 10 pm HST): every active Hawaiʻi Mesonet station on a county-filterable map of rainfall totals or maximum gusts, a 5-minute replay, and per-station rain and wind charts, updated every 15 minutes. No HCDP storm report yet.",
-   "when_to_use": "The visitor asks about Nolo: current rainfall, wind or gusts during the storm, or station observations.",
+   "summary": "HCDP's interactive report on Hurricane Nolo (23 September to 2 October 2026), the newest card on the portal's Extreme Events page, built like the Lowell and Lala reports from Hawaiʻi Mesonet observations and HCDP rainfall maps.",
+   "when_to_use": "The visitor asks about Hurricane (or Tropical Storm) Nolo: its report, its rainfall or wind, or what happened during the storm.",
    "example_queries": [
-    "Nolo tracker",
-    "how much rain from Tropical Storm Nolo so far",
+    "Hurricane Nolo report",
+    "how much rain did Nolo bring",
     "Nolo wind gusts on the Big Island",
-    "storm happening now Hawaii"
+    "take me to the Nolo storm report"
    ],
    "region": "hawaii",
    "dates": {
-    "start": "2026-09-22",
-    "end": null
+    "start": "2026-09-23",
+    "end": "2026-10-02"
    },
    "tags": [
     "storm",
@@ -3050,7 +3098,38 @@
     "lanai",
     "lanai city"
    ],
-   "checked": "2026-09-25",
+   "checked": "2026-10-14",
+   "http": 200
+  },
+  {
+   "id": "nolo-mesonet-viewer",
+   "kind": "tool",
+   "title": "Tropical Storm Nolo Mesonet Viewer",
+   "url": "https://www.hawaii.edu/climate-data-portal/nolo-mesonet-viewer/",
+   "internal_path": "/mesonet?viewer=nolo",
+   "summary": "The live tracker HCDP launched as Nolo approached (from 22 September 2026, 10 pm HST): every active Hawaiʻi Mesonet station on a county-filterable map of rainfall totals or maximum gusts, with per-station rain and wind charts, updated every 15 minutes.",
+   "when_to_use": "The visitor wants Nolo's station-by-station rainfall and gusts as the storm happened (the tracker rather than the report).",
+   "example_queries": [
+    "Nolo tracker",
+    "Nolo Mesonet viewer",
+    "station rainfall during Nolo"
+   ],
+   "region": "hawaii",
+   "dates": {
+    "start": "2026-09-22",
+    "end": null
+   },
+   "tags": [
+    "nolo",
+    "tracker",
+    "mesonet",
+    "live",
+    "storm",
+    "rainfall",
+    "wind",
+    "gust"
+   ],
+   "checked": "2026-10-14",
    "http": 200
   },
   {
@@ -3058,7 +3137,7 @@
    "kind": "tool",
    "title": "Tropical Storm Nolo tracker (full screen)",
    "url": "https://cherryleh.github.io/climate-summary/#/nolo-viewer",
-   "internal_path": "/extreme-events#nolo",
+   "internal_path": "/mesonet?viewer=nolo",
    "summary": "The same Nolo Mesonet tracker without the portal frame, better on phones.",
    "when_to_use": "The visitor wants the Nolo tracker full screen or on mobile.",
    "example_queries": [
@@ -3131,7 +3210,7 @@
    "kind": "tool",
    "title": "Hurricane Lowell Mesonet Viewer",
    "url": "https://www.hawaii.edu/climate-data-portal/hurricane-lowell-viewer/",
-   "internal_path": "/extreme-events#lowell",
+   "internal_path": null,
    "summary": "Station tracker for Hurricane Lowell from 7 September 2026, 12 am HST: rainfall accumulation, maximum wind and gusts at every reporting Mesonet station, with county filter and per-station charts.",
    "when_to_use": "The visitor wants station-by-station rainfall or wind observations during Hurricane Lowell.",
    "example_queries": [
@@ -3166,7 +3245,7 @@
    "kind": "tool",
    "title": "Hurricane Lowell – Kauaʻi and Oʻahu Focus",
    "url": "https://www.hawaii.edu/climate-data-portal/hurricane-lowell-kauai-and-oahu-focus/",
-   "internal_path": "/extreme-events#lowell",
+   "internal_path": null,
    "summary": "'Station Watch' for Hurricane Lowell: accumulated rainfall or wind and gusts at every reporting Mesonet station on Kauaʻi or Oʻahu, side by side on a shared scale, with numbered map pins.",
    "when_to_use": "The visitor wants to compare all stations on Kauaʻi or Oʻahu during Lowell.",
    "example_queries": [
@@ -3333,7 +3412,7 @@
    "kind": "event",
    "title": "March 2026 Kona low storms (both events)",
    "url": "https://www.hawaii.edu/climate-data-portal/extreme-events/",
-   "internal_path": "/extreme-events/kona-lows",
+   "internal_path": "/extreme-events",
    "summary": "Two back-to-back Kona low storms, 10–16 and 17–23 March 2026, caused historic flooding statewide (UH reported more than 2 trillion gallons of rain in March); each has its own HCDP storm viewer.",
    "when_to_use": "The visitor asks about the March 2026 floods or storms without naming which one.",
    "example_queries": [
@@ -3384,7 +3463,7 @@
    "kind": "event",
    "title": "Hurricane Lane (2018): Fire and Rain",
    "url": "https://www.hawaii.edu/climate-data-portal/fire-and-rain-the-legacy-of-hurricane-lane-in-hawai%ca%bbi/",
-   "internal_path": null,
+   "internal_path": "/research/posts/fire-and-rain-the-legacy-of-hurricane-lane-in-hawaiʻi",
    "summary": "Research highlight on Hurricane Lane, 22–25 August 2018: Hawaiʻi Island averaged 17 in of rain and one site 57 in, the wettest tropical cyclone on record in the state, while wind-driven wildfires burned nearly 3,000 acres on Maui and Oʻahu.",
    "when_to_use": "The visitor asks about Hurricane Lane or historic hurricane rainfall in Hawaiʻi.",
    "example_queries": [
@@ -4317,7 +4396,7 @@
    "kind": "external",
    "title": "UH News: March 2026 floods, 2 trillion gallons",
    "url": "https://www.hawaii.edu/news/2026/03/31/hawaii-mesonet-flooding-data/",
-   "internal_path": "/extreme-events#kona-lows",
+   "internal_path": "/extreme-events",
    "summary": "University of Hawaiʻi News story on the March 2026 storms: Hawaiʻi Mesonet and HCDP data showed more than 2 trillion gallons of rain statewide in March and historic flooding.",
    "when_to_use": "The visitor (often a journalist) wants the press story or headline figures on the March 2026 floods.",
    "example_queries": [
@@ -4347,7 +4426,7 @@
    "kind": "external",
    "title": "UH News: Hurricane Lala, 1.3 trillion gallons",
    "url": "https://www.hawaii.edu/news/2026/08/20/hurricane-lala/",
-   "internal_path": "/extreme-events#lala",
+   "internal_path": "/extreme-events/lala",
    "summary": "University of Hawaiʻi News story: Hurricane Lala dropped about 1.3 trillion gallons of rain on Hawaiʻi, 14–16 August 2026 (about 1.9 million Olympic pools), from HCDP's rainfall maps.",
    "when_to_use": "The visitor wants the press story or headline figures on Hurricane Lala.",
    "example_queries": [
@@ -4376,7 +4455,7 @@
    "kind": "external",
    "title": "UH News: Hurricane Lowell winds and rain on Kauaʻi and Niʻihau",
    "url": "https://www.hawaii.edu/news/2026/09/11/hurricane-lowell/",
-   "internal_path": "/extreme-events#lowell",
+   "internal_path": "/extreme-events/lowell",
    "summary": "University of Hawaiʻi News story: Hurricane Lowell brought 100+ mph winds and heavy rain to Kauaʻi and Niʻihau; Mount Waiʻaleʻale had over 23 in on 7 September and nearly 36 in over three days.",
    "when_to_use": "The visitor wants the press story or headline figures on Hurricane Lowell.",
    "example_queries": [

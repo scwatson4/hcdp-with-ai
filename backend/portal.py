@@ -55,6 +55,14 @@ IMG_LADDER = (100, 200, 300, 400, 500, 600, 700, 800)
 IMG_MAX_BYTES = 25 * 1024 * 1024
 IMG_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 OVERVIEWS_PER_DAY = int(os.environ.get("PORTAL_OVERVIEWS_PER_DAY", "400"))
+# The overviews share the model route with the visitors' own overviews and the navigator, so they go out gently: one at a
+# time, OVERVIEW_GAP seconds apart, at most OVERVIEWS_PER_TICK a minute's tick, and the first failure (a rate limit, a
+# timeout) ends the pass and backs off — OVERVIEW_BACKOFF seconds, doubling up to OVERVIEW_BACKOFF_MAX — so the job can
+# never crowd the route (14 Oct: a back-to-back burst at start-up met a rate-limited route).
+OVERVIEW_GAP = float(os.environ.get("PORTAL_OVERVIEW_GAP", "6"))
+OVERVIEWS_PER_TICK = int(os.environ.get("PORTAL_OVERVIEWS_PER_TICK", "20"))
+OVERVIEW_BACKOFF = 600.0
+OVERVIEW_BACKOFF_MAX = 6 * 3600.0
 ZOTERO_GROUP = "2846077"
 ZOTERO_API = f"https://api.zotero.org/groups/{ZOTERO_GROUP}/items/top"
 REST = routes.HCDP + "/wp-json/wp/v2"
@@ -366,6 +374,9 @@ class MirrorJob:
         self.fetcher = fetcher
         self.clock = clock
         self.overview_day = ("", 0)
+        self.overview_wait_until = 0.0      # no overview call before this (the backoff after a failure)
+        self.overview_backoff = OVERVIEW_BACKOFF
+        self.sleep = asyncio.sleep
 
     # -- bookkeeping --
     def _idx(self) -> dict:
@@ -503,10 +514,15 @@ class MirrorJob:
         return {"sources": count("src", "*.bin"), "variants": count("var", "*.webp"), "wanted": count("wanted", "*")}
 
     # -- overviews for direct loads (QB-O1 B) --
-    async def overviews_pass(self, limit: int = 1000) -> int:
+    async def overviews_pass(self, limit: int = OVERVIEWS_PER_TICK) -> int:
+        """Write the missing or outdated direct-load overviews: one call at a time, OVERVIEW_GAP s apart, at most `limit`
+        a tick; the first failure ends the pass and backs off (10 min, doubling up to 6 h); a success resets the backoff."""
         if self.summarizer is None or not getattr(getattr(self.summarizer, "llm", None), "configured", False):
             return 0
+        if self.clock() < self.overview_wait_until:
+            return 0
         made = 0
+        calls = 0
         for slug, path in self.work_list():
             if made >= limit or not self._overview_budget():
                 break
@@ -516,14 +532,22 @@ class MirrorJob:
             ov = self.store.load_overview(slug)
             if ov and ov.get("for_sha") == rec.get("sha256"):
                 continue
+            if calls:
+                await self.sleep(OVERVIEW_GAP)
+            calls += 1
             try:
                 out = await asyncio.to_thread(self.summarizer.page_overview, path, rec)
             except Exception:  # noqa: BLE001
                 out = None
             self._spend_overview()
-            if out and out.get("chunks"):
-                self.store.save_overview(slug, dict(out, for_sha=rec.get("sha256"), generated_at=now_iso(), path=path))
-                made += 1
+            if not (out and out.get("chunks")):
+                self.overview_wait_until = self.clock() + self.overview_backoff
+                self.overview_backoff = min(self.overview_backoff * 2, OVERVIEW_BACKOFF_MAX)
+                log.warning("portal: the overview for %s failed; next try in %.0f s", slug, self.overview_wait_until - self.clock())
+                break
+            self.overview_backoff = OVERVIEW_BACKOFF
+            self.store.save_overview(slug, dict(out, for_sha=rec.get("sha256"), generated_at=now_iso(), path=path))
+            made += 1
         if made:
             self._refresh_page_index()
         return made

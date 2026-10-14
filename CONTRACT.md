@@ -191,7 +191,8 @@ apps; everything else keeps its HCDP address (new tab, ↗).
 - **The job** (`backend/portal.py`, started with the app; it runs in the one uvicorn worker holding the flock
   `CACHE_DIR/portal/leader.lock`): every 30 min it lists `wp-json/wp/v2/pages` and `posts` (`_fields=id,slug,link,modified_gmt`,
   100 a page) and re-fetches the HTML of every mirrored page whose `modified_gmt` moved; a full sweep daily (oldest copy first);
-  the pictures the pages show; the overviews; the Library daily. **Every request to www.hawaii.edu goes out one at a time, at
+  the pictures the pages show; the overviews (one call at a time, 6 s apart, at most 20 a tick; the first failure — a rate
+  limit, a spent budget, a timeout — ends the pass and backs off 10 min, doubling up to 6 h); the Library daily. **Every request to www.hawaii.edu goes out one at a time, at
   least 3 s after the previous one ended** (robots.txt Crawl-delay; redirects followed by hand, each hop spaced), User-Agent
   `HCDP-with-AI mirror (+https://hcdp-with-ai.cis251375.projects.jetstream-cloud.org)`, 15 s timeout. Never on a visitor's
   request. `PORTAL_JOB=0` turns it off (the tests always do, `backend/tests/conftest.py`).

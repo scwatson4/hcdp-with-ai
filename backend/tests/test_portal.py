@@ -410,27 +410,44 @@ def test_rest_pass_fetches_only_what_changed_and_keeps_the_last_good_copy(tmp_pa
     assert h["cached"] == 3 and h["failures_24h"] == 1 and h["newest_fetched_at"]
 
 
-def test_overviews_are_written_once_per_copy(tmp_path, monkeypatch):
-    monkeypatch.setattr(portal.routes, "MIRRORED", {"/about/team": "team"})
+def test_overviews_are_written_once_per_copy_gently_and_back_off_on_failure(tmp_path, monkeypatch):
+    monkeypatch.setattr(portal.routes, "MIRRORED", {"/about/team": "team", "/about/acknowledgements": "acknowledgements", "/conditions-of-use": "conditions-of-use"})
     monkeypatch.setattr(portal.routes, "FAMILIES", {})
     monkeypatch.setattr(portal.routes, "post_slugs", lambda: [])
-    monkeypatch.setattr(portal, "PRIORITY", ["team"])
+    monkeypatch.setattr(portal, "PRIORITY", ["team", "acknowledgements", "conditions-of-use"])
     store = portal.PortalStore(tmp_path, seed_dir=tmp_path / "none")
-    store.save(rec_for("team", sha="v1"))
-    made = []
+    for slug in ("team", "acknowledgements", "conditions-of-use"):
+        store.save(rec_for(slug, sha="v1"))
+    made, fail_on = [], set()
 
     class Summ:
         llm = type("L", (), {"configured": True})()
 
         def page_overview(self, path, rec):
             made.append((path, rec["sha256"]))
-            return {"summary": "x", "chunks": ["The **Team** page."], "cites": [[1]], "more": [], "more_cites": [], "sources": [], "followups": []}
+            if path in fail_on:
+                return None
+            return {"summary": "x", "chunks": ["The **page**."], "cites": [[1]], "more": [], "more_cites": [], "sources": [], "followups": []}
 
-    job = portal.MirrorJob(store, Summ(), FakeFetcher({}))
-    assert asyncio.run(job.overviews_pass()) == 1 and asyncio.run(job.overviews_pass()) == 0
-    store.save(rec_for("team", sha="v2"))                                              # the copy changed: a new overview
-    assert asyncio.run(job.overviews_pass()) == 1 and made == [("/about/team", "v1"), ("/about/team", "v2")]
-    assert store.load_overview("team")["for_sha"] == "v2"
+    now = [1000.0]
+    slept = []
+    job = portal.MirrorJob(store, Summ(), FakeFetcher({}), clock=lambda: now[0])
+
+    async def fake_sleep(s):
+        slept.append(s)
+        now[0] += s
+    job.sleep = fake_sleep
+    assert asyncio.run(job.overviews_pass()) == 3 and slept == [portal.OVERVIEW_GAP] * 2   # one at a time, 6 s apart
+    assert asyncio.run(job.overviews_pass()) == 0 and len(made) == 3                        # written once per copy
+    store.save(rec_for("team", sha="v2"))
+    store.save(rec_for("acknowledgements", sha="v2"))
+    fail_on.add("/about/team")                                                               # the route says no (a rate limit)
+    assert asyncio.run(job.overviews_pass()) == 0 and made[-1] == ("/about/team", "v2") and len(made) == 4   # the first failure ends the pass
+    assert asyncio.run(job.overviews_pass()) == 0 and len(made) == 4                        # backing off: no call
+    now[0] += portal.OVERVIEW_BACKOFF + 1
+    fail_on.clear()
+    assert asyncio.run(job.overviews_pass()) == 2 and store.load_overview("team")["for_sha"] == "v2"
+    assert job.overview_backoff == portal.OVERVIEW_BACKOFF
 
 
 def _png(w=1200, h=600):

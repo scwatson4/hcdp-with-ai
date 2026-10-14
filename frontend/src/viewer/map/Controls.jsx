@@ -20,8 +20,11 @@ import {
 } from './viewerModel'
 import { portalDataset } from '../portalDatasets.reference'
 
-export const LABEL = 'mb-1 block font-mono text-[11px] font-medium uppercase tracking-wide text-subtle'
-const FIELD = 'h-9 w-full rounded-md border border-border bg-card px-3 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50'
+export const LABEL = 'mb-1 block font-mono text-[12px] font-medium uppercase tracking-wide text-subtle'
+// M6 A (14 Oct): on phones (the viewer's sheet) and on any touch screen every field is 44 px tall with 16 px text, so
+// iOS never zooms the page when one takes the focus (it does for anything under 16 px).
+const TOUCH_FIELD = 'max-md:h-11 max-md:text-base [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:text-base'
+const FIELD = `h-9 w-full rounded-md border border-border bg-card px-3 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 ${TOUCH_FIELD}`
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 export function Select({ id, value, onChange, children, className, ...rest }) {
@@ -45,7 +48,7 @@ export function Segmented({ legend, name, value, options, onChange, className, t
         {options.map((o) => (
           <label key={o.value} className="min-w-0 flex-1">
             <input type="radio" name={name} value={o.value} checked={value === o.value} onChange={() => onChange(o.value)} className="peer sr-only" />
-            <span className="block cursor-pointer truncate rounded-[5px] px-2 py-1.5 text-center text-xs font-medium text-subtle transition-colors hover:text-foreground peer-checked:bg-card peer-checked:text-foreground peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
+            <span className="block cursor-pointer truncate rounded-[5px] px-2 py-1.5 text-center text-xs font-medium text-subtle transition-colors hover:text-foreground peer-checked:bg-card peer-checked:text-foreground peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-ring max-md:py-3 max-md:text-sm [@media(pointer:coarse)]:py-3 [@media(pointer:coarse)]:text-sm">
               {o.label}
             </span>
           </label>
@@ -58,7 +61,7 @@ export function Segmented({ legend, name, value, options, onChange, className, t
 function StepButton({ label, disabled, onClick, children }) {
   return (
     <Button
-      type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
+      type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0 max-md:h-11 max-md:w-11 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
       aria-label={label} title={label} disabled={disabled} onClick={onClick}
     >
       {children}
@@ -104,7 +107,7 @@ export function DatePicker({ period, date, range, onChange, label = null, testid
   if (period === 'day') {
     field = (
       <input
-        id={id} type="date" className={cn(FIELD, 'min-w-0 px-2 font-mono text-[13px]')}
+        id={id} type="date" className={cn(FIELD, 'min-w-0 px-2 font-mono text-[13px] max-md:text-base [@media(pointer:coarse)]:text-base')}
         value={draft} min={range?.start} max={range?.end}
         onChange={(e) => {
           const val = e.target.value
@@ -336,11 +339,11 @@ export function ScaleControls({ v, onReverse, onLog, onRange, inline = false }) 
 
   const fields = (
     <div className="space-y-3" data-testid="scale-controls">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 max-md:min-h-11">
         <label htmlFor={`${id}-reverse`} className="text-sm">Reverse the colours</label>
         <Switch id={`${id}-reverse`} checked={isRampReversed(v)} onCheckedChange={onReverse} data-testid="reverse-switch" className="[@media(pointer:coarse)]:h-6 [@media(pointer:coarse)]:w-11" />
       </div>
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 max-md:min-h-11">
         <div className="min-w-0">
           <label htmlFor={`${id}-log`} className="text-sm">Pseudo-log scale</label>
           <p className="text-xs text-subtle">Spreads out the small values: sign(v)·ln(1+|v|).</p>
@@ -355,7 +358,7 @@ export function ScaleControls({ v, onReverse, onLog, onRange, inline = false }) 
             <input
               id={`${id}-low`} type="number" step="any" inputMode="decimal" value={low}
               onChange={(e) => setLow(e.target.value)} onBlur={() => commit(low, high)} onKeyDown={onKey}
-              className={cn(FIELD, 'font-mono text-[13px] [@media(pointer:coarse)]:h-11')} data-testid="range-low"
+              className={cn(FIELD, 'font-mono text-[13px] max-md:text-base [@media(pointer:coarse)]:text-base')} data-testid="range-low"
             />
           </div>
           <div>
@@ -363,7 +366,7 @@ export function ScaleControls({ v, onReverse, onLog, onRange, inline = false }) 
             <input
               id={`${id}-high`} type="number" step="any" inputMode="decimal" value={high}
               onChange={(e) => setHigh(e.target.value)} onBlur={() => commit(low, high)} onKeyDown={onKey}
-              className={cn(FIELD, 'font-mono text-[13px] [@media(pointer:coarse)]:h-11')} data-testid="range-high"
+              className={cn(FIELD, 'font-mono text-[13px] max-md:text-base [@media(pointer:coarse)]:text-base')} data-testid="range-high"
             />
           </div>
         </div>
@@ -392,7 +395,7 @@ export function ScaleControls({ v, onReverse, onLog, onRange, inline = false }) 
       <PopoverTrigger asChild>
         <Button type="button" variant="outline" className="w-full justify-between gap-2 [@media(pointer:coarse)]:h-11" data-testid="scale-button" aria-label={`Colours and scale: ${scaleSummary(v)}`}>
           <span className="inline-flex shrink-0 items-center gap-1.5"><Palette className="h-3.5 w-3.5" aria-hidden="true" /> Colours and scale</span>
-          <span className="min-w-0 truncate font-mono text-[11px] font-normal text-subtle" data-testid="scale-summary">{scaleSummary(v)}</span>
+          <span className="min-w-0 truncate font-mono text-[12px] font-normal text-subtle" data-testid="scale-summary">{scaleSummary(v)}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[18rem]" data-testid="scale-popover">
@@ -427,7 +430,7 @@ export function OpacitySlider({ value, onChange, onPreview = null }) {
     <div data-testid="opacity-control">
       <div className="mb-1 flex items-baseline justify-between">
         <label htmlFor={id} className={cn(LABEL, 'mb-0')}>Opacity</label>
-        <output htmlFor={id} className="font-mono text-[11px] tabular-nums text-subtle" data-testid="opacity-value">{shown} %</output>
+        <output htmlFor={id} className="font-mono text-[12px] tabular-nums text-subtle" data-testid="opacity-value">{shown} %</output>
       </div>
       <Slider
         id={id} min={0} max={100} step={5} value={[shown]} aria-label="Data layer opacity"
@@ -452,9 +455,9 @@ export function LayerToggles({ dataset, value = [], onToggle }) {
       <legend className={LABEL}>Layers</legend>
       <div className="flex flex-col gap-0.5">
         {keys.map((key) => (
-          <label key={key} className="flex min-h-9 cursor-pointer items-center gap-2.5 rounded-md px-1 text-sm hover:bg-muted [@media(pointer:coarse)]:min-h-11">
+          <label key={key} className="flex min-h-9 cursor-pointer items-center gap-2.5 rounded-md px-1 text-sm hover:bg-muted max-md:min-h-11 [@media(pointer:coarse)]:min-h-11">
             <input
-              type="checkbox" className="h-4 w-4 shrink-0 rounded border-border accent-accent"
+              type="checkbox" className="h-4 w-4 shrink-0 rounded border-border accent-accent max-md:h-5 max-md:w-5"
               checked={value.includes(key)} onChange={(e) => onToggle(key, e.target.checked)}
               data-testid={`layer-${key}`}
             />
@@ -486,9 +489,9 @@ export function CompareControl({ v, range, compareDate, onChange }) {
   const unusable = Boolean(v.opts?.compare) && !on
   return (
     <div className="space-y-2" data-testid="compare-control">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 max-md:min-h-11">
         <label htmlFor={id} className="text-sm">Compare with another {v.period === 'day' ? 'day' : 'month'}</label>
-        <Switch id={id} checked={on} onCheckedChange={(c) => onChange(c ? clampDate(yearBefore(v.date), range) : null)} data-testid="compare-switch" />
+        <Switch id={id} checked={on} onCheckedChange={(c) => onChange(c ? clampDate(yearBefore(v.date), range) : null)} data-testid="compare-switch" className="[@media(pointer:coarse)]:h-6 [@media(pointer:coarse)]:w-11" />
       </div>
       {on && <DatePicker period={v.period} date={compareDate} range={range} onChange={onChange} label="Compare with" testid="compare-picker" />}
       {unusable && (
@@ -511,7 +514,7 @@ export function analyzeQuestion(v) {
 export function AnalyzeWithAI({ v, path }) {
   const href = handoffUrl({ question: analyzeQuestion(v), viewerPath: path })
   return (
-    <Button asChild variant="ghost" className="hcdp-rainbow-border w-full hover:shadow-md [@media(pointer:coarse)]:h-11">
+    <Button asChild variant="ghost" className="hcdp-rainbow-border w-full hover:shadow-md max-md:h-11 [@media(pointer:coarse)]:h-11">
       <a href={href} target="_blank" rel="noopener noreferrer" data-testid="analyze-ai">
         <Sparkles className="h-4 w-4" aria-hidden="true" /> Analyze this map with AI <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
         <span className="sr-only">(opens in a new tab)</span>
@@ -531,8 +534,11 @@ async function copyText(text) {
 
 /** Copy link (the canonical address — never the raw href), the system share
  *  sheet where there is one, a QR code with a short link, and the way out to
- *  the real portal. */
-export function ShareActions({ path, title }) {
+ *  the real portal.
+ *  M6 A + M1 C (14 Oct): "Copy link" keeps one width in both states (the two labels share one grid cell, the idle one
+ *  sized in), so the row never re-wraps under the thumb when it turns into "Link copied"; `onCopied` lets the phone
+ *  viewer confirm in a toast as well. */
+export function ShareActions({ path, title, onCopied = null }) {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const url = origin + path
   const [state, setState] = useState('idle') // 'idle' | 'copied' | 'manual'
@@ -545,6 +551,7 @@ export function ShareActions({ path, title }) {
   const copy = async () => {
     if (await copyText(url)) {
       setState('copied')
+      onCopied?.()
       clearTimeout(timer.current)
       timer.current = setTimeout(() => setState('idle'), 2500)
     } else {
@@ -558,18 +565,24 @@ export function ShareActions({ path, title }) {
   return (
     <div className="space-y-2" data-testid="share-actions">
       <div className="flex flex-wrap gap-2">
-        <Button type="button" onClick={copy} className="min-w-0 flex-1 [@media(pointer:coarse)]:h-11" data-testid="copy-link">
-          {state === 'copied' ? <Check className="h-4 w-4" aria-hidden="true" /> : <Link2 className="h-4 w-4" aria-hidden="true" />}
-          {state === 'copied' ? 'Link copied' : 'Copy link'}
+        <Button type="button" onClick={copy} className="min-w-0 flex-1 max-md:h-11 [@media(pointer:coarse)]:h-11" data-testid="copy-link" data-state={state === 'copied' ? 'copied' : 'idle'}>
+          <span className="grid">
+            <span className={cn('col-start-1 row-start-1 inline-flex items-center justify-center gap-2', state === 'copied' && 'invisible')} aria-hidden={state === 'copied' || undefined}>
+              <Link2 className="h-4 w-4" aria-hidden="true" />Copy link
+            </span>
+            <span className={cn('col-start-1 row-start-1 inline-flex items-center justify-center gap-2', state !== 'copied' && 'invisible')} aria-hidden={state !== 'copied' || undefined} data-testid="copy-link-done">
+              <Check className="h-4 w-4" aria-hidden="true" />Link copied
+            </span>
+          </span>
         </Button>
         {canShare && (
-          <Button type="button" variant="outline" onClick={share} className="min-w-0 flex-1 [@media(pointer:coarse)]:h-11" data-testid="share-link">
+          <Button type="button" variant="outline" onClick={share} className="min-w-0 flex-1 max-md:h-11 [@media(pointer:coarse)]:h-11" data-testid="share-link">
             <Share2 className="h-4 w-4" aria-hidden="true" /> Share…
           </Button>
         )}
         <ShortLinkPopover path={path} url={url} />
       </div>
-      <Button asChild variant="outline" className="w-full [@media(pointer:coarse)]:h-11">
+      <Button asChild variant="outline" className="w-full max-md:h-11 [@media(pointer:coarse)]:h-11">
         <a href={PORTAL_URL} target="_blank" rel="noopener noreferrer" data-testid="portal-link">
           Open in the HCDP data portal <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
           <span className="sr-only">(opens in a new tab)</span>
@@ -582,7 +595,7 @@ export function ShareActions({ path, title }) {
           <input
             id="viewer-share-url" ref={fieldRef} readOnly value={url}
             onFocus={(e) => e.target.select()}
-            className={cn(FIELD, 'font-mono text-xs')}
+            className={cn(FIELD, 'font-mono text-xs max-md:text-base [@media(pointer:coarse)]:text-base')}
           />
           <p className="mt-1 text-xs text-subtle">Your browser did not let the page copy it. Select the address above and copy it.</p>
         </div>
@@ -644,7 +657,7 @@ function ShortLinkPopover({ path, url }) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button type="button" variant="outline" className="min-w-0 flex-1 [@media(pointer:coarse)]:h-11" data-testid="qr-link" aria-label="QR code and short link">
+        <Button type="button" variant="outline" className="min-w-0 flex-1 max-md:h-11 [@media(pointer:coarse)]:h-11" data-testid="qr-link" aria-label="QR code and short link">
           <QrCode className="h-4 w-4" aria-hidden="true" /> QR / short link
         </Button>
       </PopoverTrigger>
@@ -654,9 +667,9 @@ function ShortLinkPopover({ path, url }) {
           <input
             id={id} readOnly value={state.status === 'loading' ? '' : link} placeholder={state.status === 'loading' ? 'Making a short link…' : ''}
             aria-label={state.status === 'long' ? 'Link to this map' : 'Short link to this map'} onFocus={(e) => e.target.select()}
-            className={cn(FIELD, 'min-w-0 flex-1 font-mono text-xs')} data-testid="short-link"
+            className={cn(FIELD, 'min-w-0 flex-1 font-mono text-xs max-md:text-base [@media(pointer:coarse)]:text-base')} data-testid="short-link"
           />
-          <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={copy} aria-label={copied ? 'Copied' : 'Copy the link'} title="Copy" disabled={state.status === 'loading'} data-testid="short-link-copy">
+          <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0 max-md:h-11 max-md:w-11 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11" onClick={copy} aria-label={copied ? 'Copied' : 'Copy the link'} title="Copy" disabled={state.status === 'loading'} data-testid="short-link-copy">
             {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
           </Button>
         </div>

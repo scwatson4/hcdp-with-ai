@@ -1,13 +1,14 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react'
-import { MemoryRouter, Routes, Route, useLocation, useNavigationType } from 'react-router-dom'
+import { MemoryRouter, Routes, Route, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import ViewerPage from './ViewerPage'
 import { clearRasterCache } from './map/rasterCache'
 import { clearDateRanges } from './map/dateRanges'
 import { clearStationCache } from './map/stationData'
 import { resetUrlWrites } from './urlWrites'
 import { NAMED_RAMPS, interpolateColorRamp } from './map/ramps'
+import { AssistantProvider, useAssistant } from '../assistant/AssistantProvider'
 
 // ── Leaflet, georaster and the GeoRasterLayer, mocked ───────────────────────
 // jsdom cannot run Leaflet; the mocks keep one fake map whose view and event
@@ -162,6 +163,8 @@ function installFetch() {
       return { ok: true, status: 200, json: async () => STATION_VALUES }
     }
     if (u.pathname === '/api/climate-stations') return { ok: true, status: 200, json: async () => CLIMATE_STATIONS }
+    if (u.pathname === '/api/summary') return { ok: true, status: 200, json: async () => ({ chunks: ['Daily rainfall on Kauaʻi for 7 September.'], cites: [[]], more: [], sources: [], followups: ['Show Oʻahu instead'] }) }
+    if (u.pathname === '/api/followups') return { ok: true, status: 200, json: async () => ({ followups: [] }) }
     if (u.pathname === '/api/shorten') {
       if (shortenMode === 500) return { ok: false, status: 502, json: async () => ({ detail: 'down' }) }
       const { path } = JSON.parse(init.body)
@@ -188,11 +191,14 @@ const callsTo = (path) => global.fetch.mock.calls.map(([u]) => String(u)).filter
 
 // ── rendering at a URL ──────────────────────────────────────────────────────
 let visited = [] // every location the router has been at, in order
+let goBack = () => {}
 function Probe() {
   const loc = useLocation()
   const type = useNavigationType()
+  const navigate = useNavigate()
+  goBack = () => navigate(-1)
   React.useEffect(() => { visited.push(loc.pathname + loc.search + loc.hash) }, [loc.key]) // eslint-disable-line react-hooks/exhaustive-deps
-  return <output data-testid="location" data-type={type}>{loc.pathname + loc.search}</output>
+  return <output data-testid="location" data-type={type} data-overlay={loc.state?.hcdpOverlay || ''}>{loc.pathname + loc.search}</output>
 }
 function renderAt(path) {
   return render(
@@ -206,6 +212,9 @@ function renderAt(path) {
 }
 const loc = () => screen.getByTestId('location').textContent
 const navType = () => screen.getByTestId('location').dataset.type
+const overlay = () => screen.getByTestId('location').dataset.overlay
+// M1 C: on a phone the controls live in a sheet the floating bar's Controls button opens.
+const openControls = () => { fireEvent.click(screen.getByTestId('fab-controls')); return screen.getByTestId('bottom-sheet') }
 
 // The viewport: wide by default; narrowScreen(true) answers the viewer's
 // (max-width: 767px) query as a phone would.
@@ -739,7 +748,7 @@ describe('the Colours and scale popover', () => {
   it('offers the same fields inline in the phone sheet', async () => {
     narrowScreen(true)
     renderAt('/viewer/rainfall/day/2026-09-07/kauai')
-    const sheet = screen.getByTestId('bottom-sheet')
+    const sheet = openControls()
     fireEvent.mouseDown(within(sheet).getByRole('tab', { name: 'Layers' }))
     const controls = await within(sheet).findByTestId('scale-controls')
     expect(screen.queryByTestId('scale-button')).toBeNull()
@@ -1297,7 +1306,7 @@ describe('the Stations tab', () => {
   it('on the phone, a gridded-only product offers no list, only the press-and-hold hint', async () => {
     narrowScreen(true)
     renderAt('/viewer/spi-3/month/2026-08/statewide')
-    const sheet = screen.getByTestId('bottom-sheet')
+    const sheet = openControls()
     fireEvent.mouseDown(within(sheet).getByRole('tab', { name: 'Stations' }))
     expect(await within(sheet).findByTestId('station-hint')).toHaveTextContent('no station values')
     expect(screen.queryByTestId('station-list')).toBeNull()
@@ -1307,7 +1316,7 @@ describe('the Stations tab', () => {
   it('on the phone, a station row opens its record, and no values for the date is said plainly', async () => {
     narrowScreen(true)
     renderAt('/viewer/rainfall/day/2026-09-07/kauai')
-    const sheet = screen.getByTestId('bottom-sheet')
+    const sheet = openControls()
     fireEvent.mouseDown(within(sheet).getByRole('tab', { name: 'Stations' }))
     await within(sheet).findByTestId('station-list')
     await waitFor(() => expect(names()).toEqual(['Hilo Airport', 'Kahului']))
@@ -1330,7 +1339,7 @@ describe('the Stations tab', () => {
   })
 })
 
-// ── phone layout: the bottom sheet ──────────────────────────────────────────
+// ── phone layout (M1 C, 14 Oct): a full-screen map, reading chips, a floating bar, the Controls sheet ─────────
 describe('below 768 px', () => {
   // jsdom has no PointerEvent: a plain event carrying the pointer fields.
   const press = (el, type, init) => act(() => {
@@ -1341,24 +1350,57 @@ describe('below 768 px', () => {
   // Radix tabs change on mousedown, as a pointer does.
   const pickTab = (sheet, name) => fireEvent.mouseDown(within(sheet).getByRole('tab', { name }))
 
-  it('moves the controls into a bottom sheet with four tabs and runs the map edge to edge', async () => {
+  it('is a full-screen map: reading chips at the top, a floating bar with Controls, Share and Ask AI, the legend as a strip, no title card or compass', async () => {
     narrowScreen(true)
     renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in')
-    expect(screen.getByTestId('viewer').dataset.layout).toBe('sheet')
-    const sheet = screen.getByTestId('bottom-sheet')
-    expect(sheet.dataset.snap).toBe('peek')
+    const viewer = screen.getByTestId('viewer')
+    expect(viewer.dataset.layout).toBe('phone-map')
+    expect(viewer.className).toContain('fixed')                       // the map fills the screen under the header; the page never scrolls
+    expect(viewer.style.top).toBe('var(--hcdp-sticky-h, 3rem)')
+    expect(screen.queryByTestId('viewer-controls')).toBeNull()         // no rail
+    expect(screen.queryByTestId('bottom-sheet')).toBeNull()            // the sheet waits for Controls
+    expect(screen.getAllByTestId('reading-chip').map((c) => c.textContent)).toEqual(['Rainfall', 'Sep 7, 2026', 'Kauaʻi'])
+    expect(screen.getAllByTestId('reading-chip').every((c) => c.className.includes('h-11'))).toBe(true)
+    const fab = screen.getByTestId('viewer-fab')
+    expect(within(fab).getByTestId('fab-controls')).toHaveTextContent('Controls')
+    expect(within(fab).getByRole('button', { name: 'Share this map' })).toBeInTheDocument()
+    const ask = within(fab).getByTestId('fab-ask')
+    expect(ask).toHaveTextContent('Ask AI')
+    expect(ask.className).toContain('hcdp-rainbow-border')              // the same Ask AI pill, in the bar
+    const pane = screen.getByTestId('map-pane')
+    expect(pane).toHaveAttribute('data-phone', 'true')                  // zoom bottom-right, scale and legend above the bar (CSS)
+    expect(pane).not.toHaveClass('rounded-lg')
+    expect(within(pane).queryByTestId('viewer-title-card')).toBeNull()  // the chips carry the title, off the zoom control
+    expect(within(pane).queryByTestId('compass-rose')).toBeNull()
+    expect(within(pane).getByTestId('legend')).toHaveAttribute('data-layout', 'strip')
+    expect(within(pane).getByTestId('legend-labels').children).toHaveLength(3)
+    await settle()
+  })
+
+  it('Controls opens the sheet with its own history entry: four 44 px tabs, the rail’s controls at 44 px / 16 px, "Original HCDP version" and the viewer’s text; Back closes it', async () => {
+    narrowScreen(true)
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai?units=in')
+    expect(overlay()).toBe('')
+    const sheet = openControls()
+    expect(overlay()).toBe('controls')
+    expect(sheet.dataset.snap).toBe('half')
     expect(within(sheet).getByTestId('viewer-heading')).toHaveTextContent('Rainfall, September 7, 2026, Kauaʻi')
     expect(within(sheet).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Dataset', 'Date', 'Layers', 'Stations'])
-    expect(screen.queryByTestId('viewer-controls')).toBeNull() // no rail
-    expect(screen.getByTestId('map-pane')).toHaveClass('border-y')
-    expect(screen.getByTestId('map-pane')).not.toHaveClass('rounded-lg')
-    // Dataset tab first: dataset, period, units, place, sharing.
-    expect(within(sheet).getByTestId('dataset-select')).toHaveValue('rainfall')
+    expect(within(sheet).getAllByRole('tab').every((t) => t.className.includes('h-11'))).toBe(true)
+    const select = within(sheet).getByTestId('dataset-select')
+    expect(select).toHaveValue('rainfall')
+    expect(select.className).toMatch(/max-md:h-11/)
+    expect(select.className).toMatch(/max-md:text-base/)
     expect(within(sheet).getByTestId('extent-select')).toHaveValue('kauai')
     expect(within(sheet).getByTestId('copy-link')).toBeInTheDocument()
-    expect(within(sheet).queryByTestId('date-picker')).toBeNull()
+    const original = within(sheet).getByTestId('sheet-original-link')
+    expect(original).toHaveTextContent('Original HCDP version')
+    expect(original).toHaveAttribute('target', '_blank')
+    expect(original.className).toContain('min-h-11')
+    expect(within(sheet).getByTestId('map-note')).toHaveTextContent('The address bar always describes this map.')
     pickTab(sheet, 'Date')
-    expect(await within(sheet).findByTestId('date-picker')).toBeInTheDocument()
+    const dateField = await within(sheet).findByTestId('date-picker-input')
+    expect(dateField.className).toMatch(/max-md:text-base/)
     expect(within(sheet).getByTestId('compare-control')).toBeInTheDocument()
     pickTab(sheet, 'Layers')
     expect(await within(sheet).findByTestId('basemap-select')).toBeInTheDocument()
@@ -1366,52 +1408,76 @@ describe('below 768 px', () => {
     expect(within(sheet).getByTestId('layer-stations')).toBeInTheDocument()
     pickTab(sheet, 'Stations')
     expect(await within(sheet).findByTestId('station-hint')).toHaveTextContent('press and hold')
-    // The controls still write the address.
-    pickTab(sheet, 'Dataset')
-    fireEvent.change(await within(sheet).findByTestId('extent-select'), { target: { value: 'oahu' } })
-    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/oahu?units=in'))
+    act(() => goBack())
+    await waitFor(() => expect(screen.queryByTestId('bottom-sheet')).toBeNull())
+    expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?units=in')
   })
 
-  it('taps on the handle cycle peek → half → full → peek; a drag settles on the nearest rest', async () => {
+  it('a choice made in the sheet keeps it open over its own history: Back undoes the choice first, then closes the sheet', async () => {
     narrowScreen(true)
     renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    const sheet = openControls()
+    fireEvent.change(within(sheet).getByTestId('extent-select'), { target: { value: 'oahu' } })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/oahu'))
+    expect(navType()).toBe('PUSH')
+    expect(overlay()).toBe('controls')
+    expect(screen.getByTestId('bottom-sheet')).toBeInTheDocument()
+    act(() => goBack())
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai'))
+    expect(screen.getByTestId('bottom-sheet')).toBeInTheDocument()
+    act(() => goBack())
+    await waitFor(() => expect(screen.queryByTestId('bottom-sheet')).toBeNull())
+    expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai')
+  })
+
+  it('a reading chip opens the sheet where that is set: the date chip on the Date tab, the place chip on the Dataset tab', async () => {
+    narrowScreen(true)
+    renderAt('/viewer/rainfall/month/2026-08/statewide')
+    expect(screen.getAllByTestId('reading-chip')[1]).toHaveTextContent('Aug 2026')
+    fireEvent.click(screen.getAllByTestId('reading-chip')[1])
     const sheet = screen.getByTestId('bottom-sheet')
+    expect(within(sheet).getByRole('tab', { name: 'Date' })).toHaveAttribute('aria-selected', 'true')
+    expect(await within(sheet).findByTestId('date-picker')).toBeInTheDocument()
+    fireEvent.click(within(sheet).getByTestId('sheet-close'))
+    await waitFor(() => expect(screen.queryByTestId('bottom-sheet')).toBeNull())
+    fireEvent.click(screen.getAllByTestId('reading-chip')[2])
+    expect(within(screen.getByTestId('bottom-sheet')).getByRole('tab', { name: 'Dataset' })).toHaveAttribute('aria-selected', 'true')
+    expect(within(screen.getByTestId('bottom-sheet')).getByTestId('extent-select')).toHaveValue('statewide')
+  })
+
+  it('taps on the handle toggle half ↔ full; a short drag settles, a long drag down closes the sheet', async () => {
+    narrowScreen(true)
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    const sheet = openControls()
     const handle = screen.getByTestId('sheet-handle')
     fireEvent.click(handle)
-    expect(sheet.dataset.snap).toBe('half')
-    fireEvent.click(handle)
     expect(sheet.dataset.snap).toBe('full')
     fireEvent.click(handle)
-    expect(sheet.dataset.snap).toBe('peek')
-    // Drag the handle 300 px up from peek (124 px): nearer to half (384 px of 768) than to full.
-    press(handle, 'pointerdown', { clientY: 640 })
-    press(handle, 'pointermove', { clientY: 500 })
-    press(handle, 'pointermove', { clientY: 340 })
-    press(handle, 'pointerup', { clientY: 340 })
     expect(sheet.dataset.snap).toBe('half')
-    fireEvent.click(handle) // the click that follows a drag is not a tap
-    expect(sheet.dataset.snap).toBe('half')
-    // A tiny wobble is a tap.
+    // Drag 300 px up from half (384 px of 768): nearer full (704 px).
     press(handle, 'pointerdown', { clientY: 400 })
-    press(handle, 'pointermove', { clientY: 398 })
-    press(handle, 'pointerup', { clientY: 398 })
-    fireEvent.click(handle)
+    press(handle, 'pointermove', { clientY: 250 })
+    press(handle, 'pointermove', { clientY: 100 })
+    press(handle, 'pointerup', { clientY: 100 })
     expect(sheet.dataset.snap).toBe('full')
-    // Dragged all the way down → peek.
+    fireEvent.click(handle) // the click that follows a drag is not a tap
+    expect(sheet.dataset.snap).toBe('full')
+    // Dragged all the way down → closed.
     press(handle, 'pointerdown', { clientY: 100 })
     press(handle, 'pointermove', { clientY: 700 })
-    press(handle, 'pointerup', { clientY: 700 })
-    expect(sheet.dataset.snap).toBe('peek')
+    press(handle, 'pointerup', { clientY: 760 })
+    await waitFor(() => expect(screen.queryByTestId('bottom-sheet')).toBeNull())
+    expect(overlay()).toBe('')
     await settle()
   })
 
-  it('selecting a station opens the Station tab at half height, with the time series inside the sheet', async () => {
+  it('selecting a station opens the sheet on its Stations tab at half height, with the time series inside', async () => {
     narrowScreen(true)
     renderAt('/viewer/rainfall/day/2026-09-07/kauai?layers=stations')
-    const sheet = screen.getByTestId('bottom-sheet')
     await waitFor(() => expect(screen.getAllByTestId('station-marker')).toHaveLength(2))
     fireEvent.click(screen.getAllByTestId('station-marker')[0])
     await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?layers=stations&station=1020.1'))
+    const sheet = await screen.findByTestId('bottom-sheet')
     await waitFor(() => expect(within(sheet).getByRole('tab', { name: 'Stations' })).toHaveAttribute('aria-selected', 'true'))
     expect(sheet.dataset.snap).toBe('half')
     expect(await within(sheet).findByTestId('timeseries-panel')).toBeInTheDocument()
@@ -1423,19 +1489,99 @@ describe('below 768 px', () => {
     expect(await within(sheet).findByTestId('station-list')).toBeInTheDocument()
   })
 
-  it('a station in the address opens the Station tab on arrival, at peek height', async () => {
+  it('a station in the address opens the sheet on its Stations tab on arrival', async () => {
     narrowScreen(true)
     renderAt('/viewer/rainfall/day/2026-09-07/kauai?station=1020.1')
-    const sheet = screen.getByTestId('bottom-sheet')
+    const sheet = await screen.findByTestId('bottom-sheet')
     expect(within(sheet).getByRole('tab', { name: 'Stations' })).toHaveAttribute('aria-selected', 'true')
-    expect(sheet.dataset.snap).toBe('peek')
+    expect(sheet.dataset.snap).toBe('half')
     expect(await within(sheet).findByTestId('timeseries-panel')).toBeInTheDocument()
+    expect(overlay()).toBe('controls')
   })
 
-  it('keeps the rail at 768 px and above', async () => {
+  it('Share hands the canonical link to the system share sheet, or copies it and confirms in a toast', async () => {
+    narrowScreen(true)
+    Object.defineProperty(navigator, 'share', { value: undefined, configurable: true, writable: true })
+    const writeText = vi.fn(async () => {})
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    const { unmount } = renderAt('/viewer/rain/daily/2026-09-07/ka')
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai'))
+    fireEvent.click(screen.getByTestId('fab-share'))
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/viewer/rainfall/day/2026-09-07/kauai`))
+    expect(await screen.findByTestId('toast')).toHaveTextContent('Link copied')
+    unmount()
+    const share = vi.fn(async () => {})
+    Object.defineProperty(navigator, 'share', { value: share, configurable: true, writable: true })
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    fireEvent.click(screen.getByTestId('fab-share'))
+    await waitFor(() => expect(share).toHaveBeenCalledWith({ title: 'Rainfall, September 7, 2026, Kauaʻi', url: `${window.location.origin}/viewer/rainfall/day/2026-09-07/kauai` }))
+    Object.defineProperty(navigator, 'share', { value: undefined, configurable: true, writable: true })
+  })
+
+  it('Copy link in the sheet keeps its width and confirms in a toast', async () => {
+    narrowScreen(true)
+    const writeText = vi.fn(async () => {})
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    const sheet = openControls()
+    const copy = within(sheet).getByTestId('copy-link')
+    const labels = () => [...copy.querySelectorAll('span.col-start-1')].map((s) => s.textContent)
+    expect(labels()).toEqual(['Copy link', 'Link copied'])    // both labels size the button: no re-wrap when it changes
+    fireEvent.click(copy)
+    await waitFor(() => expect(copy).toHaveAttribute('data-state', 'copied'))
+    expect(labels()).toEqual(['Copy link', 'Link copied'])
+    expect(within(copy).getByTestId('copy-link-done')).not.toHaveAttribute('aria-hidden')
+    expect(await screen.findByTestId('toast')).toHaveTextContent('Link copied')
+  })
+
+  it('the Ask AI pill opens the assistant’s sheet (its own history entry)', async () => {
+    narrowScreen(true)
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    fireEvent.click(screen.getByTestId('fab-ask'))
+    expect(overlay()).toBe('ask')
+    expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai')
+    await settle()
+  })
+
+  it('the AI overview of a map the assistant opened floats under the chips (the page still never scrolls)', async () => {
+    narrowScreen(true)
+    let assistant = null
+    function Grab() { assistant = useAssistant(); return null }
+    render(
+      <MemoryRouter initialEntries={['/viewer/rainfall/day/2026-09-01/kauai']}>
+        <AssistantProvider>
+          <Grab />
+          <Routes><Route path="/viewer/*" element={<><ViewerPage /><Probe /></>} /></Routes>
+        </AssistantProvider>
+      </MemoryRouter>,
+    )
+    expect(screen.queryByTestId('phone-overview')).toBeNull()      // never on a direct load
+    act(() => { assistant.choose({ title: 'Daily rainfall map', path: '/viewer/rainfall/day/2026-09-07/kauai' }, { ask: 'rain on kauai', docked: true }) })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai'), { timeout: 3000 })
+    const card = await screen.findByTestId('phone-overview')
+    expect(await within(card).findByTestId('ai-summary-chunk')).toHaveTextContent('Daily rainfall on Kauaʻi for 7 September.')
+    expect(card.className).toContain('absolute')
+    expect(screen.getByTestId('viewer').dataset.layout).toBe('phone-map')
+  })
+
+  it('compares one map above the other, the second with a one-line title card', async () => {
+    narrowScreen(true)
+    renderAt('/viewer/rainfall/month/2026-08/statewide?compare=2025-08')
+    const view = screen.getByTestId('compare-view')
+    expect(view.className).toContain('grid-rows-2')
+    const panes = screen.getAllByTestId('map-pane')
+    expect(within(panes[0]).queryByTestId('viewer-title-card')).toBeNull()
+    expect(panes[0].style.getPropertyValue('--hcdp-fab-clear')).toBe('0px')   // the upper map's furniture is not lifted
+    expect(within(panes[1]).getByTestId('viewer-title-card')).toHaveAttribute('data-variant', 'compact')
+    expect(within(panes[1]).getByTestId('viewer-title')).toHaveTextContent('Rainfall, August 2025, Statewide')
+    await settle()
+  })
+
+  it('keeps the rail at 768 px and up', async () => {
     renderAt('/viewer/rainfall/day/2026-09-07/kauai')
     expect(screen.getByTestId('viewer').dataset.layout).toBe('rail')
     expect(screen.queryByTestId('bottom-sheet')).toBeNull()
+    expect(screen.queryByTestId('viewer-fab')).toBeNull()
     expect(screen.getByTestId('viewer-controls')).toBeInTheDocument()
     await settle()
   })
@@ -1449,7 +1595,7 @@ describe('sharing', () => {
     renderAt('/viewer/rain/daily/2026-09-07/ka?stations=1&units=in')
     await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai?units=in&layers=stations'))
     fireEvent.click(screen.getByTestId('copy-link'))
-    await waitFor(() => expect(screen.getByTestId('copy-link')).toHaveTextContent('Link copied'))
+    await waitFor(() => expect(screen.getByTestId('copy-link')).toHaveAttribute('data-state', 'copied'))
     expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/viewer/rainfall/day/2026-09-07/kauai?units=in&layers=stations`)
   })
 

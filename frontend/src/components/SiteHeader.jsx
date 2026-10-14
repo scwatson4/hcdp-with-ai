@@ -7,6 +7,7 @@ import { NAV } from '../site/nav'
 import { cn } from '../lib/utils'
 import { OriginalVersionLink, ShareView } from './OriginalLink'
 import { useAssistant } from '../assistant/AssistantProvider'
+import { useShellMode } from './shellMode'
 
 // The portal's header: the logo centred on its own row — with "Share this view" at the row's
 // far left and "Original HCDP version" at its far right (item 11), vertically centred with the
@@ -34,8 +35,10 @@ export default function SiteHeader() {
   const { reset } = useAssistant()   // item 13: the logo always resets the landing page
   const [mobile, setMobile] = useState(false)
   // M3 C (14 Oct): the landing page shows neither "Share this view" nor "Original HCDP version", at any width — every
-  // inner page keeps them. The logo stays centred (the two side cells stay, empty).
-  const utility = pathname !== '/'
+  // inner page keeps them. The logo stays centred (the two side cells stay, empty). On the phone viewer (M1 C) they live
+  // in its Controls sheet and its floating bar instead.
+  const shell = useShellMode()
+  const utility = pathname !== '/' && shell !== 'phone-map'
   return (
     <header className="border-b border-border bg-canvas/95 backdrop-blur">
       <div className="hcdp-band" aria-hidden="true" />

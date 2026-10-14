@@ -1073,3 +1073,21 @@ html.hcdp-scroll-lock, html.hcdp-scroll-lock body { overflow: hidden; overscroll
   .hcdp-goo-wrap { filter: none; }
   .hcdp-goo-pop, .hcdp-sheet-in, .hcdp-scrim-in, .hcdp-side-in, .hcdp-toast-in { animation: none; }
 }
+
+/* M1 C (14 Oct): the phone viewer's map furniture. The floating bar's height is --hcdp-fab-clear (set on the viewer):
+   the legend strip sits on it at the bottom-left, the scale bar above the strip, and Leaflet's zoom control moves to
+   the bottom-right above the bar at 44 px — clear of the reading chips and the title. */
+.hcdp-legend--strip { max-width: min(62%, 15rem); width: 15rem; padding: 5px 8px 4px; bottom: calc(var(--hcdp-fab-clear, 0px) + 8px); }
+.hcdp-legend--strip .hcdp-legend__title { font-size: 12px; margin-bottom: 3px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hcdp-legend__strip { position: relative; height: 10px; border-radius: 3px; }
+.hcdp-legend__tick-x { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: #111; box-shadow: 0 0 0 1px #fff; }
+.hcdp-legend__strip-labels { display: flex; justify-content: space-between; margin-top: 2px; font-size: 12px; line-height: 14px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.hcdp-pane[data-phone] .leaflet-top.leaflet-left { top: auto; left: auto; right: 8px; bottom: calc(var(--hcdp-fab-clear, 0px) + 8px); }
+.hcdp-pane[data-phone] .leaflet-top.leaflet-left .leaflet-control { margin: 0; }
+.hcdp-pane[data-phone] .leaflet-control-zoom a,
+.hcdp-pane[data-phone] .leaflet-control-zoom a:hover { width: 44px; height: 44px; line-height: 44px; font-size: 22px; }
+.hcdp-pane[data-phone] .leaflet-bottom.leaflet-left { bottom: calc(var(--hcdp-fab-clear, 0px) + 62px); }
+/* Touch screens of any width: Leaflet's zoom buttons are 44 px too (M6 A). */
+@media (pointer: coarse) {
+  .hcdp-pane .leaflet-control-zoom a, .hcdp-pane .leaflet-control-zoom a:hover { width: 44px; height: 44px; line-height: 44px; font-size: 22px; }
+}

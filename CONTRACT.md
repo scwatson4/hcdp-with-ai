@@ -224,6 +224,29 @@ ndvi → ndvi_modis (day only); ignition → ignition_probability (day only; ign
 spi-N → datatype=spi&timescale=timescaleNNN (month only, statewide only).
 Extents: statewide, bi (hawaii), mn (maui, molokai, lanai), oa, ka.
 
+## The climate viewer on phones (M1 C, 14 Oct)
+Below 768 px the viewer is a **full-screen map like a maps app** (`data-layout="phone-map"`; the page holds the shell in
+`phone-map`, `components/shellMode.jsx`): the header stays (logo and menu — no docked bar, no footer, no Back to top, and
+the page never scrolls); the map fills the screen under it (a comparison: the two maps one above the other, the second with
+a one-line title card). Floating over it:
+- **reading chips** at the top — dataset · date · place (`Rainfall` · `Sep 7, 2026` · `Kauaʻi`), white, 44 px; a tap opens the
+  Controls sheet where that is set (the date on the Date tab, the others on the Dataset tab). They carry the title: there is no
+  title card on the single map, so nothing sits over the zoom control any more;
+- the **floating bar** at the bottom — **Controls** (opens the existing bottom sheet), **Share** (the system share sheet where
+  there is one, else the canonical link copied and confirmed in a toast) and the **Ask AI** pill (the M2 A sheet; the pill
+  lives *in* the bar — the cleaner of the two: a separate bottom-left pill would collide with the bar). The bar's height is
+  `--hcdp-fab-clear`, which lifts the map furniture above it: the **legend as a horizontal strip** at the bottom-left (header,
+  a bar with low values at the left, low · middle · high labels, 12 px), the scale bar above it, Leaflet's **zoom control at
+  the bottom-right at 44 px**; no compass; badges (Experimental, the ignition caution) under the chips;
+- the **AI overview** of a map the assistant opened, as a card under the chips (✕ dismisses it).
+The **Controls sheet** (`BottomSheet` with `open`/`onClose`) opens at half the screen with the rail's controls at 44 px rows
+and 16 px fields in four 44 px tabs — Dataset (dataset, period, units, place, Analyze with AI, the share row, **"Original HCDP
+version"** as a 44 px row, the viewer's own text), Date, Layers, Stations; a tap on the handle toggles half ↔ full, a drag
+down closes it, so does its 44 px ✕. It owns a history entry (Back closes it); the viewer's writes carry the entry's state,
+so a choice made inside keeps it open and Back first undoes the choice, then closes the sheet. Selecting a station or a
+grid cell opens it on the Stations tab; so does a station or pin in the address on arrival. **Copy link** confirms in a
+toast and keeps one width in both states (no re-wrap under the thumb).
+
 ## Viewer data endpoints (the HCDP token never leaves the server)
 ```
 GET /api/raster?dataset&period&date&extent                 the GeoTIFF (re-encoded, cached on disk, Range + ETag)
@@ -442,7 +465,8 @@ what is left. `backend/data/usecases.json` carries four `off-topic-*` cases; the
 ## The AI overview (13 Oct)
 After every navigation the assistant performs — from the landing (after the travel) or from the docked bar, to another page
 or to the same one — the destination opens with an **AI overview** at the top of its main content (`assistant/AISummary.jsx`,
-rendered by `PageShell` above the page heading; by the viewer at the top of the rail on desktop and above the map on phones;
+rendered by `PageShell` above the page heading; by the viewer at the top of the rail on desktop and, on phones, as a card
+floating under the reading chips (M1 C; the full-screen desktop map holds it back until the normal page returns, QB-T3 B);
 by the data page above its Export form, which then scrolls into view on arrival; and, on the pages that scroll to a target on
 load, where the visitor lands: a storm's own section on `/extreme-events/<slug>` or `#<id>`, the live viewers section on
 `/mesonet?viewer|station|view=`, the dashboard section on `/climate-summary?year&month`, and on `/tools/<slug>` the page lands

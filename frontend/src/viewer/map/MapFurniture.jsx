@@ -28,10 +28,11 @@ export function ExperimentalBadge() {
   )
 }
 
-/** The stack under Leaflet's zoom control (top-left): badges and small notes. */
-export function CornerStack({ children }) {
+/** The stack under Leaflet's zoom control (top-left): badges and small notes. On a phone (M1 C) the zoom control sits
+ *  bottom-right and the stack goes under the reading chips (`className` moves it). */
+export function CornerStack({ children, className }) {
   return (
-    <div className="pointer-events-none absolute left-2 top-[80px] z-[1000] flex max-w-[60%] flex-col items-start gap-1" data-testid="corner-stack">
+    <div className={cn('pointer-events-none absolute left-2 top-[80px] z-[1000] flex max-w-[60%] flex-col items-start gap-1', className)} data-testid="corner-stack">
       {children}
     </div>
   )
@@ -43,7 +44,7 @@ export function MapPill({ children, quiet = false, testid, role = 'status', inte
     <div
       role={role} data-testid={testid}
       className={cn(
-        'flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] shadow-sm',
+        'flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[12px] shadow-sm',
         quiet ? 'bg-card/80 text-subtle' : 'bg-card/95 text-foreground',
         interactive && 'pointer-events-auto',
       )}
@@ -55,8 +56,16 @@ export function MapPill({ children, quiet = false, testid, role = 'status', inte
 
 /** Title card: ONLY the title — dataset, date, place (item 16, 2026-10-08); the units and the
  *  source/citation live in the rail's note under the map settings, not on the map;
- *  `caution` adds a one-line note in a second card under it. */
-export function TitleCard({ title, extra = null, caution = null }) {
+ *  `caution` adds a one-line note in a second card under it. `compact` (M1 C, the second map of a
+ *  comparison on a phone): a one-line card at the top-left, clear of the zoom control (bottom-right there). */
+export function TitleCard({ title, extra = null, caution = null, compact = false }) {
+  if (compact) {
+    return (
+      <div className="pointer-events-none absolute left-2 top-2 z-[1000] max-w-[70%]" data-testid="viewer-title-card" data-variant="compact">
+        <div className="hcdp-title-card truncate !px-2.5 !py-1.5 !text-left !text-[12px]"><span className="truncate" data-testid="viewer-title">{title}</span></div>
+      </div>
+    )
+  }
   return (
     <div className="pointer-events-none absolute right-2 top-2 z-[1000] flex max-w-[72%] flex-col items-end gap-1" data-testid="viewer-title-card">
       <div className="hcdp-title-card">
@@ -75,8 +84,22 @@ export function TitleCard({ title, extra = null, caution = null }) {
 
 /** The portal's legend: header, a 25×120 vertical bar with high values at
  *  the top, five labels with the portal's "+" / "-" open-end marks; the bar
- *  reads from the other end for a reversed ramp (?ramp=name-r). */
-export function Legend({ header, labels, ramp, reverse = false, tick = null }) {
+ *  reads from the other end for a reversed ramp (?ramp=name-r).
+ *  M1 C (14 Oct): `strip` — on a phone, a horizontal strip at the bottom-left above the floating bar: the header, a
+ *  bar with low values at the left, and the low, middle and high labels (12 px). */
+export function Legend({ header, labels, ramp, reverse = false, tick = null, layout = 'vertical' }) {
+  if (layout === 'strip') {
+    const mid = labels[Math.floor((labels.length - 1) / 2)]
+    return (
+      <div className="hcdp-legend hcdp-legend--strip pointer-events-none absolute left-2 z-[1000]" data-testid="legend" data-layout="strip" role="img" aria-label={`Legend: ${header}, from ${labels[labels.length - 1]} to ${labels[0]}`}>
+        <div className="hcdp-legend__title">{header}</div>
+        <div className="hcdp-legend__strip" data-testid="legend-gradient" data-reversed={reverse ? 'true' : undefined} style={{ background: rampGradient(ramp, reverse).replace('to top', 'to right') }}>
+          {tick != null && <span className="hcdp-legend__tick-x" data-testid="legend-tick" style={{ left: `${tick * 100}%` }} />}
+        </div>
+        <div className="hcdp-legend__strip-labels" data-testid="legend-labels" aria-hidden="true"><span>{labels[labels.length - 1]}</span><span>{mid}</span><span>{labels[0]}</span></div>
+      </div>
+    )
+  }
   return (
     <div className="hcdp-legend pointer-events-none absolute bottom-2 right-2 z-[1000]" data-testid="legend" role="img" aria-label={`Legend: ${header}, from ${labels[labels.length - 1]} to ${labels[0]}`}>
       <div className="hcdp-legend__title">{header}</div>
@@ -102,11 +125,11 @@ export function Compass() {
   )
 }
 
-/** The value under the pointer, between the corner furniture. */
-export function ValueReadout({ text }) {
+/** The value under the pointer, between the corner furniture (on a phone, above the floating bar). */
+export function ValueReadout({ text, phone = false }) {
   if (!text) return null
   return (
-    <div className="pointer-events-none absolute bottom-12 left-1/2 z-[1000] max-w-[calc(100%-240px)] min-w-[6.5rem] -translate-x-1/2 truncate rounded border border-border bg-card/95 px-2 py-1 text-center font-mono text-[11px] text-foreground shadow-sm" data-testid="value-readout" aria-live="off">
+    <div className={cn('pointer-events-none absolute left-1/2 z-[1000] min-w-[6.5rem] -translate-x-1/2 truncate rounded border border-border bg-card/95 px-2 py-1 text-center font-mono text-[12px] text-foreground shadow-sm', phone ? 'bottom-[calc(var(--hcdp-fab-clear,0px)+3.75rem)] max-w-[60%]' : 'bottom-12 max-w-[calc(100%-240px)]')} data-testid="value-readout" aria-live="off">
       {text}
     </div>
   )

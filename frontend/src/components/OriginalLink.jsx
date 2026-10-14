@@ -79,9 +79,18 @@ export function ShareView({ className }) {
   )
 }
 
-export function OriginalVersionLink({ className }) {
+export function OriginalVersionLink({ className, row = false }) {
   const { pathname, search, hash } = useLocation()
   const { url, label, note } = originalFor(pathname, search, hash)
+  if (row) {
+    // M1 C (14 Oct): on the phone viewer the link lives in the Controls sheet, as a 44 px row.
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer" className={cn('flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-card px-3 font-nav text-[13px] font-semibold uppercase tracking-[0.06em] text-foreground shadow-sm hover:border-foreground', className)} data-testid="sheet-original-link" title={note ? `${label} — ${note}` : label}>
+        Original HCDP version <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        <span className="sr-only">(opens in a new tab)</span>
+      </a>
+    )
+  }
   return (
     <a href={url} target="_blank" rel="noopener noreferrer" className={cn(CONTROL, 'font-nav font-semibold uppercase tracking-[0.06em]', className)} data-testid="original-link" title={note ? `${label} — ${note}` : label}>
       <span className="hidden min-[420px]:inline">Original<span className="hidden sm:inline"> HCDP version</span></span>

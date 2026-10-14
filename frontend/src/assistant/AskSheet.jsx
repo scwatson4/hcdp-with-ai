@@ -35,7 +35,9 @@ export default function AskSheet() {
   const vp = useVisualViewport(open)
   useScrollLock(open)
 
-  // The goo plays on every way out (✕, scrim, handle, Esc, Back, a navigation).
+  // The goo plays on every way out (✕, scrim, handle, Esc, Back, a navigation). The render right after the close already
+  // draws the melting sheet (wasOpen is still set), so there is no frame without it.
+  const closingNow = !open && (closing || wasOpen.current)
   useEffect(() => {
     if (open) { wasOpen.current = true; setClosing(false); return undefined }
     if (!wasOpen.current) return undefined
@@ -62,7 +64,7 @@ export default function AskSheet() {
     return () => window.removeEventListener('keydown', onKey)
   }, [open, sheet])
 
-  if (!phone || (!open && !closing)) return null
+  if (!phone || (!open && !closingNow)) return null
   const innerH = typeof window !== 'undefined' ? window.innerHeight || 768 : 768
   // two-thirds of the screen; with the keyboard up, whatever the visual viewport leaves (less a sliver of page above)
   const height = Math.min(Math.round(innerH * (2 / 3)), Math.max(220, vp.height - 24))
@@ -84,10 +86,10 @@ export default function AskSheet() {
   return (
     <>
       <div aria-hidden="true" data-testid="ask-sheet-scrim" onClick={sheet.close}
-        className={cn('fixed inset-0 z-[70] bg-black/35 transition-opacity duration-300', closing ? 'pointer-events-none opacity-0' : 'hcdp-scrim-in')} />
-      <div className={cn('fixed inset-x-0 z-[71]', closing && 'hcdp-goo-wrap')} style={{ bottom: vp.inset }}>
-        <section ref={panelRef} role="dialog" aria-modal="true" aria-label="Ask AI" data-testid="ask-sheet" data-closing={closing ? 'true' : undefined}
-          className={cn('relative flex flex-col overflow-hidden rounded-t-2xl border-t border-border bg-card text-card-foreground shadow-[0_-6px_24px_rgba(0,0,0,0.18)]', closing ? 'hcdp-goo-close' : (drag ? '' : 'hcdp-sheet-in'))}
+        className={cn('fixed inset-0 z-[70] bg-black/35 transition-opacity duration-300', closingNow ? 'pointer-events-none opacity-0' : 'hcdp-scrim-in')} />
+      <div className={cn('fixed inset-x-0 z-[71]', closingNow && 'hcdp-goo-wrap')} style={{ bottom: vp.inset }}>
+        <section ref={panelRef} role="dialog" aria-modal="true" aria-label="Ask AI" data-testid="ask-sheet" data-closing={closingNow ? 'true' : undefined}
+          className={cn('relative flex flex-col overflow-hidden rounded-t-2xl border-t border-border bg-card text-card-foreground shadow-[0_-6px_24px_rgba(0,0,0,0.18)]', closingNow ? 'hcdp-goo-close' : (drag ? '' : 'hcdp-sheet-in'))}
           style={{ height, transformOrigin: origin, transform: drag ? `translateY(${drag}px)` : undefined }}>
           <button type="button" aria-label="Close Ask AI" data-testid="ask-sheet-handle" onClick={() => { if (!drag) sheet.close() }}
             onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => { gesture.current = null; setDrag(0) }}

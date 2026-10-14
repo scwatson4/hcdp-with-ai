@@ -19,7 +19,7 @@ export function ExperimentalBadge() {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button type="button" className={cn(badgeVariants({ variant: 'warning' }), 'pointer-events-auto cursor-help shadow-sm')} data-testid="experimental-badge">
+        <button type="button" className={cn(badgeVariants({ variant: 'warning' }), 'pointer-events-auto cursor-help shadow-sm max-md:min-h-11 max-md:px-3 max-md:text-[13px] [@media(pointer:coarse)]:min-h-11')} data-testid="experimental-badge">
           <FlaskConical className="h-3 w-3" aria-hidden="true" /> Experimental
         </button>
       </TooltipTrigger>

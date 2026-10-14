@@ -234,7 +234,7 @@ export default function ExportForm({ originalHref, className = '', prefill = nul
                   <label className={cn('flex min-h-11 cursor-pointer items-start gap-2.5 rounded-md border border-border px-2.5 py-2 hover:bg-muted', on && 'bg-accent-soft')}>
                     <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-accent" checked={on} disabled={isLocked} onChange={(e) => toggleFile(f.id, e.target.checked)} data-testid={`export-file-${f.id}`} />
                     <span className="min-w-0 text-sm">
-                      <span className="flex flex-wrap items-center gap-1.5 font-medium">{f.label} <Badge variant="muted" className="font-mono text-[10px]" title={fileType(f.type)?.description}>{fileType(f.type)?.ext || f.type}</Badge></span>
+                      <span className="flex flex-wrap items-center gap-1.5 font-medium">{f.label} <Badge variant="muted" className="font-mono text-[12px]" title={fileType(f.type)?.description}>{fileType(f.type)?.ext || f.type}</Badge></span>
                       <span className="block text-xs text-subtle">{f.description}{isLocked ? ' Comes with every map.' : ''}</span>
                     </span>
                   </label>
@@ -269,7 +269,7 @@ export default function ExportForm({ originalHref, className = '', prefill = nul
                   <label className={cn('flex min-h-11 cursor-pointer items-start gap-2.5 rounded-md border border-border px-2.5 py-2 hover:bg-muted', shownFills.includes(f.id) && 'bg-accent-soft')}>
                     <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-accent" checked={shownFills.includes(f.id)} onChange={(e) => toggleFill(f.id, e.target.checked)} data-testid={`export-station-${f.id}`} />
                     <span className="min-w-0 text-sm">
-                      <span className="flex flex-wrap items-center gap-1.5 font-medium">{f.label} <Badge variant="muted" className="font-mono text-[10px]">.csv</Badge></span>
+                      <span className="flex flex-wrap items-center gap-1.5 font-medium">{f.label} <Badge variant="muted" className="font-mono text-[12px]">.csv</Badge></span>
                       <span className="block text-xs text-subtle">{f.description}</span>
                     </span>
                   </label>

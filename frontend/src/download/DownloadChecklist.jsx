@@ -111,7 +111,7 @@ export default function DownloadChecklist({ plan, picked, onToggle, onSomethingE
       {!items.length && <p className="text-sm text-subtle" data-testid="download-empty">Nothing HCDP's export packages matches this ask — try naming a product (rainfall, temperature), dates and an island.</p>}
       {groups.map((g) => (
         <fieldset key={g.id} data-testid={`download-group-${g.id}`}>
-          <legend className="mb-1 block font-mono text-[11px] font-medium uppercase tracking-wide text-subtle">{g.label}</legend>
+          <legend className="mb-1 block font-mono text-[12px] font-medium uppercase tracking-wide text-subtle">{g.label}</legend>
           <ul className="space-y-1">
             {items.filter((i) => i.group === g.id).map((it) => <Row key={it.id} item={it} picked={picked.has(it.id)} onToggle={onToggle} revealed={revealedFor(it.id)} />)}
           </ul>

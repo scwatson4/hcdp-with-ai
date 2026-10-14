@@ -22,7 +22,7 @@ export default function OfferCard({ className }) {
       <span aria-hidden="true" className="hcdp-ai-summary-rule" />
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1.5 text-[11px] text-subtle"><Sparkles className="h-3.5 w-3.5 text-accent" aria-hidden="true" /><span className="hcdp-ai-words">HCDP AI</span> can prepare this download</p>
+          <p className="flex items-center gap-1.5 text-[12px] text-subtle"><Sparkles className="h-3.5 w-3.5 text-accent" aria-hidden="true" /><span className="hcdp-ai-words">HCDP AI</span> can prepare this download</p>
           <p className="mt-1 text-[15px] leading-relaxed" data-testid="offer-sentence">{offer.offer}</p>
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
             <Button type="button" onClick={() => setOpen(true)} className="[@media(pointer:coarse)]:h-11" data-testid="offer-button"><Download className="h-4 w-4" aria-hidden="true" />{OFFER_BUTTON}</Button>

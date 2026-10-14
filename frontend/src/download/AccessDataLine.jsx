@@ -38,7 +38,7 @@ export default function AccessDataLine({ onPrefill, className }) {
       <form onSubmit={submit} className="flex flex-wrap items-center gap-2">
         <Sparkles className="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
         <input value={text} onChange={(e) => setText(e.target.value.slice(0, 500))} placeholder={ACCESS_PLACEHOLDER} aria-label={ACCESS_PLACEHOLDER} autoComplete="off"
-          className="h-10 min-w-0 flex-1 rounded-md border border-border bg-canvas px-3 text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:h-11" data-testid="access-ai-input" />
+          className="h-10 min-w-0 flex-1 rounded-md border border-border bg-canvas px-3 text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-md:h-11 [@media(pointer:coarse)]:h-11" data-testid="access-ai-input" />
         <Button type="submit" disabled={!text.trim() || working} className="[@media(pointer:coarse)]:h-11" data-testid="access-ai-prepare">
           {working ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />} Prepare
         </Button>

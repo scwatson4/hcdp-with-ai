@@ -4,6 +4,7 @@ import AISummary from '../assistant/AISummary'
 import { useMediaQuery } from '../viewer/useMediaQuery'
 import { HCDP } from '../site/nav'
 import { usePageHead } from './MirroredPage'
+import { EmbedCard } from '../pages/content/EmbedFrame'
 import './portal.css'
 
 // HCDP's app shells — pages that are one full-screen iframe (the storm reports, the Monthly Climate Summary, the Mesonet
@@ -27,6 +28,7 @@ export const STORMS = {
 /** One app, full window height under the sticky header, with the strip and (on touch screens) the tap-to-interact cover. */
 export function AppEmbed({ title, src, openHref, canonical, origin = null, onMessage = null, testid = 'app-embed' }) {
   const coarse = useMediaQuery('(pointer: coarse)')
+  const narrow = useMediaQuery('(max-width: 767px)')   // M6 A (14 Oct): no desktop app squeezed into a phone
   const [armed, setArmed] = useState(false)
   const frameRef = useRef(null)
   usePageHead(title, canonical)
@@ -41,6 +43,16 @@ export function AppEmbed({ title, src, openHref, canonical, origin = null, onMes
     window.addEventListener('message', onMsg)
     return () => window.removeEventListener('message', onMsg)
   }, [onMessage, origin])
+  // M6 A, the user's pick for phones: below 768 px the app opens full screen in a new tab from a card (EmbedFrame's
+  // EmbedCard) instead of running at 358 px (the 8 Oct audit: the Mesonet app's "Accept" clipped, nested scrolling).
+  if (narrow) {
+    return (
+      <div className="hcdp-embed" data-testid={testid}>
+        <div className="hcdp-mirror-container hcdp-embed-overview"><AISummary /></div>
+        <div className="hcdp-mirror-container py-4"><EmbedCard title={title} href={openHref || src} /></div>
+      </div>
+    )
+  }
   return (
     <div className="hcdp-embed" data-testid={testid}>
       <div className="hcdp-mirror-container hcdp-embed-overview"><AISummary /></div>

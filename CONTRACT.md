@@ -763,7 +763,7 @@ Viewer entries carry `internal_path` templates such as `/viewer/rainfall/day/{da
   Home · About (Team, HCDP History, Rainfall Mapping History, Climate Monitoring History, Acknowledgements, How to Cite) ·
   Data Portal (Access Data, HCDP / Hawaiʻi Mesonet API, Tutorials, How to Cite) · Cultural Resources · Library · Research
   (Research Highlights, External Resources, Presentations) · Climate Tools — every entry a page of this site.
-- Every page works at phone width. External links open in a new tab and say so.
+- Every page works at phone width — by the phone checklist below. External links open in a new tab and say so.
 - No cookies, no analytics, no sign-in, no theme (the site is always light; a `hcdp-theme` key left by an earlier
   visit is removed), nothing persisted — with three exceptions: the viewer's unit
   system (`mm`/`°C` or `in`/`°F`) is remembered per browser (`localStorage` key `hcdp-units`, read and written in
@@ -773,3 +773,28 @@ Viewer entries carry `internal_path` templates such as `/viewer/rainfall/day/{da
   period, the reviewer's name is remembered per browser (`localStorage` key `hcdp-reviewer-name`, F4 A; "Feedback" above).
   The export email is never stored. A "Wrong page?" report stores the ask, the reply, the destination and the want —
   nothing about the visitor; a feedback item stores what the reviewer sent and the name they typed — nothing else.
+
+## The phone checklist (M6 A, 14 Oct)
+Every change is held to these at 390 px (and 360 px) before it ships — the 8 Oct phone audit's findings, made rules:
+1. **16 px inputs.** Every text field, select and textarea is at least 16 px on phones and touch screens — iOS zooms the
+   page when a smaller one takes the focus. `globals.css` enforces it under `(max-width: 767px), (pointer: coarse)`;
+   checkboxes, radios and sliders are exempt.
+2. **44 px targets on touch.** Anything tappable is at least 44 × 44 px below 768 px or on a coarse pointer (a negative margin
+   may take the extra height back out of a dense row, as the logo row's Share / Original links do); rows in sheets and the
+   menu are 48 px. The `TabsTrigger` primitive, the viewer's fields and steps, the landing's buttons, the storm day chips
+   and Leaflet's zoom buttons all follow it.
+3. **Hover is never the only way.** Whatever appears on hover also appears on focus and is there on touch (`(hover: none)`);
+   no keyboard hint on touch — no Tab ↹ keycap, no "(Esc)" in a visible label.
+4. **dvh and visualViewport for anything pinned to the bottom.** Heights use `dvh` (never `100vh` / `h-screen`); a field
+   pinned to the bottom rides above the on-screen keyboard with `useVisualViewport()` (`components/overlayHistory.js`) —
+   iOS overlays the page with the keyboard and leaves the layout viewport alone.
+5. **A history entry per overlay.** Every sheet, menu and full-screen mode pushes one entry (`useOverlayHistory(id)`), so the
+   phone's Back gesture closes it; a link or an answer that leaves from inside an overlay replaces that entry; a reload
+   starts with the overlay closed.
+6. **12 px type floor.** No interface text under 12 px; labels 12–13 px. The exceptions: the portal's own map furniture on
+   wide screens (its legend and title card keep the portal's sizes) and citation superscripts. A test scans the components.
+7. **No horizontal overflow.** `scrollWidth == innerWidth` on every page. Wide tables become stacked cards under 640 px
+   (`.hcdp-stack` on the table, `.hcdp-stack-wrap` on its wrapper, a `data-label` per cell); a desktop app is never framed
+   under 768 px (`EmbedFrame phoneCard`: a card with its title and an "Open ↗" button instead).
+8. **Test at 390 px.** Components are tested with a `(max-width: 767px)` matchMedia mock; pages are re-measured with the
+   phone audit (iPhone 390 × 844 and Android 360 × 780, touch, iOS / Android user agents) before they ship.

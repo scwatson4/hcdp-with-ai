@@ -22,9 +22,10 @@ export function shareHref(pathname, search, hash) {
   return window.location.origin + c + (extra ? (c.includes('?') ? '&' : '?') + extra : '') + (hash || '')
 }
 
-// On coarse pointers the tap area grows to 44 px with padding that a matching negative margin takes back
-// out of the layout, so the phone's logo row stays 52 px tall (item 17: the sticky block must stay small).
-const CONTROL = 'inline-flex items-center gap-1 rounded px-1 py-0.5 text-[11.5px] text-subtle hover:text-foreground [@media(pointer:coarse)]:-my-4 [@media(pointer:coarse)]:py-4'
+// On phones and coarse pointers the control is a 44 px box whose negative margin takes the extra height back out of the
+// layout, so the phone's logo row stays 48 px tall (item 17: the sticky block must stay small; M6 A, 14 Oct: the 8 Oct
+// audit measured these links at 17–21 px).
+const CONTROL = 'inline-flex items-center gap-1 rounded px-1 py-0.5 text-[12px] text-subtle hover:text-foreground max-md:-my-2 max-md:h-11 max-md:min-w-11 max-md:justify-center max-md:py-0 [@media(pointer:coarse)]:-my-2 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:min-w-11 [@media(pointer:coarse)]:py-0'
 
 export function ShareView({ className }) {
   const { pathname, search, hash } = useLocation()
@@ -65,13 +66,13 @@ export function ShareView({ className }) {
         <div className="absolute left-0 top-full z-50 mt-1 w-[min(92vw,26rem)] rounded-md border border-border bg-card p-1.5 shadow-lg" data-testid="share-panel">
           <div className="flex items-center gap-1">
             <input ref={inputRef} readOnly value={href} onFocus={(e) => e.target.select()} aria-label="Link to this view"
-              className="h-7 min-w-0 flex-1 rounded-md border border-border bg-canvas px-2 font-mono text-[11px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+              className="h-7 min-w-0 flex-1 rounded-md border border-border bg-canvas px-2 font-mono text-[12px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-md:h-11 max-md:text-base" />
             <button type="button" onClick={copy} aria-label={copied ? 'Copied' : 'Copy link'} title={copied ? 'Copied' : 'Copy link'} data-testid="share-copy"
-              className={`grid h-7 w-7 shrink-0 place-items-center rounded-md border border-border bg-canvas hover:border-foreground ${copied ? 'text-accent' : 'text-foreground'}`}>
+              className={`grid h-7 w-7 shrink-0 place-items-center rounded-md border border-border bg-canvas hover:border-foreground max-md:h-11 max-md:w-11 ${copied ? 'text-accent' : 'text-foreground'}`}>
               {copied ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
             </button>
-            <span className="shrink-0 text-[11px] text-subtle" aria-live="polite" data-testid="share-status">{copied ? 'Copied' : ''}</span>
-            <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-subtle hover:text-foreground"><X className="h-3.5 w-3.5" aria-hidden="true" /></button>
+            <span className="shrink-0 text-[12px] text-subtle" aria-live="polite" data-testid="share-status">{copied ? 'Copied' : ''}</span>
+            <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-subtle hover:text-foreground max-md:h-11 max-md:w-11"><X className="h-3.5 w-3.5" aria-hidden="true" /></button>
           </div>
         </div>
       )}

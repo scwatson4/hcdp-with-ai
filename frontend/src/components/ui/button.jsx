@@ -15,11 +15,12 @@ const buttonVariants = cva(
         destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
         link: 'text-accent underline-offset-4 hover:underline',
       },
+      // M6 A (14 Oct), the phone checklist: every button is at least 44 px on phones and touch screens.
       size: {
-        default: 'h-9 px-3.5 py-2',
-        sm: 'h-8 px-3 text-xs',
-        lg: 'h-10 px-5 text-base',
-        icon: 'h-9 w-9',
+        default: 'h-9 px-3.5 py-2 max-md:min-h-11 [@media(pointer:coarse)]:min-h-11',
+        sm: 'h-8 px-3 text-xs max-md:min-h-11 [@media(pointer:coarse)]:min-h-11',
+        lg: 'h-10 px-5 text-base max-md:min-h-11 [@media(pointer:coarse)]:min-h-11',
+        icon: 'h-9 w-9 max-md:min-h-11 max-md:min-w-11 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11',
         'icon-sm': 'h-7 w-7 rounded-md',
       },
     },

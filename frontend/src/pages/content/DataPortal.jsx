@@ -144,8 +144,9 @@ export function AccessData() {
       </Section>
 
       <Section id="datasets" title="Datasets" lead={<p>What you can map and download on the portal. “—”: the portal gives no first year for this product; its date picker shows the dates available.</p>}>
-        <div className="relative overflow-x-auto rounded-lg border border-border">
-          <table className="w-full min-w-[640px] text-left text-sm" data-testid="datasets-table">
+        {/* M6 A (14 Oct): under 640 px each row is a stacked card (globals.css .hcdp-stack) instead of a sideways scroll */}
+        <div className="hcdp-stack-wrap relative overflow-x-auto rounded-lg border border-border">
+          <table className="hcdp-stack w-full min-w-[640px] text-left text-sm" data-testid="datasets-table">
             <thead className="bg-surface text-xs uppercase tracking-wide text-subtle">
               <tr>
                 <th scope="col" className="px-3 py-2 font-medium">Dataset</th>
@@ -165,9 +166,9 @@ export function AccessData() {
                       {rowName(row)}{units ? <span className="font-normal text-subtle"> ({units})</span> : null}
                       {row.note && <p className="mt-0.5 text-xs font-normal text-subtle">{row.note}</p>}
                     </th>
-                    <td className="px-3 py-2">{rowPeriods(row).join(', ')}</td>
-                    <td className="px-3 py-2">{row.coverage}</td>
-                    <td className="px-3 py-2 font-mono text-xs">{row.first || '—'}</td>
+                    <td className="px-3 py-2" data-label="Periods">{rowPeriods(row).join(', ')}</td>
+                    <td className="px-3 py-2" data-label="Coverage">{row.coverage}</td>
+                    <td className="px-3 py-2 font-mono text-xs" data-label="First year">{row.first || '—'}</td>
                     <td className="px-3 py-2 text-right">
                       {v ? <Link to={formatViewerPath(v)} className="whitespace-nowrap text-accent hover:underline" aria-label={`Map ${describeViewer(v)} in the viewer`}>Map it →</Link> : <span className="text-xs text-subtle">portal</span>}
                     </td>
@@ -189,7 +190,7 @@ export function AccessData() {
                 <Link to={path} className="group block h-full rounded-lg border border-border bg-card p-3 hover:border-foreground">
                   <span className="block text-xs text-subtle">{note}</span>
                   <span className="mt-0.5 block font-medium">{describeViewer(v)}</span>
-                  <span className="mt-2 block break-all font-mono text-[11px] text-subtle">{path}</span>
+                  <span className="mt-2 block break-all font-mono text-[12px] text-subtle">{path}</span>
                   <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-accent">Open map <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></span>
                 </Link>
               </li>

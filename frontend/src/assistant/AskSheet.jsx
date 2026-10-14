@@ -93,7 +93,7 @@ export default function AskSheet() {
           style={{ height, transformOrigin: origin, transform: drag ? `translateY(${drag}px)` : undefined }}>
           <button type="button" aria-label="Close Ask AI" data-testid="ask-sheet-handle" onClick={() => { if (!drag) sheet.close() }}
             onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => { gesture.current = null; setDrag(0) }}
-            className="block w-full shrink-0 touch-none py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            className="-mb-2.5 block w-full shrink-0 touch-none py-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <span className="mx-auto block h-1 w-10 rounded-full bg-border-strong" aria-hidden="true" />
           </button>
           <div className="flex shrink-0 items-center justify-between px-4">

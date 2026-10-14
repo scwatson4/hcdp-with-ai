@@ -36,7 +36,8 @@ export default function ReturnStrip() {
     if (fromAi && window.history.length > 1) { e.preventDefault(); window.history.back() }
   }
   return (
-    <div className="border-b border-border/70 bg-surface/80" data-testid="return-strip" role="status">
+    // (positioned above z-30 so it still shows over the phone viewer's full-screen map, M1 C)
+    <div className="relative z-[31] border-b border-border/70 bg-surface/95" data-testid="return-strip" role="status">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-1 text-[12.5px] text-subtle">
         <p className="min-w-0 truncate">
           You came from the AI data analysis tool · <a href={AI_INTERFACE} onClick={back} className="font-medium text-foreground underline underline-offset-2 hover:text-accent" data-testid="return-link">Return</a>

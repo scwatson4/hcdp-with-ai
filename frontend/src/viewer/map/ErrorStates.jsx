@@ -46,7 +46,7 @@ export function GrammarError({ error, pathname, search = '' }) {
   const fix = suggestionFor(pathname)
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-12" data-testid="viewer-grammar-error">
-      <p className="font-mono text-[11px] font-medium uppercase tracking-wide text-subtle">Climate viewer</p>
+      <p className="font-mono text-[12px] font-medium uppercase tracking-wide text-subtle">Climate viewer</p>
       <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight">That map address did not work</h1>
       <p className="mt-3 text-base" data-testid="viewer-error">{friendlyReason(error)}</p>
       <p className="mt-2 break-all text-sm text-subtle">You opened <code className={code}>{pathname}{search}</code></p>

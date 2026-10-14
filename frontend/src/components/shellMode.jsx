@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useState } from 'react'
 
 // What the shell around the page shows (14 Oct). 'page' — the header, the docked ask bar, the footer, everything;
 // 'phone-map' — the climate viewer on a phone (M1 C): the header stays, the docked bar, the footer and Back to top give
@@ -16,8 +16,9 @@ export function ShellModeProvider({ children }) {
 
 export const useShellMode = () => useContext(ShellCtx).mode
 
-/** Hold the shell in `mode` while `active` (and this component is mounted). */
+/** Hold the shell in `mode` while `active` (and this component is mounted). A layout effect, so the shell changes before
+ *  the first paint — no frame of the other shell, no layout shift. */
 export function useClaimShell(mode, active = true) {
   const { claim } = useContext(ShellCtx)
-  useEffect(() => (active ? claim(mode) : undefined), [mode, active, claim])
+  useLayoutEffect(() => (active ? claim(mode) : undefined), [mode, active, claim])
 }

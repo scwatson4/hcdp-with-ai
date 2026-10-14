@@ -298,7 +298,9 @@ export function AskBar({ docked = false, glass = false, onChipsState = null, inS
   return (
     <form ref={formRef} onSubmit={submit} onMouseEnter={() => { hoverRef.current = true }} onMouseLeave={() => { hoverRef.current = false }} data-testid={inSheet ? 'sheet-ask-bar' : mini ? 'mini-ask-bar' : docked ? 'docked-ask-bar' : 'ask-bar'} data-opens-sheet={opensSheet ? 'true' : undefined} className="relative">
       <div className={cn('hcdp-ask', lines > 1 ? 'rounded-3xl' : 'rounded-full', docked ? 'min-h-11' : 'min-h-14 shadow-lg', busy && 'hcdp-ask-busy', opensSheet && 'cursor-text')} data-testid="ask-field" data-busy={busy ? 'true' : 'false'} data-lines={lines} data-hero={docked ? undefined : 'true'}
-        onClick={opensSheet ? openSheet : undefined}>
+        // a tap anywhere on the pill (not on its buttons or the ghost's follow-up) puts the cursor in the field: the whole
+        // 44 / 56 px pill is the target, not just the line of text (M6 A)
+        onClick={opensSheet ? openSheet : (e) => { if (!e.target.closest?.('button, a, textarea, [data-testid="composer-ghost-text"]')) inputRef.current?.focus() }}>
         <span aria-hidden="true" className="hcdp-ask-ring" />
         <div className={cn('hcdp-ask-field relative flex min-h-[inherit] items-end', docked ? 'py-1 pl-3 pr-1' : 'py-2 pl-4 pr-2', glass && 'hcdp-ask-glass')}>
           {/* QB-Q1 B: an 18 px grey magnifier at the left edge; the ghost and the typeahead sit to its right */}
@@ -332,7 +334,7 @@ export function AskBar({ docked = false, glass = false, onChipsState = null, inS
               <X className="h-4 w-4" aria-hidden="true" />
             </button>
           )}
-          <button type="submit" disabled={opensSheet ? false : (!text.trim() || busy || travelling)} aria-label={opensSheet ? 'Ask AI' : 'Send'} data-solid={text.trim() ? 'true' : 'false'} className={cn('hcdp-send grid shrink-0 place-items-center rounded-full text-accent-foreground disabled:opacity-40', inSheet ? 'h-11 w-11' : docked ? 'h-9 w-9' : 'h-10 w-10', opensSheet && 'opacity-40')}><ArrowUp className="h-4 w-4" /></button>
+          <button type="submit" disabled={opensSheet ? false : (!text.trim() || busy || travelling)} aria-label={opensSheet ? 'Ask AI' : 'Send'} data-solid={text.trim() ? 'true' : 'false'} className={cn('hcdp-send grid shrink-0 place-items-center rounded-full text-accent-foreground disabled:opacity-40', inSheet ? 'h-11 w-11' : docked ? 'h-9 w-9' : 'h-10 w-10', !inSheet && 'max-md:h-11 max-md:w-11 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11', opensSheet && 'opacity-40')}><ArrowUp className="h-4 w-4" /></button>
         </div>
       </div>
       {listOpen && (
@@ -378,7 +380,7 @@ export function Conversation({ compact = false, hideUser = false, latestOnly = f
         <div key={m.id ?? i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')} data-testid={m.role === 'user' ? 'user-bubble' : 'assistant-bubble'}>
           <div className={cn('rounded-lg px-3 py-2 text-sm leading-relaxed', tiles(m) ? 'w-full' : 'max-w-[92%]', m.role === 'user' ? 'bg-accent text-accent-foreground' : 'bg-surface border border-border')}>
             {m.intent === 'analysis' ? <HandoffReply m={m} /> : m.content}
-            {m.role === 'user' && <button type="button" title="Copy a link that asks this" aria-label="Copy a link that asks this" onClick={(ev) => { const href = `${window.location.origin}/?ask=${encodeURIComponent(m.content)}`; const b = ev.currentTarget; navigator.clipboard?.writeText(href).then(() => { b.dataset.copied = '1'; setTimeout(() => { delete b.dataset.copied }, 1500) }).catch(() => window.prompt('Copy this link', href)) }} className="group ml-1 inline-grid h-6 w-6 place-items-center rounded align-middle text-accent-foreground/70 hover:bg-white/10 hover:text-accent-foreground data-[copied]:text-accent-foreground"><Link2 className="h-3.5 w-3.5 group-data-[copied]:hidden" aria-hidden="true" /><span className="hidden text-[10px] group-data-[copied]:inline">Copied</span></button>}
+            {m.role === 'user' && <button type="button" title="Copy a link that asks this" aria-label="Copy a link that asks this" onClick={(ev) => { const href = `${window.location.origin}/?ask=${encodeURIComponent(m.content)}`; const b = ev.currentTarget; navigator.clipboard?.writeText(href).then(() => { b.dataset.copied = '1'; setTimeout(() => { delete b.dataset.copied }, 1500) }).catch(() => window.prompt('Copy this link', href)) }} className="group ml-1 inline-grid h-6 w-6 place-items-center rounded align-middle text-accent-foreground/70 hover:bg-white/10 hover:text-accent-foreground data-[copied]:text-accent-foreground"><Link2 className="h-3.5 w-3.5 group-data-[copied]:hidden" aria-hidden="true" /><span className="hidden text-[12px] group-data-[copied]:inline">Copied</span></button>}
             {m.actions?.filter((a) => a.type === 'open').map((a, j) => (
               <div key={j} className="mt-2"><a className="inline-flex items-center gap-1 rounded-md border border-border bg-canvas px-2.5 py-1 text-xs font-medium hover:border-foreground" href={a.url} target="_blank" rel="noopener noreferrer">{a.blocked ? 'Your browser blocked the new tab — open it here' : 'Opened in a new tab — open again'} <ExternalLink className="h-3 w-3" aria-hidden="true" /></a></div>
             ))}

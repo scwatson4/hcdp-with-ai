@@ -103,7 +103,7 @@ export default function Landing() {
 
       <div className="mx-auto w-full max-w-6xl px-4">
         <section className="mt-12">
-          <div className="mb-3 flex items-end justify-between"><h2 className="font-display text-2xl">What HCDP offers</h2><Link to="/tools" className="text-sm text-subtle hover:text-foreground">All climate tools →</Link></div>
+          <div className="mb-3 flex items-end justify-between"><h2 className="font-display text-2xl">What HCDP offers</h2><Link to="/tools" className="text-sm text-subtle hover:text-foreground max-md:inline-flex max-md:min-h-11 max-md:items-center">All climate tools →</Link></div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {TOOL_CARDS.map((c) => { const Icon = ICONS[c.icon]; return (
               <Link key={c.key} to={c.to} className="group" data-testid={`tool-${c.key}`}>

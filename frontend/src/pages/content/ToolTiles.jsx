@@ -11,6 +11,10 @@ export const TILE_SHADES = {
   navy: 'linear-gradient(to bottom, rgba(10, 30, 80, 0.8), rgba(0, 0, 0, 0) 60%)',
   blue: 'linear-gradient(to bottom, rgba(0, 60, 130, 1), rgba(0, 0, 0, 0) 60%)',
 }
+// M6 A (14 Oct): a neutral scrim under the portal's shade, darkest behind the title band, so white type holds on the light
+// pictures too (the 8 Oct audit: "CCVD Portfolios" over a pale map); and a soft shadow on the type itself.
+export const TILE_SCRIM = 'linear-gradient(to bottom, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.32) 32%, rgba(0, 0, 0, 0) 62%)'
+const TEXT_SHADOW = { textShadow: '0 1px 3px rgba(0, 0, 0, 0.6)' }
 
 const FRAME = 'relative block aspect-[3/2] overflow-hidden rounded-[10px] bg-inset'
 const FOCUS = 'group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas'
@@ -43,7 +47,8 @@ export function ToolTile({ tool, headingLevel = 2, onSelect = null, compact = fa
         className="absolute inset-0 h-full w-full object-cover"
       />
       <div aria-hidden="true" className="absolute inset-0" style={{ backgroundImage: TILE_SHADES[shade] || TILE_SHADES.navy }} />
-      <div className="absolute left-[10%] top-[10%] w-[80%] text-left text-white">
+      <div aria-hidden="true" className="absolute inset-0" style={{ backgroundImage: TILE_SCRIM }} data-testid="tile-scrim" />
+      <div className="absolute left-[10%] top-[10%] w-[80%] text-left text-white" style={TEXT_SHADOW}>
         <Heading id={`${id}name`} className={cn('ml-[5px] font-bold text-white', compact ? 'text-[15px] leading-[1.2] sm:text-[16px]' : 'text-[1.4rem] leading-[1.2]', live && 'underline-offset-4 group-hover:underline')}>
           {name}
           {soon && ' (Coming soon)'}

@@ -8,7 +8,7 @@ const TabsList = React.forwardRef(({ className, ...props }, ref) => (
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      'inline-flex h-9 items-center justify-center rounded-md border border-border bg-muted p-1 text-muted-foreground',
+      'inline-flex h-9 items-center justify-center rounded-md border border-border bg-muted p-1 text-muted-foreground max-md:h-auto [@media(pointer:coarse)]:h-auto',
       className,
     )}
     {...props}
@@ -20,7 +20,8 @@ const TabsTrigger = React.forwardRef(({ className, ...props }, ref) => (
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-sm px-3 py-1 text-xs font-medium transition-all',
+      // M6 A (14 Oct): 44 px tall on phones and on any touch screen (the 8 Oct audit measured 26 px tabs).
+      'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-sm px-3 py-1 text-xs font-medium transition-all max-md:min-h-11 max-md:text-[13px] [@media(pointer:coarse)]:min-h-11',
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
       'data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm',
       className,

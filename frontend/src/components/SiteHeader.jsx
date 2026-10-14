@@ -1,8 +1,7 @@
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { ChevronDown, ExternalLink, Menu } from 'lucide-react'
-import { useState } from 'react'
-import { Button } from './ui/button'
+import { Link, NavLink, useLocation } from 'react-router-dom'
+import { ChevronDown, ExternalLink } from 'lucide-react'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from './ui/dropdown-menu'
+import MobileMenu from './MobileMenu'
 import { NAV } from '../site/nav'
 import { cn } from '../lib/utils'
 import { OriginalVersionLink, ShareView } from './OriginalLink'
@@ -30,10 +29,8 @@ function MenuItem({ item }) {
 const NAV_ITEM = 'font-nav text-[12.5px] font-semibold uppercase tracking-[0.06em] text-foreground/80 hover:text-foreground'
 
 export default function SiteHeader() {
-  const navigate = useNavigate()
   const { pathname } = useLocation()
   const { reset } = useAssistant()   // item 13: the logo always resets the landing page
-  const [mobile, setMobile] = useState(false)
   // M3 C (14 Oct): the landing page shows neither "Share this view" nor "Original HCDP version", at any width — every
   // inner page keeps them. The logo stays centred (the two side cells stay, empty). On the phone viewer (M1 C) they live
   // in its Controls sheet and its floating bar instead.
@@ -44,12 +41,14 @@ export default function SiteHeader() {
       <div className="hcdp-band" aria-hidden="true" />
       <div className="mx-auto grid w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 pb-1 pt-3" data-testid="logo-row">
         <div className="flex min-w-0 items-center justify-start">{utility && <ShareView />}</div>
-        <Link to="/" aria-label="Hawaiʻi Climate Data Portal home" className="block" onClick={() => { setMobile(false); reset() }} data-testid="logo-home">
+        <Link to="/" aria-label="Hawaiʻi Climate Data Portal home" className="block max-md:-my-2 max-md:py-2" onClick={() => reset()} data-testid="logo-home">
           <img src="/hcdp_logo.png" alt="HCDP — Hawaiʻi Climate Data Portal" width="1120" height="150" decoding="async" fetchPriority="high" className="h-7 w-auto sm:h-[52px]" />
         </Link>
         <div className="flex min-w-0 items-center justify-end gap-1">
-          {utility && <OriginalVersionLink />}
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 md:hidden" aria-label="Menu" aria-expanded={mobile} onClick={() => setMobile((v) => !v)}><Menu className="h-4 w-4" /></Button>
+          {/* on phones "Original HCDP version" is a row of the menu sheet: the logo row keeps 44 px for Share and Menu */}
+          {utility && <OriginalVersionLink className="max-md:hidden" />}
+          {/* M6 A: the phone menu is a sheet with its own history entry (MobileMenu.jsx) */}
+          <MobileMenu original={utility} />
         </div>
       </div>
       <nav className="hidden items-center justify-center gap-x-5 px-4 pb-2 md:flex" aria-label="Site">
@@ -66,18 +65,6 @@ export default function SiteHeader() {
           <NavLink key={n.label} to={n.to} end={n.to === '/'} className={({ isActive }) => cn(NAV_ITEM, 'rounded px-1 py-1', isActive && 'text-foreground underline decoration-2 underline-offset-8')}>{n.label}</NavLink>
         ))}
       </nav>
-      {mobile && (
-        <div className="border-t border-border px-4 py-2 md:hidden" data-testid="mobile-nav">
-          {NAV.map((n) => (
-            <div key={n.label} className="py-1">
-              {n.items ? <div className="font-nav text-xs font-semibold uppercase tracking-wide text-subtle">{n.label}</div>
-                : n.external ? <a className="font-nav text-sm font-semibold" href={n.external} target="_blank" rel="noopener noreferrer">{n.label} ↗</a>
-                : <button type="button" className="font-nav text-sm font-semibold" onClick={() => { setMobile(false); navigate(n.to) }}>{n.label}</button>}
-              {n.items && <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">{n.items.map((it) => it.external ? <a key={it.label} className="text-sm" href={it.external} target="_blank" rel="noopener noreferrer">{it.label} ↗</a> : <Link key={it.label} className="text-sm" to={it.to} onClick={() => setMobile(false)}>{it.label}</Link>)}</div>}
-            </div>
-          ))}
-        </div>
-      )}
     </header>
   )
 }

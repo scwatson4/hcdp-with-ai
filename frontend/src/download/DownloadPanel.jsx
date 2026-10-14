@@ -14,7 +14,7 @@ import { estimateFor, fetchPlan, formatBytes, packagePath, pickedIds, prepareBod
 // email field, and Download now — or, past 150 files, Email me (gallery D3 A + D5 A, 13 Oct). The result names the file
 // and offers the Analyze-with-AI hand-off link; the emailed package gets its README back for saving beside it.
 const FIELD = 'h-9 w-full rounded-md border border-border bg-card px-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 [@media(pointer:coarse)]:h-11'
-const LABEL = 'mb-1 block font-mono text-[11px] font-medium uppercase tracking-wide text-subtle'
+const LABEL = 'mb-1 block font-mono text-[12px] font-medium uppercase tracking-wide text-subtle'
 
 function useCopy() {
   const [copied, setCopied] = useState(false)
@@ -105,7 +105,7 @@ export default function DownloadPanel({ ask, hints = {}, context = {}, initialPi
     <div className={cn('space-y-5', className)} data-testid="download-panel" data-status={status} aria-busy={status === 'loading' || working}>
       {!page && (
         <div className="pr-8">
-          <p className="flex items-center gap-1.5 text-[11px] text-subtle"><Sparkles className="h-3.5 w-3.5 text-accent" aria-hidden="true" /><span className="hcdp-ai-words">HCDP AI</span> · prepared download</p>
+          <p className="flex items-center gap-1.5 text-[12px] text-subtle"><Sparkles className="h-3.5 w-3.5 text-accent" aria-hidden="true" /><span className="hcdp-ai-words">HCDP AI</span> · prepared download</p>
           <h2 className="mt-1 font-display text-xl" data-testid="download-title">The data you asked for</h2>
         </div>
       )}
@@ -140,7 +140,7 @@ export default function DownloadPanel({ ask, hints = {}, context = {}, initialPi
           <div className="text-xs text-subtle" data-testid="download-address-row">
             <span className={LABEL}>Package address</span>
             <div className="flex items-center gap-2">
-              <code className="min-w-0 flex-1 truncate rounded bg-inset px-2 py-1 font-mono text-[11px]" data-testid="download-address" title={address}>{address}</code>
+              <code className="min-w-0 flex-1 truncate rounded bg-inset px-2 py-1 font-mono text-[12px]" data-testid="download-address" title={address}>{address}</code>
               <Button type="button" size="sm" variant="outline" onClick={() => copy(address)} aria-label="Copy the package address" data-testid="download-address-copy">
                 {copied ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}{copied ? 'Copied' : 'Copy'}
               </Button>

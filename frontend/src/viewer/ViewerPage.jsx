@@ -531,8 +531,8 @@ function Viewer({ v }) {
             return (
               <Tabs value={railTab} onValueChange={setRailTab}>
                 <TabsList className="grid h-auto w-full grid-cols-2 p-0.5" aria-label="Rail sections" data-testid="rail-tabs">
-                  <TabsTrigger value="map" className="h-8 font-nav font-semibold [@media(pointer:coarse)]:h-10" data-testid="rail-tab-map">Map</TabsTrigger>
-                  <TabsTrigger value="stations" className="h-8 font-nav font-semibold [@media(pointer:coarse)]:h-10" data-testid="rail-tab-stations">Stations</TabsTrigger>
+                  <TabsTrigger value="map" className="h-8 font-nav font-semibold [@media(pointer:coarse)]:h-11" data-testid="rail-tab-map">Map</TabsTrigger>
+                  <TabsTrigger value="stations" className="h-8 font-nav font-semibold [@media(pointer:coarse)]:h-11" data-testid="rail-tab-stations">Stations</TabsTrigger>
                 </TabsList>
                 <TabsContent value="map" className="mt-4">{controls}</TabsContent>
                 <TabsContent value="stations" className="mt-4" data-testid="rail-stations">

@@ -24,7 +24,7 @@ function Example({ question, view, note = null, lateUntil = null }) {
           {late && <span className="text-xs text-subtle">Not published yet — this opens the latest map, {shortDate(lateUntil)}.</span>}
           {note && <span className="text-xs text-subtle">{note}</span>}
           <span className="mt-auto flex items-center justify-between gap-2 pt-2">
-            <code className="min-w-0 truncate font-mono text-[11px] text-subtle">{path}</code>
+            <code className="min-w-0 truncate font-mono text-[12px] text-subtle">{path}</code>
             <ArrowRight className="h-4 w-4 shrink-0 text-accent transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
           </span>
         </Card>
@@ -48,7 +48,7 @@ export default function Launcher({ now = new Date() }) {
   const places = Object.keys(EXTENTS)
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-10" data-testid="viewer-launcher">
-      <p className="font-mono text-[11px] font-medium uppercase tracking-wide text-subtle">Climate viewer</p>
+      <p className="font-mono text-[12px] font-medium uppercase tracking-wide text-subtle">Climate viewer</p>
       <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight">A map for every day and month, with an address you can share</h1>
       <p className="mt-3 max-w-3xl text-subtle">
         The viewer draws HCDP's gridded maps of Hawaiʻi — rainfall, temperature, relative humidity, vegetation greenness,

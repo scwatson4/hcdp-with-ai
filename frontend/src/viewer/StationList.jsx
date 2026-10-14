@@ -164,7 +164,7 @@ function StationFilters({ filters, onChange, islands, unit }) {
                   onChange={(e) => set({ islands: e.target.checked ? [...filters.islands, i.code] : filters.islands.filter((c) => c !== i.code) })}
                   data-testid={`filter-island-${i.code}`}
                 />
-                {i.name} <span className="font-mono text-[11px] text-subtle">{i.count}</span>
+                {i.name} <span className="font-mono text-[12px] text-subtle">{i.count}</span>
               </label>
             ))}
             {!shownIslands.length && <span className="text-xs text-subtle">No island matches.</span>}
@@ -238,7 +238,7 @@ export default function StationList({ v, values, meta, status, selectedSkn = nul
     <div className={cn('flex min-w-0 flex-col gap-2', className)} data-testid="station-list">
       {hint}
       <StationFilters filters={filters} onChange={setFilters} islands={islands} unit={unit} />
-      <p className="font-mono text-[11px] text-subtle" aria-live="polite" data-testid="station-count">
+      <p className="font-mono text-[12px] text-subtle" aria-live="polite" data-testid="station-count">
         {status === 'loading' || (status === 'ready' && !meta) ? <span className="inline-flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> loading stations…</span>
           : status === 'notfound' ? 'No station values for this date.'
             : status === 'error' ? 'The station values did not load.'
@@ -251,7 +251,7 @@ export default function StationList({ v, values, meta, status, selectedSkn = nul
               <tr className="border-b border-border text-subtle">
                 {COLUMNS.map((c) => (
                   <th key={c.key} scope="col" aria-sort={sort.key === c.key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'} className={cn('px-1 py-1 font-normal', c.className)}>
-                    <button type="button" onClick={() => toggleSort(c.key)} className={cn('inline-flex min-h-7 items-center gap-0.5 rounded font-mono text-[10px] uppercase tracking-wide hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:min-h-11', sort.key === c.key && 'text-foreground')} data-testid={`station-sort-${c.key}`}>
+                    <button type="button" onClick={() => toggleSort(c.key)} className={cn('inline-flex min-h-7 items-center gap-0.5 rounded font-mono text-[12px] uppercase tracking-wide hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:min-h-11', sort.key === c.key && 'text-foreground')} data-testid={`station-sort-${c.key}`}>
                       {c.label} <Arrow k={c.key} />
                     </button>
                   </th>
@@ -277,10 +277,10 @@ export default function StationList({ v, values, meta, status, selectedSkn = nul
                         {s.name || `Station ${s.skn}`}
                       </button>
                     </td>
-                    <td className="whitespace-nowrap px-1 py-1.5 font-mono text-[11px]">{s.skn}</td>
+                    <td className="whitespace-nowrap px-1 py-1.5 font-mono text-[12px]">{s.skn}</td>
                     <td className="whitespace-nowrap px-1 py-1.5">{islandName(s.island) || '—'}</td>
-                    <td className="whitespace-nowrap px-1 py-1.5 text-right font-mono text-[11px] tabular-nums">{s.elevation_m != null ? Math.round(s.elevation_m).toLocaleString('en-US') : '—'}</td>
-                    <td className="whitespace-nowrap px-1 py-1.5 text-right font-mono text-[11px] tabular-nums">{s.value != null ? formatValue(s.value, v.dataset, v.opts) : '—'}</td>
+                    <td className="whitespace-nowrap px-1 py-1.5 text-right font-mono text-[12px] tabular-nums">{s.elevation_m != null ? Math.round(s.elevation_m).toLocaleString('en-US') : '—'}</td>
+                    <td className="whitespace-nowrap px-1 py-1.5 text-right font-mono text-[12px] tabular-nums">{s.value != null ? formatValue(s.value, v.dataset, v.opts) : '—'}</td>
                   </tr>
                 )
               })}

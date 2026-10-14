@@ -108,7 +108,7 @@ export default function BottomSheet({ title, tabs, tab, onTabChange, snap = 'pee
         <div ref={header} className="relative shrink-0">
           <button
             type="button"
-            className="block w-full touch-none cursor-grab py-2.5 active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="-mb-2.5 block w-full touch-none cursor-grab py-5 active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label={handleLabel}
             onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerCancel} onClick={onClick}
             data-testid="sheet-handle"

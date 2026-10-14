@@ -1035,3 +1035,41 @@
 
 /* QB-Q1 B (13 Oct): the send arrow is solid the moment there is text (greyed by disabled:opacity-40 when empty). */
 .hcdp-send[data-solid="true"]:not(:disabled) { background: hsl(var(--accent) / 0.92); }
+
+/* ── 14 Oct: phones (M2 A, M1 C, QB-T3 B) ──
+   An overlay holds the page still (overlayHistory.js useScrollLock). */
+html.hcdp-scroll-lock, html.hcdp-scroll-lock body { overflow: hidden; overscroll-behavior: none; }
+/* The goo (restored from the dock of 25 Sep): the phone's Ask AI sheet and the full-screen map's mini Ask AI box squash
+   and pull into their pill like a blob (hcdp-goo-close, through the #hcdp-goo filter on .hcdp-goo-wrap), and the pill pops
+   back (hcdp-goo-pop). transform-origin is set inline where it is used (the pill's corner). Reduced motion: a plain fade. */
+@keyframes hcdp-goo-close {
+  0%   { transform: scale(1, 1); border-radius: 16px; opacity: 1; }
+  35%  { transform: scale(1.05, 0.84); border-radius: 22px 22px 30px 30px; opacity: 1; }
+  70%  { transform: scale(0.42, 0.55); border-radius: 50% 50% 55% 45%; opacity: 0.9; }
+  100% { transform: scale(0.08, 0.08); border-radius: 50%; opacity: 0; }
+}
+@keyframes hcdp-goo-pop {
+  0%   { transform: scale(0.4); opacity: 0; }
+  60%  { transform: scale(1.12); opacity: 1; }
+  80%  { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+.hcdp-goo-close { animation: hcdp-goo-close 480ms cubic-bezier(.55,.05,.35,1) forwards; pointer-events: none; }
+.hcdp-goo-wrap { filter: url(#hcdp-goo); }
+.hcdp-goo-pop { animation: hcdp-goo-pop 420ms cubic-bezier(.34,1.56,.64,1) both; }
+/* A bottom sheet rises into place (220 ms); its scrim fades in. */
+@keyframes hcdp-sheet-in { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.hcdp-sheet-in { animation: hcdp-sheet-in 240ms cubic-bezier(.22,1,.36,1) both; }
+@keyframes hcdp-scrim-in { from { opacity: 0; } to { opacity: 1; } }
+.hcdp-scrim-in { animation: hcdp-scrim-in 200ms ease both; }
+/* A side sheet (the phone menu) slides in from the right edge. */
+@keyframes hcdp-side-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
+.hcdp-side-in { animation: hcdp-side-in 240ms cubic-bezier(.22,1,.36,1) both; }
+/* The toast ("Link copied") rises a little and fades in. */
+@keyframes hcdp-toast-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.hcdp-toast-in { animation: hcdp-toast-in 180ms ease both; }
+@media (prefers-reduced-motion: reduce) {
+  .hcdp-goo-close { animation: none; opacity: 0; transition: opacity 200ms; }
+  .hcdp-goo-wrap { filter: none; }
+  .hcdp-goo-pop, .hcdp-sheet-in, .hcdp-scrim-in, .hcdp-side-in, .hcdp-toast-in { animation: none; }
+}

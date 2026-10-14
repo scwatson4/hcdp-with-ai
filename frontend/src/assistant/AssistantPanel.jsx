@@ -7,6 +7,9 @@ import { handoffUrl } from '../site/handoff'
 import { DEBOUNCE_MS, MIN_CHARS, fold, localMatch } from './localMatch'
 import { formatDate, lastCompleteMonth } from '../pages/content/contentUtils'
 import TileChoice from './TileChoice'
+import { useNarrowScreen } from '../viewer/useMediaQuery'
+import { useOverlayHistory } from '../components/overlayHistory'
+import { ASK_SHEET, openAskSheetFromTap } from './askSheetState'
 
 // T2 pick B (2026-10-08): the hand-off moment. The sentence is fixed (the backend writes the
 // same words into the conversation history); "here" is the link; a grey line says what to
@@ -110,9 +113,17 @@ function HandoffReply({ m }) {
  * choosing a row calls the provider's choose(): the field keeps the typed text, the wait line says "Opening {title}…"
  * for one hold, then the page opens (an external one in a new tab) and the overview flow runs.
  */
-export function AskBar({ docked = false, glass = false, onChipsState = null }) {
+export function AskBar({ docked = false, glass = false, onChipsState = null, inSheet = false, mini = false }) {
   const { messages, busy, travelling, send, choose, followupsFor, chipTemplate } = useAssistant()
   const { pathname, search } = useLocation()
+  // M2 A (14 Oct): on a phone the docked bar is the door to the Ask AI sheet — a tap on it opens the sheet (whose own
+  // field takes the keyboard); the bar keeps its quiet follow-up ghost (M3 C). In the sheet and in the full-screen
+  // map's mini box (QB-T3 B) the bar is the real field: its suggestions open upward and there is no keyboard hint.
+  const phone = useNarrowScreen()
+  const askSheet = useOverlayHistory(ASK_SHEET)
+  const opensSheet = docked && !inSheet && !mini && phone
+  const openSheet = () => openAskSheetFromTap(askSheet.open)
+  const listUp = inSheet || mini
   const [text, setText] = useState('')
   const EXAMPLES = useMemo(() => examplesFor(new Date()), [])   // the date rule: the dated example is computed at render time
   // ── the typeahead (R6 D) ──
@@ -137,11 +148,12 @@ export function AskBar({ docked = false, glass = false, onChipsState = null }) {
     document.addEventListener('pointerdown', onDown)
     return () => document.removeEventListener('pointerdown', onDown)
   }, [listOpen])
-  const pick = (row) => { setDismissed(true); choose(row, { ask: text, echoAsk: true, docked }) }
+  const pick = (row) => { setDismissed(true); choose(row, { ask: text, echoAsk: true, docked, inPlace: mini }) }
   const hasConversation = messages.length > 1
   // The ghost's pool: this address's follow-ups when docked; the examples before any conversation; else nothing.
+  // (The phone sheet shows the follow-ups as chips above its field, so its own field has no ghost.)
   const followups = docked && followupsFor ? followupsFor(pathname, search) : null
-  const pool = followups && followups.length ? followups : (!hasConversation ? EXAMPLES : null)
+  const pool = inSheet ? null : followups && followups.length ? followups : (!hasConversation ? EXAMPLES : null)
   const poolKind = followups && followups.length ? 'followups' : 'examples'
   const poolKey = pool ? `${poolKind}:${pool.join('\u0001')}` : 'none'
   // N4 A: the set in use follows the incoming one at once while nothing is cycling, else at the end of the current hold.
@@ -241,9 +253,11 @@ export function AskBar({ docked = false, glass = false, onChipsState = null }) {
   }, [text, lineHeight])
   // Sending from the docked bar empties the field and lets go of it (the page is about to change; on phones the keyboard
   // goes), so the destination's follow-ups can start cycling with no user action; a click back in freezes them again.
-  const submit = (e) => { e?.preventDefault(); const t = text; if (docked) { setText(''); inputRef.current?.blur() } send(t, { docked }) }
+  const submit = (e) => { e?.preventDefault(); if (opensSheet) { openSheet(); return } const t = text; if (docked) { setText(''); inputRef.current?.blur() } send(t, { docked, inPlace: mini }) }
   const clear = () => { setText(''); inputRef.current?.focus() }
   const onKeyDown = (e) => {
+    // M2 A: on a phone the docked bar only opens the sheet (Enter or a typed character from a hardware keyboard too)
+    if (opensSheet) { if (e.key === 'Enter' || e.key.length === 1) { e.preventDefault(); openSheet() } return }
     if (listOpen && e.key === 'ArrowDown') { e.preventDefault(); setActive((a) => (a + 1) % rowCount); return }
     if (listOpen && e.key === 'ArrowUp') { e.preventDefault(); setActive((a) => (a <= 0 ? rowCount - 1 : a - 1)); return }
     // QB-Q1 B: Esc closes the typeahead first; the next press clears the field
@@ -255,7 +269,7 @@ export function AskBar({ docked = false, glass = false, onChipsState = null }) {
   // QB-Q5 B: a chip's template lands in the field with its first blank selected, so typing replaces it (the selection is
   // applied once the new value has been committed).
   useEffect(() => {
-    if (!chipTemplate || docked) return undefined
+    if (!chipTemplate || (chipTemplate.target === 'sheet' ? !inSheet : docked)) return undefined
     const { template, blanks, seq } = chipTemplate
     if (!template || seenChip.current === seq) return undefined
     seenChip.current = seq
@@ -263,7 +277,7 @@ export function AskBar({ docked = false, glass = false, onChipsState = null }) {
     selectRef.current = at >= 0 ? { start: at, end: at + blanks[0].length } : { start: template.length, end: template.length }
     setText(template)
     return undefined
-  }, [chipTemplate, docked])
+  }, [chipTemplate, docked, inSheet])
   useLayoutEffect(() => {
     const sel = selectRef.current
     if (!sel) return
@@ -273,13 +287,14 @@ export function AskBar({ docked = false, glass = false, onChipsState = null }) {
   }, [text])
   const placeholder = ghostQuery ? '' : docked && hasConversation ? 'Ask for another page or map…' : 'What are you looking for?'
   return (
-    <form ref={formRef} onSubmit={submit} onMouseEnter={() => { hoverRef.current = true }} onMouseLeave={() => { hoverRef.current = false }} data-testid={docked ? 'docked-ask-bar' : 'ask-bar'} className="relative">
-      <div className={cn('hcdp-ask', lines > 1 ? 'rounded-3xl' : 'rounded-full', docked ? 'min-h-11' : 'min-h-14 shadow-lg', busy && 'hcdp-ask-busy')} data-testid="ask-field" data-busy={busy ? 'true' : 'false'} data-lines={lines} data-hero={docked ? undefined : 'true'}>
+    <form ref={formRef} onSubmit={submit} onMouseEnter={() => { hoverRef.current = true }} onMouseLeave={() => { hoverRef.current = false }} data-testid={inSheet ? 'sheet-ask-bar' : mini ? 'mini-ask-bar' : docked ? 'docked-ask-bar' : 'ask-bar'} data-opens-sheet={opensSheet ? 'true' : undefined} className="relative">
+      <div className={cn('hcdp-ask', lines > 1 ? 'rounded-3xl' : 'rounded-full', docked ? 'min-h-11' : 'min-h-14 shadow-lg', busy && 'hcdp-ask-busy', opensSheet && 'cursor-text')} data-testid="ask-field" data-busy={busy ? 'true' : 'false'} data-lines={lines} data-hero={docked ? undefined : 'true'}
+        onClick={opensSheet ? openSheet : undefined}>
         <span aria-hidden="true" className="hcdp-ask-ring" />
         <div className={cn('hcdp-ask-field relative flex min-h-[inherit] items-end', docked ? 'py-1 pl-3 pr-1' : 'py-2 pl-4 pr-2', glass && 'hcdp-ask-glass')}>
           {/* QB-Q1 B: an 18 px grey magnifier at the left edge; the ghost and the typeahead sit to its right */}
           <Search className="my-auto mr-2 h-[18px] w-[18px] shrink-0 text-subtle" aria-hidden="true" data-testid="ask-magnifier" />
-          <textarea ref={inputRef} value={text} rows={1} onChange={(e) => setText(e.target.value.slice(0, 500))} autoComplete="off" enterKeyHint="send"
+          <textarea ref={inputRef} value={text} rows={1} onChange={(e) => setText(e.target.value.slice(0, 500))} autoComplete="off" enterKeyHint="send" readOnly={opensSheet || undefined}
             onKeyDown={onKeyDown}
             onFocus={() => { setFocused(true); focusRef.current = true }} onBlur={() => { setFocused(false); focusRef.current = false }}
             aria-describedby={ghostQuery ? 'ask-ghost-hint' : undefined}
@@ -300,7 +315,7 @@ export function AskBar({ docked = false, glass = false, onChipsState = null }) {
               </div>
             </>
           )}
-          {ghostQuery && focused && <kbd className="mr-2 hidden shrink-0 rounded-md border border-border bg-surface px-1.5 py-px font-mono text-[11px] text-foreground sm:inline-block" data-testid="ask-tab-hint">Tab ↹</kbd>}
+          {ghostQuery && focused && !listUp && !opensSheet && <kbd className="mr-2 hidden shrink-0 rounded-md border border-border bg-surface px-1.5 py-px font-mono text-[12px] text-foreground sm:inline-block [@media(hover:none)]:!hidden" data-testid="ask-tab-hint">Tab ↹</kbd>}
           {/* QB-Q1 B: a round × that empties the field, only while there is text (44 px hit on coarse pointers) */}
           {text && (
             <button type="button" onClick={clear} aria-label="Clear" data-testid="ask-clear"
@@ -308,12 +323,12 @@ export function AskBar({ docked = false, glass = false, onChipsState = null }) {
               <X className="h-4 w-4" aria-hidden="true" />
             </button>
           )}
-          <button type="submit" disabled={!text.trim() || busy || travelling} aria-label="Send" data-solid={text.trim() ? 'true' : 'false'} className={cn('hcdp-send grid shrink-0 place-items-center rounded-full text-accent-foreground disabled:opacity-40', docked ? 'h-9 w-9' : 'h-10 w-10')}><ArrowUp className="h-4 w-4" /></button>
+          <button type="submit" disabled={opensSheet ? false : (!text.trim() || busy || travelling)} aria-label={opensSheet ? 'Ask AI' : 'Send'} data-solid={text.trim() ? 'true' : 'false'} className={cn('hcdp-send grid shrink-0 place-items-center rounded-full text-accent-foreground disabled:opacity-40', inSheet ? 'h-11 w-11' : docked ? 'h-9 w-9' : 'h-10 w-10', opensSheet && 'opacity-40')}><ArrowUp className="h-4 w-4" /></button>
         </div>
       </div>
       {listOpen && (
-        <ul role="listbox" id={listId} aria-label="Pages that match what you typed" data-testid="typeahead"
-          className={cn('absolute inset-x-0 top-full z-20 overflow-hidden rounded-xl border border-border bg-card py-1 shadow-lg', docked ? 'mt-1' : 'mt-2')}>
+        <ul role="listbox" id={listId} aria-label="Pages that match what you typed" data-testid="typeahead" data-direction={listUp ? 'up' : 'down'}
+          className={cn('absolute inset-x-0 z-20 overflow-hidden rounded-xl border border-border bg-card py-1 shadow-lg', listUp ? 'bottom-full mb-1' : 'top-full', !listUp && (docked ? 'mt-1' : 'mt-2'))}>
           <li id={`${listId}-0`} role="option" aria-selected={active === 0} data-testid="typeahead-ask"
             onPointerDown={(e) => e.preventDefault()} onClick={() => submit()} onMouseEnter={() => setActive(0)}
             className={cn('flex cursor-pointer items-center gap-2 px-4 py-2 text-left text-[14px] text-foreground [@media(pointer:coarse)]:min-h-11', active === 0 ? 'bg-muted' : 'hover:bg-muted/60')}>

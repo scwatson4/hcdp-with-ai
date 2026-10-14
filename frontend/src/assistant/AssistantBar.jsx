@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { ExternalLink, X } from 'lucide-react'
 import { useAssistant } from './AssistantProvider'
 import { AskBar, Conversation } from './AssistantPanel'
+import { useNarrowScreen } from '../viewer/useMediaQuery'
 import { cn } from '../lib/utils'
 
 // R1 pick D (2026-10-08): on every inner page the ask bar is docked directly under the header as a
@@ -20,6 +21,8 @@ import { cn } from '../lib/utils'
 //     summary came.
 // Not on the landing page (there the hero bar is the assistant) — except invisibly during the
 // ride-up, so the travelling bar has a rectangle to arrive at.
+// M2 A (14 Oct): below 768 px there is no dropdown — a tap on the bar opens the Ask AI sheet (AskSheet.jsx), and a reply
+// with nowhere to go opens the sheet too.
 export default function AssistantBar() {
   const { mode, setMode, minimize, reset, travel, strip, epoch, holdStrip, releaseStrip, hideStrip, heroOut, wait } = useAssistant()
   const working = wait != null
@@ -27,7 +30,8 @@ export default function AssistantBar() {
   const onLanding = pathname === '/' && !heroOut   // L4 E: once the hero has scrolled away the bar docks here too
   const measuring = onLanding && travel.phase === 'travel'
   const rootRef = useRef(null)
-  const open = mode === 'panel' && !measuring
+  const phone = useNarrowScreen()
+  const open = mode === 'panel' && !measuring && !phone
 
   // A click anywhere outside the bar and its dropdown closes the dropdown.
   useEffect(() => {

@@ -5,6 +5,7 @@ import { handoffUrl } from '../site/handoff'
 import { clearDownload, currentDownload, noteDownload } from '../download/downloadStore'
 import TravelProxy from './TravelProxy'
 import { shortTitle } from './localMatch'
+import { OVERLAY, liveState, overlayOf } from '../components/overlayHistory'
 
 // The navigator's client-side brain. Conversation lives in memory only (this
 // tab, this visit); nothing is stored. The assistant has three states:
@@ -42,7 +43,15 @@ export const WAIT_HANDOFF = 'Opening the AI data analysis tool…'
 export const opening = (title) => (title ? `Opening ${title}…` : 'Opening…')
 export const openingTab = (title) => (title ? `Opening ${title} in a new tab…` : 'Opening a new tab…')
 
-const WELCOME = { id: 0, role: 'assistant', content: 'Tell me what you are looking for and I will take you there: a map, a station, a storm report, a download, a tool.' }
+export const WELCOME_TEXT = 'Tell me what you are looking for and I will take you there: a map, a station, a storm report, a download, a tool.'
+const WELCOME = { id: 0, role: 'assistant', content: WELCOME_TEXT }
+
+/** Whether a path is one viewer map (not the launcher), so an answer from the full-screen map can open it in place. */
+const isViewerMap = (path) => {
+  const [p, q = ''] = String(path || '').split('#')[0].split('?')
+  const v = parseViewerPath(p, q ? `?${q}` : '')
+  return Boolean(v && !v.error)
+}
 
 // T2 pick B (2026-10-08): an analysis reply counts down five seconds and then opens the AI
 // interface in a new tab by itself; "Stay here" cancels. Only the newest analysis reply counts,
@@ -92,13 +101,16 @@ export function AssistantProvider({ children }) {
   const assistantPath = useRef(null)         // the last path the assistant itself navigated to (the viewer's follow-ups skip it, N4 A)
   // QB-Q5 B: the chip the visitor clicked under the hero bar — { template, blanks, seq }; the landing bar fills itself from it.
   const [chipTemplate, setChipTemplate] = useState(null)
-  const pickChip = useCallback((chip) => { if (chip?.template) setChipTemplate({ template: chip.template, blanks: chip.blanks || [], seq: Date.now() + Math.random() }) }, [])
+  // `target`: the bar that fills itself — 'hero' (the landing) or 'sheet' (the phone's Ask AI sheet, M2 A).
+  const pickChip = useCallback((chip, target = 'hero') => { if (chip?.template) setChipTemplate({ template: chip.template, blanks: chip.blanks || [], target, seq: Date.now() + Math.random() }) }, [])
   const [epoch, setEpoch] = useState(0)      // bumped by reset(): the bars remount empty (item 13)
   const historyRef = useRef([])
   const seq = useRef(0)
   const nextId = () => { seq.current += 1; return seq.current }
   const timers = useRef({})
   const travelling = travel.phase !== 'idle'
+  const locStateRef = useRef(location.state)
+  locStateRef.current = location.state
 
   // ── the hand-off countdown: { id, href, remaining, status: 'counting' | 'opened' | 'blocked' | 'stayed' } ──
   const [handoff, setHandoff] = useState(null)
@@ -244,14 +256,20 @@ export function AssistantProvider({ children }) {
 
   // ── answer first, then travel ──
   const clearTravel = useCallback(() => { clearTimeout(timers.current.hold); clearTimeout(timers.current.travel); timers.current.hold = timers.current.travel = null }, [])
-  /** The page changes: the bar docks under the header and the reply sits in the strip for a while. */
-  const arrive = useCallback((path, s) => {
+  /** The page changes: the bar docks under the header and the reply sits in the strip for a while.
+   *  14 Oct: an answer that arrives while an overlay owns the history entry (the phone's Ask AI sheet, the menu, the
+   *  full-screen map) replaces that entry, so Back from the destination does not reopen the overlay; `inPlace` (the
+   *  full-screen map's mini box, QB-T3 B) opens another map in the same full-screen entry. */
+  const arrive = useCallback((path, s, { inPlace = false } = {}) => {
     clearTravel()
     endWait()
     setTravel({ phase: 'idle', path: null })
     noteNavigation(path)
     assistantPath.current = path.split('#')[0]
-    navigate(path)
+    const overlay = overlayOf(liveState() ?? locStateRef.current)
+    if (inPlace && overlay === 'full' && isViewerMap(path)) navigate(path, { replace: true, state: { [OVERLAY]: 'full' } })
+    else if (overlay) navigate(path, { replace: true })
+    else navigate(path)
     setMode('dock')
     const strip = { ...s, path: path.split('?')[0].split('#')[0] }
     pathRef.current = strip.path
@@ -261,12 +279,12 @@ export function AssistantProvider({ children }) {
     else showStrip(strip)
   }, [clearTravel, navigate, showStrip, endWait, noteNavigation])
   /** Hold (HOLD_MS), then arrive — by way of the ride-up (`ride`, the landing page) or a plain cut (the docked bar). */
-  const beginTravel = useCallback((path, s, { ride = true } = {}) => {
+  const beginTravel = useCallback((path, s, { ride = true, inPlace = false } = {}) => {
     clearTravel()
     setTravel({ phase: 'hold', path })
     timers.current.hold = setTimeout(() => {
       timers.current.hold = null
-      if (!ride || prefersReducedMotion()) { arrive(path, s); return }   // a cut instead of the ride-up, same end state
+      if (!ride || prefersReducedMotion()) { arrive(path, s, { inPlace }); return }   // a cut instead of the ride-up, same end state
       setTravel({ phase: 'travel', path })
       timers.current.travel = setTimeout(() => arrive(path, s), TRAVEL_MS)
     }, HOLD_MS)
@@ -325,7 +343,7 @@ export function AssistantProvider({ children }) {
         setWait(opening(destination?.title))   // "Opening Hurricane Lowell report…" for the hold and the travel (arrive() ends it)
         if (!data.off_topic) requestSummary(id, q, data, nav.path)   // the destination's AI summary, in parallel with the travel
         if (onLanding) beginTravel(nav.path, s)   // answer first, then the bar rides up
-        else arrive(nav.path, s)                   // already docked: go now; the summary (or, failing that, the strip) explains
+        else arrive(nav.path, s, { inPlace: Boolean(opts.inPlace) })   // already docked: go now; the summary (or, failing that, the strip) explains
       } else if (data.intent === 'analysis') {
         holdLine(WAIT_HANDOFF, () => { if (!onLanding) setMode('panel') })   // one hold, then the card with its countdown
       } else if (opened) {
@@ -346,7 +364,7 @@ export function AssistantProvider({ children }) {
    *  its line says so), then the page opens and the destination's overview flow runs with `ask` as the question and
    *  "You chose {title}." as the reply; for an external open nothing more. `echoAsk` records the typed text as the
    *  visitor's turn (a typeahead pick); a tile answers a question already in the conversation. */
-  const choose = useCallback((target, { ask = '', echoAsk = false, docked = false } = {}) => {
+  const choose = useCallback((target, { ask = '', echoAsk = false, docked = false, inPlace = false } = {}) => {
     if (busy || travelling || !target) return false
     const title = shortTitle(target.title) || 'the page'
     const path = typeof target.path === 'string' && target.path.startsWith('/') ? target.path : (typeof target.url === 'string' && target.url.startsWith('/') ? target.url : null)
@@ -367,14 +385,14 @@ export function AssistantProvider({ children }) {
     if (url) { holdLine(openingTab(title), () => { if (actions[0].blocked && !onLanding) setMode('panel') }); return true }
     setWait(opening(title))
     requestSummary(id, q, { reply, intent: 'navigate', alternatives: [] }, path)
-    beginTravel(path, { id, reply, alternatives: [] }, { ride: onLanding })
+    beginTravel(path, { id, reply, alternatives: [] }, { ride: onLanding, inPlace })
     return true
   }, [busy, travelling, location.pathname, setSummary, hideStrip, holdLine, requestSummary, beginTravel, noteNavigation])
 
-  /** Put the cursor in the bar (the landing bar on /, the docked bar elsewhere). */
+  /** Put the cursor in the bar (the landing bar on /, the full-screen map's mini box, else the docked bar). */
   const open = useCallback(() => {
-    const sel = location.pathname === '/' ? '[data-testid="landing-assistant"] [data-testid="assistant-input"]' : '[data-testid="assistant-bar"] [data-testid="assistant-input"]'
-    document.querySelector(sel)?.focus()
+    const sels = location.pathname === '/' ? ['[data-testid="landing-assistant"] [data-testid="assistant-input"]', '[data-testid="assistant-bar"] [data-testid="assistant-input"]'] : ['[data-testid="mini-ask"] [data-testid="assistant-input"]', '[data-testid="assistant-bar"] [data-testid="assistant-input"]']
+    for (const sel of sels) { const el = document.querySelector(sel); if (el) { el.focus(); return } }
   }, [location.pathname])
   const minimize = useCallback(() => setMode((m) => (m === 'panel' ? 'dock' : m)), [])
   // Start over: the hero bar on the landing page, the docked bar anywhere else.

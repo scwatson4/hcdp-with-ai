@@ -23,7 +23,8 @@ export default function SiteFooter() {
           </div>
         </div>
       </div>
-      <div className="bg-[#1b1b1b] px-4 py-5 text-center text-[16px] text-white/70" data-testid="copyright">Copyright © {year} Hawaiʻi Climate Data Portal</div>
+      {/* M2 A (14 Oct): on phones the page ends with room under the last line, so the fixed Back-to-top button never covers it. */}
+      <div className="bg-[#1b1b1b] px-4 py-5 text-center text-[16px] text-white/70 max-md:pb-[4.75rem]" data-testid="copyright">Copyright © {year} Hawaiʻi Climate Data Portal</div>
     </footer>
   )
 }

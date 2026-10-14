@@ -74,6 +74,19 @@ There is no entry in the header menu (item 12).
 - **panel** — the docked bar's dropdown: the conversation (questions and plain answers, about twenty lines,
   scrolling), opened by focusing the bar once a conversation exists, by clicking the strip, or by a reply
   that has nowhere to go; closed by Esc, a click outside, or the next navigation.
+- **sheet** (phones, M2 A, 14 Oct) — below 768 px there is no dropdown: a tap on the docked bar (read-only there; it keeps
+  its quiet follow-up ghost) opens the **Ask AI sheet** (`assistant/AskSheet.jsx`, rendered once by the shell): full width,
+  two-thirds of the screen high, a grab handle, "Ask AI" with Start over and a 44 px ✕, the welcome line, the four
+  template chips (a tap fills the sheet's field with the first blank selected) — or, where the address has follow-up asks,
+  those as chips (a tap asks it) — the conversation's latest reply only (never the history), the staged wait line, and the
+  question box pinned to the sheet's bottom (44 px send, no Tab hint, its typeahead opening upward) riding above the
+  on-screen keyboard (`useVisualViewport`: iOS overlays the page with the keyboard). A scrim holds the page still
+  (`useScrollLock`); the scrim, the ✕, a drag on the handle (80 px), Esc or Back closes it with the **goo** (the sheet
+  melts into where it came from — the viewer's Ask AI pill, else the bottom edge; `hcdp-goo-close` through the `#hcdp-goo`
+  filter, restored from the dock of 25 Sep). A reply with nowhere to go opens the sheet on phones (the dropdown's job on
+  wide screens). The sheet owns one history entry (the phone checklist below); an answer that navigates **replaces**
+  that entry, so Back from the destination returns to the page before with the sheet closed. A tap that opens it from a
+  text field raises the keyboard inside the tap (`primeKeyboard`) and the sheet's field takes it over.
 - There is no bottom-right pill or dock any more. Arriving on the landing page brings the conversation back
   into the hero bar. `/` focuses the bar anywhere.
 - **The hand-off** (T2 pick B): an analysis reply reads exactly "This is better answered by our AI data

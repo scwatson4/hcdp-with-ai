@@ -408,6 +408,7 @@ def test_rest_pass_fetches_only_what_changed_and_keeps_the_last_good_copy(tmp_pa
     assert idx["posts"] == ["a-post"] and idx["rest_at"] and set(idx["pages"]) == {"team", "acknowledgements", "conditions-of-use"}
     h = portal.health(store)
     assert h["cached"] == 3 and h["failures_24h"] == 1 and h["newest_fetched_at"]
+    assert h["images"] == {"sources": 0, "variants": 0, "wanted": 0} and h["overviews"] == 0
 
 
 def test_overviews_are_written_once_per_copy_gently_and_back_off_on_failure(tmp_path, monkeypatch):

@@ -30,9 +30,8 @@ Three, all labelled exactly "AI Data Analysis Tool", all external (new tab, and 
 the logo's spectrum (`.hcdp-rainbow-border`, 1.5 px) rather than a solid portal colour; the label and the link
 (`handoffUrl({})`, i.e. `?from=website`) live in `AI_TOOL` in `frontend/src/site/nav.js`:
 1. the sixth button of the landing page's sidebar (white, dark type, under the portal's five);
-2. a tile on Climate Tools, caption "ask questions of the data", with its own picture (the AI interface's sign-in
-   page, `public/tiles/ai-data-analysis.jpg`, 800 × 533, the navy shade), after the portal's nine live tiles and
-   before its coming-soon one — `/tools/ai-data-analysis` is a valid tool slug;
+2. ~~a tile on Climate Tools~~ — gone with the mirror (14 Oct): /tools is now HCDP's own Climate Tools page, exactly
+   (its 12 tiles); `/tools/ai-data-analysis` stays a valid address and lands on that page with no tile ringed;
 3. "Analyze this map with AI" in the viewer's rail, above Share (and in the phone sheet's Dataset tab), whose
    link asks "Analyze the <dataset> map for <date> (<island>)" with the view as `ctx`, recomputed on every change.
 There is no entry in the header menu (item 12).

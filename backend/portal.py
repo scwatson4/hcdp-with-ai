@@ -756,6 +756,20 @@ def head_for(store: PortalStore, path: str) -> dict | None:
     return {"title": entry.get("title") or routes.TITLE_OVERRIDES.get(slug) or "", "canonical": routes.hcdp_url(slug)}
 
 
+def _count(folder: Path, suffix: str = "") -> int:
+    try:
+        with os.scandir(folder) as it:
+            return sum(1 for e in it if e.is_file() and e.name.endswith(suffix) and not e.name.startswith("."))
+    except OSError:
+        return 0
+
+
+def _count_images(store: PortalStore) -> dict:
+    """The picture cache as it is now (a pass can take a while; the index is refreshed only at its end)."""
+    d = store.root / "img"
+    return {"sources": _count(d / "src", ".bin"), "variants": _count(d / "var", ".webp"), "wanted": _count(d / "wanted")}
+
+
 def health(store: PortalStore) -> dict:
     idx = store.index()
     pages = idx.get("pages") or {}
@@ -767,7 +781,7 @@ def health(store: PortalStore) -> dict:
         "mirrored": len(routes.mirrored_slugs()), "cached": len(pages), "seed": len(seed.get("pages") or {}),
         "seed_generated_at": seed.get("generated_at"), "newest_fetched_at": times[-1] if times else None, "oldest_fetched_at": times[0] if times else None,
         "rest_at": idx.get("rest_at"), "sweep_at": idx.get("sweep_at"), "failures_24h": len(fails), "last_failure": (idx.get("failures") or [None])[0],
-        "fetches": idx.get("fetches"), "images": idx.get("images"), "overviews": idx.get("overviews"), "library_items": idx.get("library_items"),
+        "fetches": idx.get("fetches"), "images": _count_images(store), "overviews": _count(store.root / "overviews", ".json"), "library_items": idx.get("library_items"),
         "library_at": idx.get("library_at"), "leader": idx.get("leader"),
     }
 

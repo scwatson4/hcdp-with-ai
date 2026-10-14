@@ -1717,6 +1717,25 @@ describe('the full-screen map on wide screens', () => {
     await waitFor(() => expect(assistant.strip).toBeNull(), { timeout: 6000 })     // …for its five seconds
   }, 20000)
 
+  it('a typeahead choice in the mini box changes the map in place too, empties the field and lets go of it, so Esc leaves full screen', async () => {
+    renderWithAssistant('/viewer/rainfall/month/2026-09/statewide')
+    fireEvent.click(screen.getByTestId('map-fullscreen'))
+    const box = screen.getByTestId('mini-ask-box')
+    const field = within(box).getByTestId('assistant-input')
+    field.focus()
+    fireEvent.change(field, { target: { value: 'daily rainfall map' } })
+    const row = await within(box).findAllByTestId('typeahead-row')
+    expect(within(box).getByTestId('typeahead')).toHaveAttribute('data-direction', 'up')   // it opens upward from the box
+    fireEvent.click(row.find((r) => r.dataset.kind === 'map'))
+    await waitFor(() => expect(loc()).toMatch(/^\/viewer\/rainfall\/day\/\d{4}-\d{2}-\d{2}\/statewide$/), { timeout: 3000 })
+    expect(navType()).toBe('REPLACE')
+    expect(screen.getByTestId('map-column')).toHaveAttribute('data-full', 'true')
+    expect(field).toHaveValue('')
+    expect(document.activeElement).not.toBe(field)
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(screen.getByTestId('map-column')).not.toHaveAttribute('data-full'))
+  })
+
   it('a reply with nowhere to go shows as one line under the box (never the thread)', async () => {
     navigateReply = { intent: 'info', reply: 'Monthly maps come out a few days after the month ends.', actions: [], alternatives: [] }
     renderWithAssistant('/viewer/rainfall/month/2026-09/statewide')

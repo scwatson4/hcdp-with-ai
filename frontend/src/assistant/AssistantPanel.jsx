@@ -151,7 +151,9 @@ export function AskBar({ docked = false, glass = false, onChipsState = null, inS
     document.addEventListener('pointerdown', onDown)
     return () => document.removeEventListener('pointerdown', onDown)
   }, [listOpen])
-  const pick = (row) => { setDismissed(true); choose(row, { ask: text, echoAsk: true, docked, inPlace: mini }) }
+  // (in the full-screen map's mini box a choice changes the map in place: the field empties and lets go, as a sent question
+  // does, so the new map's follow-ups can show and the next Esc leaves full screen)
+  const pick = (row) => { setDismissed(true); const ask = text; if (mini) { setText(''); inputRef.current?.blur() } choose(row, { ask, echoAsk: true, docked, inPlace: mini }) }
   const hasConversation = messages.length > 1
   // The ghost's pool: this address's follow-ups when docked; the examples before any conversation; else nothing.
   // (The phone sheet shows the follow-ups as chips above its field, so its own field has no ghost.)

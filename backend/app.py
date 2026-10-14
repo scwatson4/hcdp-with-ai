@@ -7,7 +7,13 @@ Endpoints
   POST /api/followups         three follow-up asks for a page, without a summary (the viewer asks for them 1.5 s after a rail change, N4 A)
   POST /api/feedback/wrong-page            "Wrong page?" — what the visitor wanted instead (P4 A; SQLite, no visitor data, rate-limited) → {id}
   POST /api/feedback/wrong-page/{id}/chose the page they went to next (attached once, within the client's ten minutes)
-  GET  /api/admin/feedback(.csv)           the reports, newest first, behind ADMIN_KEY (X-Admin-Key; 404 when unset, 401 when wrong)
+  POST /api/feedback                       a reviewer's feedback item (F1–F5, 13 Oct): thumbs on an answer/overview, a note on a selection, the tab, a 👎 with the wanted page → {id}
+  GET  /api/feedback/mine?name=            the reviewer's own items (by the name their browser remembers)
+  GET  /api/feedback/others?name=          everyone else's items as titles + status only (no names)
+  POST /api/feedback/rename {from, to}     the reviewer's earlier items follow a new name
+  GET  /api/admin/feedback(.csv)           the wrong-page reports, newest first, behind ADMIN_KEY (X-Admin-Key; 404 when unset, 401 when wrong)
+  GET  /api/admin/feedback/review(.csv)    the review list over both tables (?kind&feature&status), with counts; PATCH /api/admin/feedback/{id} {status, admin_note}
+  GET  /api/admin/feedback/evals.json      the 👎 / wrong-page rows that named a page, as usecases.json-shaped eval cases (F5)
   GET  /api/raster            GeoTIFF proxy to the HCDP API (token stays here; disk cache; ETag + Range)
   GET  /api/dates             available date range for a dataset (proxy, memory cache)
   GET  /api/map.png|webp      a map rendered with a viewer ramp (landing backdrops)
@@ -56,6 +62,7 @@ load_dotenv(ROOT.parent / ".env")  # local development; containers get the env f
 
 from export import (ANONYMOUS_EMAIL, EMAIL_MAX_FILES, INSTANT_MAX_FILES, ExportError, options as export_options, payload as export_payload,  # noqa: E402
                     valid_email as export_valid_email, validate as export_validate, zip_filename)
+import feedback as fb  # noqa: E402
 from feedback import ID_RE as FEEDBACK_ID_RE, FeedbackStore  # noqa: E402
 from llm import NavigatorLLM  # noqa: E402
 from navigator import (DATASETS, EXTENTS, HAWAII_BOX, STATEWIDE_ONLY, STATION_DATASETS, Navigator, canonical_viewer_path,  # noqa: E402
@@ -115,6 +122,8 @@ app.state.export_limiter = RateLimiter(per_minute=int(os.environ.get("EXPORT_PER
 app.state.email_limiter = RateLimiter(per_minute=int(os.environ.get("EMAIL_PER_MINUTE", "2")), per_hour=int(os.environ.get("EMAIL_PER_HOUR", "10")), global_per_day=int(os.environ.get("EMAIL_GLOBAL_PER_DAY", "500")))
 # Wrong-page feedback (P4 A): a report and its follow-up write a row each; a limiter keeps one connection from filling the table.
 app.state.feedback_limiter = RateLimiter(per_minute=int(os.environ.get("FEEDBACK_PER_MINUTE", "6")), per_hour=int(os.environ.get("FEEDBACK_PER_HOUR", "40")), global_per_day=int(os.environ.get("FEEDBACK_GLOBAL_PER_DAY", "5000")))
+# The review-period feedback (F1–F5): thumbs are one tap each, so its own, roomier limiter (the IP is only ever counted, never stored).
+app.state.feedback_items_limiter = RateLimiter(per_minute=int(os.environ.get("FEEDBACK_ITEMS_PER_MINUTE", "12")), per_hour=int(os.environ.get("FEEDBACK_ITEMS_PER_HOUR", "120")), global_per_day=int(os.environ.get("FEEDBACK_ITEMS_GLOBAL_PER_DAY", "10000")))
 app.state.admin_key = ADMIN_KEY
 try:
     app.state.feedback = FeedbackStore(FEEDBACK_DB)
@@ -234,12 +243,14 @@ async def api_health(request: Request):
     store = getattr(request.app.state, "feedback", None)
     try:
         stored = store.count() if store is not None else None
+        items = store.count_items() if store is not None else None
     except Exception:  # noqa: BLE001
-        stored = None
+        stored = items = None
     return {
         "ok": True, "model": llm.model, "model_configured": llm.configured, "llm": llm.stats,
-        # P4 A: whether the admin view is unlocked (a boolean, never the key) and whether the store answers
-        "feedback": {"enabled": bool(getattr(request.app.state, "admin_key", "")), "store": store is not None, "stored": stored},
+        # P4 A: whether the admin view is unlocked (a boolean, never the key) and whether the store answers; `stored` counts the
+        # wrong-page reports, `items` the review-period feedback items (F1–F5)
+        "feedback": {"enabled": bool(getattr(request.app.state, "admin_key", "")), "store": store is not None, "stored": stored, "items": items},
         # the two small gpt-6-luna clients (the wait line, the AI overview): calls, errors, the last error's class and latency
         "narration": {"model": getattr(narrator, "model", None), "stats": getattr(narrator, "stats", None)},
         "summary": {"model": getattr(summary_llm, "model", None), "timeout": getattr(summary_llm, "timeout", None), "stats": getattr(summary_llm, "stats", None)},
@@ -1168,6 +1179,173 @@ async def api_admin_feedback_csv(request: Request):
     store = _feedback_store(request)
     text = await run_in_threadpool(store.csv)
     return PlainTextResponse(text, media_type="text/csv; charset=utf-8", headers={"Content-Disposition": 'attachment; filename="hcdp-wrong-page-feedback.csv"', "Cache-Control": "no-store"})
+
+
+# ----- the review-period feedback (F1–F5, 13 Oct; CONTRACT.md "Feedback") -------------------------
+class FeedbackPageBody(BaseModel):
+    path: str = Field(default="", max_length=1000)
+    title: str = Field(default="", max_length=200)
+
+
+class FeedbackBody(BaseModel):
+    kind: str = Field(max_length=20)
+    rating: str | None = Field(default=None, max_length=8)
+    feature: str = Field(default="other", max_length=20)
+    page: FeedbackPageBody = Field(default_factory=FeedbackPageBody)
+    quote: str | None = Field(default=None, max_length=500)
+    ask: str | None = Field(default=None, max_length=500)
+    reply: str | None = Field(default=None, max_length=2000)
+    overview_id: str | None = Field(default=None, max_length=64)
+    wanted: WantedBody | None = None
+    text: str = Field(default="", max_length=2000)
+    reviewer_name: str = Field(default="", max_length=60)
+
+
+class FeedbackRenameBody(BaseModel):
+    old: str = Field(min_length=1, max_length=60, alias="from")
+    new: str = Field(min_length=1, max_length=60, alias="to")
+    model_config = {"populate_by_name": True}
+
+
+class FeedbackPatchBody(BaseModel):
+    status: str | None = Field(default=None, max_length=12)
+    admin_note: str | None = Field(default=None, max_length=2000)
+
+
+def _feedback_limited(request: Request):
+    if request.app.state.feedback_items_limiter.check(request.client.host if request.client else "?"):
+        return JSONResponse({"detail": "That is a lot of feedback from one connection in a short time. Wait a minute and try again."}, status_code=429)
+    return None
+
+
+@app.post("/api/feedback")
+async def api_feedback(body: FeedbackBody, request: Request):
+    """One feedback item from a reviewer: a thumbs up or down on an AI answer or overview (the exchange attached), a note
+    on a selected passage (the quote), a note from the "Give feedback" tab (a feature picked), or a 👎 that names the
+    page that was wanted. Free text is required except for a one-tap thumbs up. Stores the page, the feature, the
+    attachments, the text and the reviewer's name — nothing about the visitor's connection — and answers {id}."""
+    limited = _feedback_limited(request)
+    if limited:
+        return limited
+    if body.kind not in fb.KINDS:
+        raise HTTPException(400, "kind must be one of " + ", ".join(fb.KINDS))
+    rating = (body.rating or "").strip() or None
+    if rating is not None and rating not in fb.RATINGS:
+        raise HTTPException(400, "rating must be up or down")
+    if body.kind == "thumbs" and rating is None:
+        raise HTTPException(400, "a thumbs item needs a rating")
+    feature = (body.feature or "other").strip() or "other"
+    if feature not in fb.FEATURES:
+        raise HTTPException(400, "feature must be one of " + ", ".join(fb.FEATURES))
+    text = body.text.strip()
+    if not text and not (body.kind == "thumbs" and rating == "up"):
+        raise HTTPException(400, "say something in the text")
+    path = body.page.path.strip()
+    if path and not (path.startswith("/") and "\n" not in path):
+        raise HTTPException(400, "page.path must be a path on this site")
+    wanted = None
+    if body.wanted is not None:
+        wtext = (body.wanted.text or "").strip()
+        wurl = (body.wanted.url or "").strip()
+        if wurl and not _a_place(wurl, request):
+            raise HTTPException(400, "wanted.url must be a page on this site or an HCDP page")
+        if wurl or wtext:
+            wanted = {"title": (body.wanted.title or "").strip()[:200] or None, "url": wurl or None, "text": wtext or None}
+    item = {"kind": body.kind, "rating": rating, "feature": feature, "page_path": path or None, "page_title": body.page.title.strip() or None,
+            "quote": (body.quote or "").strip() or None, "ask": (body.ask or "").strip() or None, "reply": (body.reply or "").strip() or None,
+            "overview_id": (body.overview_id or "").strip() or None, "wanted": wanted, "text": text or None, "reviewer_name": body.reviewer_name.strip() or None}
+    store = _feedback_store(request)
+    fid = await run_in_threadpool(store.add, item)
+    return JSONResponse({"id": fid}, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/feedback/mine")
+async def api_feedback_mine(request: Request, name: str = Query(default="", max_length=60)):
+    """The reviewer's own items, by the name their browser remembers (a review-period convenience, not an identity)."""
+    store = _feedback_store(request)
+    rows = await run_in_threadpool(store.mine, name) if name.strip() else []
+    return JSONResponse({"rows": rows}, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/feedback/others")
+async def api_feedback_others(request: Request, name: str = Query(default="", max_length=60)):
+    """Everyone else's items as titles and statuses only — never a name."""
+    store = _feedback_store(request)
+    rows = await run_in_threadpool(store.others, name)
+    return JSONResponse({"rows": rows}, headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/feedback/rename")
+async def api_feedback_rename(body: FeedbackRenameBody, request: Request):
+    """The reviewer changed their name in the panel: their earlier items follow it."""
+    limited = _feedback_limited(request)
+    if limited:
+        return limited
+    store = _feedback_store(request)
+    n = await run_in_threadpool(store.rename, body.old, body.new)
+    return JSONResponse({"ok": True, "changed": n}, headers={"Cache-Control": "no-store"})
+
+
+def _review_filters(kind: str, feature: str, status: str) -> tuple[str | None, str | None, str | None]:
+    kind, feature, status = kind.strip(), feature.strip(), status.strip()
+    if kind and kind not in fb.KINDS:
+        raise HTTPException(400, "unknown kind")
+    if feature and feature not in fb.FEATURES:
+        raise HTTPException(400, "unknown feature")
+    if status and status not in fb.STATUSES:
+        raise HTTPException(400, "unknown status")
+    return kind or None, feature or None, status or None
+
+
+@app.get("/api/admin/feedback/review")
+async def api_admin_feedback_review(request: Request, kind: str = Query(default="", max_length=20), feature: str = Query(default="", max_length=20), status: str = Query(default="", max_length=12)):
+    """The admin's review list over BOTH tables (the feedback items and the wrong-page reports as kind wrong_page),
+    newest first, filtered by kind, feature and status; with the counts for the whole store."""
+    _admin_check(request)
+    k, f, s = _review_filters(kind, feature, status)
+    store = _feedback_store(request)
+    rows, counts = await run_in_threadpool(lambda: (store.review(k, f, s), store.review_counts()))
+    return JSONResponse({"count": len(rows), "counts": counts, "rows": rows}, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/admin/feedback/review.csv")
+async def api_admin_feedback_review_csv(request: Request, kind: str = Query(default="", max_length=20), feature: str = Query(default="", max_length=20), status: str = Query(default="", max_length=12)):
+    """The review list as CSV with a header row (the same filters)."""
+    _admin_check(request)
+    k, f, s = _review_filters(kind, feature, status)
+    store = _feedback_store(request)
+    text = await run_in_threadpool(lambda: store.review_csv(store.review(k, f, s, 5000)))
+    return PlainTextResponse(text, media_type="text/csv; charset=utf-8", headers={"Content-Disposition": 'attachment; filename="hcdp-feedback-review.csv"', "Cache-Control": "no-store"})
+
+
+@app.get("/api/admin/feedback/evals.json")
+async def api_admin_feedback_evals(request: Request):
+    """F5: the 👎 and wrong-page rows that named a page they wanted, as navigator eval cases shaped like the entries
+    of backend/data/usecases.json — a JSON file ready to paste."""
+    _admin_check(request)
+    store = _feedback_store(request)
+    catalog = request.app.state.navigator.catalog
+    cases = await run_in_threadpool(lambda: fb.eval_cases(store.review(limit=5000), catalog))
+    body = json.dumps({"as_of": dt.date.today().isoformat(), "cases": cases}, indent=1, ensure_ascii=False)
+    return Response(body, media_type="application/json", headers={"Content-Disposition": 'attachment; filename="hcdp-feedback-eval-cases.json"', "Cache-Control": "no-store"})
+
+
+@app.patch("/api/admin/feedback/{fid}")
+async def api_admin_feedback_patch(fid: str, body: FeedbackPatchBody, request: Request):
+    """The team's triage on one row of either table: a status (new | reviewed | fixed | wontfix) and/or an admin note."""
+    _admin_check(request)
+    if not FEEDBACK_ID_RE.match(fid):
+        raise HTTPException(404, "unknown item")
+    status = (body.status or "").strip() or None
+    if status is not None and status not in fb.STATUSES:
+        raise HTTPException(400, "status must be one of " + ", ".join(fb.STATUSES))
+    if status is None and body.admin_note is None:
+        raise HTTPException(400, "nothing to change")
+    store = _feedback_store(request)
+    row = await run_in_threadpool(store.set_status, fid, status, body.admin_note)
+    if row is None:
+        raise HTTPException(404, "unknown item")
+    return JSONResponse({"ok": True, "row": row}, headers={"Cache-Control": "no-store"})
 
 
 # ----- the built site ---------------------------------------------------------

@@ -20,13 +20,16 @@ export function withoutOverlay(state) {
 /** The router's state of the current history entry, read live (BrowserRouter keeps it under `usr`); null in a
  *  MemoryRouter, where the render's location.state is the truth. */
 export const liveState = () => (typeof window !== 'undefined' ? window.history.state?.usr ?? null : null)
-const liveKey = () => (typeof window !== 'undefined' ? window.history.state?.key ?? null : null)
+const liveIdx = () => (typeof window !== 'undefined' ? window.history.state?.idx ?? null : null)
 
-// overlay id → the entry this tab pushed for it: { key (BrowserRouter's entry key), here (the address) }
+// overlay id → the entry this tab pushed for it: { idx (BrowserRouter's entry index; a replace keeps it), here (the address) }
 const pushed = new Map()
 
-/** `{ isOpen, open(extraState?), close() }` for one overlay. */
-export function useOverlayHistory(id) {
+/** `{ isOpen, open(extraState?), close() }` for one overlay. `sameAddress(openedAt, now)` decides whether the address
+ *  is still the one the overlay opened on (default: identical) — the full-screen map ignores the camera, which moves by
+ *  itself when the map resizes. Closing pops the overlay's entry when no entry was pushed since and the address is the
+ *  same; otherwise it replaces the current entry without the overlay (a new map chosen inside stays in the history). */
+export function useOverlayHistory(id, { sameAddress = null } = {}) {
   const location = useLocation()
   const navigate = useNavigate()
   const isOpen = overlayOf(location.state) === id
@@ -37,18 +40,19 @@ export function useOverlayHistory(id) {
     const cur = liveState() ?? stateRef.current
     if (overlayOf(cur) === id) return
     navigate(here, { state: { ...(withoutOverlay(cur) || {}), ...(extra || {}), [OVERLAY]: id } })
-    pushed.set(id, { key: liveKey(), here })
+    pushed.set(id, { idx: liveIdx(), here })
   }, [id, here, navigate])
   const close = useCallback(() => {
     const cur = liveState() ?? stateRef.current
     if (overlayOf(cur) !== id) return
     const mine = pushed.get(id)
     pushed.delete(id)
-    const key = liveKey()
-    const same = mine && (mine.key != null ? mine.key === key : mine.here === here)
-    if (same) navigate(-1)
+    const idx = liveIdx()
+    const atPushed = Boolean(mine) && (mine.idx != null && idx != null ? mine.idx === idx : true)
+    const unchanged = Boolean(mine) && (sameAddress ? sameAddress(mine.here, here) : mine.here === here)
+    if (atPushed && unchanged) navigate(-1)
     else navigate(here, { replace: true, state: withoutOverlay(cur) })
-  }, [id, here, navigate])
+  }, [id, here, navigate, sameAddress])
   return { isOpen, open, close }
 }
 

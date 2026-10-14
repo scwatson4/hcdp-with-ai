@@ -10,7 +10,7 @@
 
 import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ChevronDown, Loader2, Share2, SlidersHorizontal } from 'lucide-react'
+import { ChevronDown, Loader2, Maximize, Share2, SlidersHorizontal, X } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { DATASETS, DEFAULT_BASEMAP, DEFAULT_OPACITY, EXTENTS, LAYER_KEYS, canonicalize, describeViewer, foreignQuery, formatViewerPath, hasStations, parseViewerPath } from './urlGrammar'
 import { scheduleUrlWrite } from './urlWrites'
@@ -40,6 +40,7 @@ import { liveState, useOverlayHistory } from '../components/overlayHistory'
 import { useClaimShell } from '../components/shellMode'
 import { OriginalVersionLink } from '../components/OriginalLink'
 import Toast, { useToast } from '../components/Toast'
+import MiniAsk from '../assistant/MiniAsk'
 
 const ClimateMap = lazy(() => import('./map/ClimateMap'))
 const TimeSeriesPanel = lazy(() => import('./TimeSeriesPanel'))
@@ -48,6 +49,8 @@ const StationList = lazy(() => import('./StationList'))
 const EYEBROW = 'font-mono text-[12px] font-medium uppercase tracking-wide text-subtle'
 // M1 C: the phone viewer's Controls sheet is an overlay with its own history entry (Back closes it).
 export const CONTROLS_SHEET = 'controls'
+// QB-T3 B: the desktop viewer's full-screen map is one too (Back, Esc or ✕ exits).
+export const FULL_MAP = 'full'
 
 /** The one spelling of an address the grammar accepts (with `patch`, if
  *  any, applied to it), with any query keys that are not the grammar's
@@ -99,6 +102,12 @@ export default function ViewerPage() {
   // The grammar reads 2026-02-30 as a date; the calendar does not.
   if (!isRealDate(v.date, v.period)) return <GrammarError error={`no such date ${v.date}`} pathname={pathname} search={search} />
   return <Viewer v={v} />
+}
+
+/** The full-screen map's entry is "the same address" while only the camera moved (it moves by itself as the map resizes). */
+export function sameMapIgnoringCamera(a, b) {
+  const strip = (s) => { const [p, q = ''] = String(s).split('#')[0].split('?'); const u = new URLSearchParams(q); for (const k of ['lat', 'lng', 'z']) u.delete(k); const r = u.toString(); return r ? `${p}?${r}` : p }
+  return strip(a) === strip(b)
 }
 
 /** Whether a dataset/period keeps ?scale=extreme (daily rainfall only). */
@@ -244,6 +253,21 @@ function Viewer({ v }) {
   const askSheet = useOverlayHistory(ASK_SHEET)
   const { toast, show: showToast } = useToast()
   const assistant = useAssistantOptional()
+  // QB-T3 B (14 Oct): on wide screens a ⛶ on the map enters a full-screen map (the shell's header and docked bar give
+  // way, the map fills the viewport) with its own history entry; Esc, the ✕ in the same place, or Back exits. The
+  // assistant is the mini Ask AI box at the bottom-left, folding into an Ask AI pill.
+  const fullMap = useOverlayHistory(FULL_MAP, { sameAddress: sameMapIgnoringCamera })
+  const fullOn = fullMap.isOpen && !narrow
+  useClaimShell('map-full', fullOn)
+  const [miniFolded, setMiniFolded] = useState(false)
+  useEffect(() => { if (!fullOn) setMiniFolded(false) }, [fullOn])
+  useEffect(() => {
+    if (!fullOn) return undefined
+    const onKey = (e) => { if (e.key === 'Escape' && !e.defaultPrevented) fullMap.close() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [fullOn, fullMap])
+  const toggleFull = useCallback(() => { if (fullMap.isOpen) fullMap.close(); else fullMap.open() }, [fullMap])
   const [railTab, setRailTab] = useState('map')
   const stationsOn = layers.includes('stations') && hasStations(v.dataset)
   // The Stations list (the day's values joined with the station list) is
@@ -363,15 +387,16 @@ function Viewer({ v }) {
   // docked bar, measured by App.jsx into --hcdp-sticky-h) less the page's 1 rem of padding above and below,
   // never under 480 px, and the map column is sticky so the rail scrolls under it; on phones (M1 C) the map
   // fills the screen under the header — two maps of a comparison share it, one above the other.
-  const single = narrow ? 'h-full' : 'h-[68vh] min-h-[360px] sm:h-[min(72vh,640px)] lg:h-[calc(100dvh-var(--hcdp-sticky-h,10.5rem)-2rem)] lg:min-h-[480px]'
-  const half = narrow ? 'min-h-0' : 'h-[48vh] min-h-[300px] sm:h-[min(72vh,640px)] lg:h-[calc(100dvh-var(--hcdp-sticky-h,10.5rem)-2rem)] lg:min-h-[480px]'
+  const single = narrow || fullOn ? 'h-full' : 'h-[68vh] min-h-[360px] sm:h-[min(72vh,640px)] lg:h-[calc(100dvh-var(--hcdp-sticky-h,10.5rem)-2rem)] lg:min-h-[480px]'
+  const half = narrow || fullOn ? 'min-h-0' : 'h-[48vh] min-h-[300px] sm:h-[min(72vh,640px)] lg:h-[calc(100dvh-var(--hcdp-sticky-h,10.5rem)-2rem)] lg:min-h-[480px]'
+  const fullProps = narrow ? {} : { onFull: toggleFull, full: fullOn }
   const maps = compareDate ? (
-    <div className={cn('grid', narrow ? 'h-full grid-rows-2 gap-1' : 'grid-cols-1 gap-3 sm:grid-cols-2')} data-testid="compare-view">
-      <div className={half}>{pane(v.date, raster, colorFn, { onViewChange, leader: true, showLegend: false, top: true, ...stationProps(stationValues) })}</div>
+    <div className={cn('grid', narrow ? 'h-full grid-rows-2 gap-1' : fullOn ? 'h-full grid-cols-2 gap-1' : 'grid-cols-1 gap-3 sm:grid-cols-2')} data-testid="compare-view">
+      <div className={half}>{pane(v.date, raster, colorFn, { onViewChange, leader: true, showLegend: false, top: true, ...fullProps, ...stationProps(stationValues) })}</div>
       <div className={half}>{pane(compareDate, compareRaster, compareColorFn, { showCompass: false, second: true, ...stationProps(compareStationValues) })}</div>
     </div>
   ) : (
-    <div className={single}>{pane(v.date, raster, colorFn, { onViewChange, ...stationProps(stationValues) })}</div>
+    <div className={single}>{pane(v.date, raster, colorFn, { onViewChange, ...fullProps, ...stationProps(stationValues) })}</div>
   )
 
   if (narrow) {
@@ -520,8 +545,13 @@ function Viewer({ v }) {
             )
           })()}
         </aside>
-        {/* Item 14: on desktop the map stays put under the sticky block while the rail scrolls. */}
-        <section className="min-w-0 lg:sticky lg:top-[calc(var(--hcdp-sticky-h,10.5rem)+1rem)]" aria-label="Map" data-testid="map-column">{maps}</section>
+        {/* Item 14: on desktop the map stays put under the sticky block while the rail scrolls. QB-T3 B: full screen, the
+            column covers the viewport (the rail stays mounted underneath, so its overview waits for the normal page). */}
+        <section className={cn('min-w-0', fullOn ? 'fixed inset-0 z-[60] bg-inset' : 'lg:sticky lg:top-[calc(var(--hcdp-sticky-h,10.5rem)+1rem)]')} aria-label="Map" data-testid="map-column"
+          data-full={fullOn ? 'true' : undefined} style={fullOn ? { '--hcdp-mini-clear': miniFolded ? '68px' : '150px' } : undefined}>
+          {maps}
+          {fullOn && assistant && <MiniAsk folded={miniFolded} onFold={() => setMiniFolded(true)} onUnfold={() => setMiniFolded(false)} />}
+        </section>
         {/* The time series: a 20 rem column beside the map on wide screens, below it otherwise. */}
         {selection && <div className="min-w-0" data-testid="timeseries-dock">{panel('lg:max-h-[calc(100dvh-var(--hcdp-sticky-h,10.5rem)-2rem)] lg:overflow-y-auto')}</div>}
       </div>
@@ -536,6 +566,7 @@ const MapPane = memo(function MapPane({
   v, date, raster, colorFn, ramp, domain, reverse = false, log = false, dateRange, opacity = DEFAULT_OPACITY / 100, layers = [],
   stations = null, stationStatus = null, selected = null, onSelectStation = null, onSelectPoint = null,
   onViewChange = null, syncBus = null, leader = false, showLegend = true, showCompass = true, phone = false, top = false, second = false,
+  onFull = null, full = false,
 }) {
   const [hover, setHover] = useState(null)
   const [pick, setPick] = useState(null)
@@ -573,7 +604,15 @@ const MapPane = memo(function MapPane({
       {/* on a phone the reading chips carry the title (the second map of a comparison keeps a one-line card) */}
       {!phone && <TitleCard title={title} caution={isIgnition(v) ? IGNITION_CAUTION : null} />}
       {phone && second && <TitleCard title={title} compact />}
-      <CornerStack className={phone ? (second ? 'top-12' : 'top-[3.75rem]') : undefined}>
+      {/* QB-T3 B: the full-screen toggle, under Leaflet's zoom control like the portal's other map buttons (44 px on touch);
+          the same place shows ✕ to come back */}
+      {onFull && (
+        <button type="button" onClick={onFull} aria-label={full ? 'Exit full screen' : 'Full-screen map'} title={full ? 'Exit full screen (Esc)' : 'Full-screen map'} aria-pressed={full} data-testid="map-fullscreen"
+          className="absolute left-[10px] top-[80px] z-[1000] grid h-[34px] w-[34px] place-items-center rounded-[4px] border-2 border-black/20 bg-white bg-clip-padding text-[#333] hover:bg-[#f4f4f4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:top-[108px] [@media(pointer:coarse)]:h-12 [@media(pointer:coarse)]:w-12">
+          {full ? <X className="h-4 w-4" aria-hidden="true" /> : <Maximize className="h-4 w-4" aria-hidden="true" />}
+        </button>
+      )}
+      <CornerStack className={phone ? (second ? 'top-12' : 'top-[3.75rem]') : onFull ? 'top-[122px] [@media(pointer:coarse)]:top-[164px]' : undefined}>
         {isExperimental(v) && <ExperimentalBadge />}
         {phone && !second && isIgnition(v) && <MapPill quiet testid="viewer-caution">{IGNITION_CAUTION}</MapPill>}
         {stationStatus === 'loading' && (

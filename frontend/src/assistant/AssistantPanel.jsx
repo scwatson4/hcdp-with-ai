@@ -67,7 +67,7 @@ function Alternative({ a }) {
 
 /** An analysis reply: the fixed sentence with "here" as the link, the grey note, and the countdown
  *  (or its outcome) when this is the reply the provider is counting down for. */
-function HandoffReply({ m }) {
+export function HandoffReply({ m }) {
   const { handoff, stayHere, settleHandoff } = useAssistant()
   const href = m.actions?.find((a) => a.type === 'handoff')?.url || handoffUrl({})
   const mine = handoff && handoff.id === m.id ? handoff : null
@@ -315,7 +315,7 @@ export function AskBar({ docked = false, glass = false, onChipsState = null, inS
           {ghostQuery && (
             <>
               <span id="ask-ghost-hint" className="sr-only">{activeKind === 'followups' ? 'Press Tab to insert the suggested follow-up question.' : 'Press Tab to insert the suggested example question.'}</span>
-              <div aria-hidden="true" data-testid="composer-ghost" data-pool={activeKind} data-variant={quiet ? 'quiet' : 'typewriter'} className={cn('pointer-events-none absolute top-1/2 -translate-y-1/2 truncate text-[16px] transition-opacity duration-300 motion-reduce:transition-none', docked ? 'left-[38px] right-12 text-subtle sm:right-28' : 'left-[42px] right-14 text-foreground/70 sm:right-32 sm:text-[18px]')} style={{ opacity: ghostShown ? 1 : 0 }}>
+              <div aria-hidden="true" data-testid="composer-ghost" data-pool={activeKind} data-variant={quiet ? 'quiet' : 'typewriter'} className={cn('pointer-events-none absolute top-1/2 -translate-y-1/2 truncate text-[16px] transition-opacity duration-300 motion-reduce:transition-none', docked ? cn('left-[38px] right-12 text-subtle', !listUp && !opensSheet && 'sm:right-28') : 'left-[42px] right-14 text-foreground/70 sm:right-32 sm:text-[18px]')} style={{ opacity: ghostShown ? 1 : 0 }}>
                 {/* a tap on the follow-up's text drops it into the field (the rest of the field still just focuses) */}
                 <span key={quiet ? typed : 'typed'} data-testid="composer-ghost-text" onClick={activeKind === 'followups' ? insertGhost : undefined} className={cn(activeKind === 'followups' && 'pointer-events-auto cursor-text', quiet && 'hcdp-ghost-in inline-block')}>{typed}</span>
                 {!quiet && <span className={cn('ml-px inline-block h-[1.1em] w-px translate-y-[3px] bg-subtle align-baseline', reduceMotion || typed.length >= ghostQuery.length ? 'opacity-0' : 'hcdp-caret')} />}

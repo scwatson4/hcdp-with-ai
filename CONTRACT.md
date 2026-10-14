@@ -247,6 +247,23 @@ so a choice made inside keeps it open and Back first undoes the choice, then clo
 grid cell opens it on the Stations tab; so does a station or pin in the address on arrival. **Copy link** confirms in a
 toast and keeps one width in both states (no re-wrap under the thumb).
 
+## The full-screen map (QB-T3 B, revived 14 Oct; wide screens)
+A maximize control (⛶; 34 px, 48 px on coarse pointers) under the map's zoom control enters a **full-screen map**: the map
+column covers the viewport (`fixed inset-0`; the rail stays mounted underneath), the shell's header and docked bar give way
+(shell mode `map-full`), the page holds still. It owns a history entry (overlay `full`, chrome — the address does not
+change); **Esc**, the **✕** that takes the ⛶'s place, or **Back** exits. Exiting pops the entry when only the camera moved
+(`sameMapIgnoringCamera`; the map keeps its centre on every resize now, `invalidateSize({ pan: true })`), else replaces it,
+so a map chosen in full screen stays in the history. The assistant there is the **mini Ask AI box** (`assistant/MiniAsk.jsx`)
+at the **bottom-left** (clear of Hawaiʻi Island), about 300 px wide: "Ask AI", a − button (44 px on touch), the chat box at a
+smaller size with its quiet ghost of this map's follow-up asks (typeahead opening upward, no Tab hint) and, under it while
+the AI works, the staged wait line — **never the question/answer thread**; a reply with nowhere to go shows as one line under
+the box (an analysis reply keeps its countdown and "Stay here"), ✕ dismisses it. The − button, or Esc inside the box, folds
+it into an **"Ask AI" pill** at the bottom-left with the **goo** (`hcdp-goo-close` toward the pill's corner, then the pill's
+`hcdp-goo-pop`); the pill opens it again; the compass and the scale bar rise above whichever is shown
+(`--hcdp-mini-clear`). An ask that navigates to another map **changes the map in place** (`send(…, { inPlace: true })`: the
+full-screen entry is replaced, still full screen) and its **AI overview is not shown in full screen** — it waits in the rail
+for the normal page. Not on phones: there the viewer is full screen already (M1 C), and its Ask AI is the pill in its bar.
+
 ## Viewer data endpoints (the HCDP token never leaves the server)
 ```
 GET /api/raster?dataset&period&date&extent                 the GeoTIFF (re-encoded, cached on disk, Range + ETag)

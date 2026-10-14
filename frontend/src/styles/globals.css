@@ -1091,3 +1091,7 @@ html.hcdp-scroll-lock, html.hcdp-scroll-lock body { overflow: hidden; overscroll
 @media (pointer: coarse) {
   .hcdp-pane .leaflet-control-zoom a, .hcdp-pane .leaflet-control-zoom a:hover { width: 44px; height: 44px; line-height: 44px; font-size: 22px; }
 }
+/* QB-T3 B (14 Oct): full screen, the mini Ask AI box (or its pill) sits at the bottom-left; the compass and the scale bar
+   rise above it (--hcdp-mini-clear, set on the map column). */
+[data-full] .hcdp-pane .leaflet-bottom.leaflet-left { bottom: var(--hcdp-mini-clear, 0px); }
+[data-full] .hcdp-compass { bottom: calc(var(--hcdp-mini-clear, 0px) + 58px); }

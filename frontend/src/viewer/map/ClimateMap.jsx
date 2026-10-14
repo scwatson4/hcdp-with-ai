@@ -118,7 +118,8 @@ function PeerSync({ bus, leader }) {
   return null
 }
 
-/** Leaflet measures its container once; follow resizes (rotation, rail). */
+/** Leaflet measures its container once; follow resizes (rotation, rail, the full-screen map). The centre stays where it
+ *  was (Leaflet's own default, pan: true), so a resize never moves the view — or writes a camera to the address. */
 function AutoResize() {
   const map = useMap()
   useEffect(() => {
@@ -126,7 +127,7 @@ function AutoResize() {
     let frame = null
     const ro = new ResizeObserver(() => {
       if (frame) cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => { frame = null; map.invalidateSize({ pan: false }) })
+      frame = requestAnimationFrame(() => { frame = null; map.invalidateSize({ pan: true }) })
     })
     ro.observe(map.getContainer())
     return () => { ro.disconnect(); if (frame) cancelAnimationFrame(frame) }

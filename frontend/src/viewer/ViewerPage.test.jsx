@@ -2,7 +2,8 @@ import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react'
 import { MemoryRouter, Routes, Route, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
-import ViewerPage from './ViewerPage'
+import ViewerPage, { sameMapIgnoringCamera } from './ViewerPage'
+import { MINI_GOO_MS } from '../assistant/MiniAsk'
 import { clearRasterCache } from './map/rasterCache'
 import { clearDateRanges } from './map/dateRanges'
 import { clearStationCache } from './map/stationData'
@@ -1584,6 +1585,144 @@ describe('below 768 px', () => {
     expect(screen.queryByTestId('viewer-fab')).toBeNull()
     expect(screen.getByTestId('viewer-controls')).toBeInTheDocument()
     await settle()
+  })
+})
+
+// ── the full-screen map (QB-T3 B, 14 Oct) ─────────────────────────────────────
+describe('the full-screen map on wide screens', () => {
+  let assistant = null
+  function Grab() { assistant = useAssistant(); return null }
+  const renderWithAssistant = (path) => render(
+    <MemoryRouter initialEntries={[path]}>
+      <AssistantProvider>
+        <Grab />
+        <Routes><Route path="/viewer/*" element={<><ViewerPage /><Probe /></>} /></Routes>
+      </AssistantProvider>
+    </MemoryRouter>,
+  )
+  let navigateReply = null
+  beforeEach(() => {
+    navigateReply = null
+    const base = global.fetch
+    global.fetch = vi.fn(async (url, init = {}) => {
+      if (String(url) === '/api/navigate') return { ok: true, status: 200, json: async () => navigateReply }
+      return base(url, init)
+    })
+  })
+
+  it('⛶ enters it with its own history entry: the map column covers the viewport, the mini Ask AI box sits bottom-left; Esc exits', async () => {
+    renderWithAssistant('/viewer/rainfall/month/2026-09/statewide')
+    const btn = screen.getByTestId('map-fullscreen')
+    expect(btn).toHaveAccessibleName('Full-screen map')
+    expect(btn.className).toContain('[@media(pointer:coarse)]:h-12')          // 44 px and more on touch
+    expect(screen.queryByTestId('mini-ask')).toBeNull()
+    fireEvent.click(btn)
+    expect(overlay()).toBe('full')
+    expect(loc()).toBe('/viewer/rainfall/month/2026-09/statewide')            // the same address: chrome, not state
+    const col = screen.getByTestId('map-column')
+    expect(col).toHaveAttribute('data-full', 'true')
+    expect(col.className).toContain('fixed inset-0')
+    expect(screen.getByTestId('map-fullscreen')).toHaveAccessibleName('Exit full screen')   // ✕ in the same place
+    const mini = screen.getByTestId('mini-ask')
+    expect(mini.className).toContain('bottom-4 left-4')                        // bottom-left, clear of Big Island
+    const box = within(mini).getByTestId('mini-ask-box')
+    expect(box.className).toContain('w-[300px]')
+    expect(within(box).getByTestId('mini-ask-bar')).toBeInTheDocument()
+    expect(within(box).getByTestId('composer-ghost')).toHaveAttribute('data-variant', 'quiet')   // its ghost, quiet
+    expect(within(box).queryByTestId('conversation')).toBeNull()               // never the thread
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(screen.getByTestId('map-column')).not.toHaveAttribute('data-full'))
+    expect(overlay()).toBe('')
+    expect(screen.queryByTestId('mini-ask')).toBeNull()
+  })
+
+  it('Back exits; ✕ exits', async () => {
+    renderWithAssistant('/viewer/rainfall/day/2026-09-07/kauai')
+    fireEvent.click(screen.getByTestId('map-fullscreen'))
+    expect(screen.getByTestId('map-column')).toHaveAttribute('data-full', 'true')
+    act(() => goBack())
+    await waitFor(() => expect(screen.getByTestId('map-column')).not.toHaveAttribute('data-full'))
+    fireEvent.click(screen.getByTestId('map-fullscreen'))
+    fireEvent.click(screen.getByTestId('map-fullscreen'))   // the ✕
+    await waitFor(() => expect(screen.getByTestId('map-column')).not.toHaveAttribute('data-full'))
+    expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai')
+  })
+
+  it('− folds the box into an Ask AI pill at the bottom-left with the goo; the pill opens it again; Esc inside the box folds it, Esc on the map exits', async () => {
+    renderWithAssistant('/viewer/rainfall/month/2026-09/statewide')
+    fireEvent.click(screen.getByTestId('map-fullscreen'))
+    fireEvent.click(screen.getByTestId('mini-ask-fold'))
+    const box = screen.getByTestId('mini-ask-box')
+    expect(box).toHaveAttribute('data-closing', 'true')
+    expect(box.className).toContain('hcdp-goo-close')
+    expect(box.parentElement.className).toContain('hcdp-goo-wrap')
+    expect(box.style.transformOrigin).toBe('0% 100%')                         // it melts into the pill's corner
+    const pill = await screen.findByTestId('mini-ask-pill', {}, { timeout: MINI_GOO_MS + 1000 })
+    expect(pill).toHaveTextContent('Ask AI')
+    expect(pill.className).toContain('hcdp-rainbow-border')
+    expect(pill.className).toContain('hcdp-goo-pop')
+    expect(screen.getByTestId('mini-ask')).toHaveAttribute('data-folded', 'true')
+    expect(screen.getByTestId('map-column').style.getPropertyValue('--hcdp-mini-clear')).toBe('68px')
+    fireEvent.click(pill)
+    expect(screen.getByTestId('mini-ask-box')).toBeInTheDocument()
+    // Esc inside the box (an empty field: nothing for the field itself to close or clear) folds it…
+    fireEvent.keyDown(within(screen.getByTestId('mini-ask-box')).getByTestId('assistant-input'), { key: 'Escape' })
+    expect(screen.getByTestId('mini-ask-box')).toHaveAttribute('data-closing', 'true')
+    expect(screen.getByTestId('map-column')).toHaveAttribute('data-full', 'true')
+    await screen.findByTestId('mini-ask-pill', {}, { timeout: MINI_GOO_MS + 1000 })
+    // …and Esc on the map exits
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(screen.getByTestId('map-column')).not.toHaveAttribute('data-full'))
+  })
+
+  it('an ask that opens another map changes it in place — still full screen, the entry replaced — and the overview waits for the normal page', async () => {
+    navigateReply = { intent: 'navigate', reply: 'Here is Oʻahu for the same month.', actions: [{ type: 'navigate', path: '/viewer/rainfall/month/2026-09/oahu' }], alternatives: [], destination: { title: 'Monthly rainfall map', path: '/viewer/rainfall/month/2026-09/oahu' } }
+    renderWithAssistant('/viewer/rainfall/month/2026-09/statewide')
+    fireEvent.click(screen.getByTestId('map-fullscreen'))
+    const field = within(screen.getByTestId('mini-ask-box')).getByTestId('assistant-input')
+    fireEvent.change(field, { target: { value: 'oahu instead' } })
+    fireEvent.keyDown(field, { key: 'Enter' })
+    expect(within(screen.getByTestId('mini-ask-box')).getByTestId('mini-ask-working')).toHaveTextContent('Thinking…')   // the staged wait line under it
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/month/2026-09/oahu'))
+    expect(navType()).toBe('REPLACE')                                    // in place
+    expect(overlay()).toBe('full')
+    expect(screen.getByTestId('map-column')).toHaveAttribute('data-full', 'true')
+    await waitFor(() => expect(assistant.summary?.status).toBe('ready'))
+    // the overview is in the rail, under the full-screen map — it is not drawn over the map
+    expect(within(screen.getByTestId('map-column')).queryByTestId('ai-summary')).toBeNull()
+    // exiting keeps the new map (the full-screen entry is replaced, not popped) and shows the overview on the page
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(screen.getByTestId('map-column')).not.toHaveAttribute('data-full'))
+    expect(loc()).toBe('/viewer/rainfall/month/2026-09/oahu')
+    expect(screen.getByTestId('ai-summary')).toBeInTheDocument()
+  })
+
+  it('a reply with nowhere to go shows as one line under the box (never the thread)', async () => {
+    navigateReply = { intent: 'info', reply: 'Monthly maps come out a few days after the month ends.', actions: [], alternatives: [] }
+    renderWithAssistant('/viewer/rainfall/month/2026-09/statewide')
+    fireEvent.click(screen.getByTestId('map-fullscreen'))
+    const box = screen.getByTestId('mini-ask-box')
+    const field = within(box).getByTestId('assistant-input')
+    fireEvent.change(field, { target: { value: 'when is the october map' } })
+    fireEvent.keyDown(field, { key: 'Enter' })
+    expect(await within(box).findByTestId('mini-ask-reply')).toHaveTextContent('Monthly maps come out a few days after the month ends.')
+    expect(within(box).queryByTestId('user-bubble')).toBeNull()
+    fireEvent.click(within(box).getByRole('button', { name: 'Dismiss the reply' }))
+    expect(within(box).queryByTestId('mini-ask-reply')).toBeNull()
+  })
+
+  it('is not offered on phones (the phone viewer is full screen already)', async () => {
+    narrowScreen(true)
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    expect(screen.queryByTestId('map-fullscreen')).toBeNull()
+    await settle()
+  })
+
+  it('treats a camera-only change as the same address (the map moves by itself as it resizes)', () => {
+    expect(sameMapIgnoringCamera('/viewer/rainfall/day/2026-09-07/kauai', '/viewer/rainfall/day/2026-09-07/kauai?lat=22.0&lng=-159.5&z=10')).toBe(true)
+    expect(sameMapIgnoringCamera('/viewer/rainfall/day/2026-09-07/kauai?units=in', '/viewer/rainfall/day/2026-09-07/kauai?units=in&lat=22&lng=-159&z=9')).toBe(true)
+    expect(sameMapIgnoringCamera('/viewer/rainfall/day/2026-09-07/kauai', '/viewer/rainfall/day/2026-09-07/oahu')).toBe(false)
+    expect(sameMapIgnoringCamera('/viewer/rainfall/day/2026-09-07/kauai', '/viewer/rainfall/day/2026-09-07/kauai?units=in')).toBe(false)
   })
 })
 

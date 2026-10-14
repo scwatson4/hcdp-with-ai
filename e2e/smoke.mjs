@@ -75,16 +75,20 @@ try {
     // Deep link direct load
     await page.goto(BASE + '/viewer/rainfall/day/2026-09-07/kauai', { waitUntil: 'networkidle' })
     check(`${label}: deep link resolves`, (await page.locator('body').innerText()).includes('Kaua'))
-    // Item 17: the whole map — compass, legend, scale bar, zoom control, title card — is on screen unscrolled.
+    // Item 17: the whole map — compass, legend, scale bar, zoom control, title card — is on screen unscrolled. M1 C (14 Oct): on
+    // phones the viewer is a full-screen map with no compass, and the reading chips carry the title (no title card).
     await page.waitForSelector('.leaflet-container', { timeout: 30000 }).catch(() => {})
     await page.waitForTimeout(1500)
-    const furniture = await page.evaluate(() => {
+    const phoneMap = label === 'phone'
+    const furniture = await page.evaluate((phone) => {
       const box = (sel) => { const el = document.querySelector(sel); if (!el) return null; const b = el.getBoundingClientRect(); return { top: b.top, bottom: b.bottom, left: b.left, right: b.right } }
       const inside = (b) => Boolean(b) && b.top >= 0 && b.left >= 0 && b.bottom <= window.innerHeight && b.right <= window.innerWidth
-      const pieces = { zoom: '.leaflet-control-zoom', compass: '[data-testid="compass-rose"]', legend: '[data-testid="legend"]', scale: '.leaflet-control-scale', title: '[data-testid="viewer-title-card"]', pane: '[data-testid="map-pane"]' }
+      const pieces = phone
+        ? { zoom: '.leaflet-control-zoom', legend: '[data-testid="legend"]', scale: '.leaflet-control-scale', chips: '[data-testid="reading-chips"]', pane: '[data-testid="map-pane"]' }
+        : { zoom: '.leaflet-control-zoom', compass: '[data-testid="compass-rose"]', legend: '[data-testid="legend"]', scale: '.leaflet-control-scale', title: '[data-testid="viewer-title-card"]', pane: '[data-testid="map-pane"]' }
       return { scrollY: window.scrollY, missing: Object.entries(pieces).filter(([, sel]) => !box(sel)).map(([k]) => k), outside: Object.entries(pieces).filter(([, sel]) => box(sel) && !inside(box(sel))).map(([k]) => k) }
-    })
-    check(`${label}: whole map visible unscrolled (compass, legend, scale bar, zoom, title)`, furniture.scrollY === 0 && furniture.missing.length === 0 && furniture.outside.length === 0, `missing [${furniture.missing}] outside [${furniture.outside}]`)
+    }, phoneMap)
+    check(`${label}: whole map visible unscrolled (${phoneMap ? 'zoom, legend, scale bar, reading chips' : 'compass, legend, scale bar, zoom, title'})`, furniture.scrollY === 0 && furniture.missing.length === 0 && furniture.outside.length === 0, `missing [${furniture.missing}] outside [${furniture.outside}]`)
     await page.screenshot({ path: `${OUT}/viewer-whole-map-${label}.png` })
     await page.goto(BASE + '/extreme-events', { waitUntil: 'networkidle' })
     check(`${label}: extreme events page`, await page.locator('h1').first().isVisible())

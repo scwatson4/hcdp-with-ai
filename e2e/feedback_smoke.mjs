@@ -1,12 +1,18 @@
 // End-to-end smoke test of the review-period feedback (F1–F5): the right-edge tab and the composer, the selection pill,
 // 👍 / 👎 on an AI overview (the 👎 chooser, then the composer), "My feedback", the phone sheet, and the admin page's
 // refusal of a wrong key. It stores two clearly labelled items (reviewer "Smoke test (automated)") — mark them won't fix
-// on /admin/feedback. Usage: node e2e/feedback_smoke.mjs [baseUrl] [screenshotDir]
+// on /admin/feedback. The Lowell report is opened through the typeahead (no navigator call), so only its AI overview needs
+// the model; --stub-summary cans the overview's text (everything else stays live) for when the model route is down.
+// Usage: node e2e/feedback_smoke.mjs [baseUrl] [screenshotDir] [--stub-summary]
 import { chromium } from '/tmp/smokedir/node_modules/playwright/index.mjs'
 import fs from 'node:fs'
 
-const BASE = process.argv[2] || 'http://127.0.0.1:8010'
-const OUT = process.argv[3] || '/tmp/claude-1001/-home-exouser/064baeac-7523-4d99-8946-e07207afc920/scratchpad/feedback_smoke'
+const ARGS = process.argv.slice(2).filter((a) => !a.startsWith('--'))
+const STUB = process.argv.includes('--stub-summary')
+const BASE = ARGS[0] || 'http://127.0.0.1:8010'
+const OUT = ARGS[1] || '/tmp/claude-1001/-home-exouser/064baeac-7523-4d99-8946-e07207afc920/scratchpad/feedback_smoke'
+const CANNED = { summary: 'x', chunks: ['You asked for the Hurricane Lowell report, so this is the storm’s page.', 'It gathers the daily rainfall maps, the station totals and the wind fields from 6–8 September 2026.'],
+  cites: [[1], [1]], more: [], more_cites: [], sources: [{ title: 'Hurricane Lowell report', url: 'https://www.hawaii.edu/climate-data-portal/hurricane-lowell/' }], followups: [], request_id: '0'.repeat(32) }
 const NAME = 'Smoke test (automated)'
 const NOTE = 'Automated smoke test after a deploy — please ignore (mark won’t fix).'
 fs.mkdirSync(OUT, { recursive: true })
@@ -28,6 +34,7 @@ try {
   await ctx.grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {})
   const page = await ctx.newPage()
   watch(page, 'desktop')
+  if (STUB) await page.route('**/api/summary', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CANNED) }))
   await page.goto(BASE + '/', { waitUntil: 'networkidle' })
   const tab = page.locator('[data-testid="feedback-tab"]')
   const tb = await tab.boundingBox()
@@ -41,12 +48,13 @@ try {
   await page.screenshot({ path: `${OUT}/02-composer-desktop.png` })
   await page.locator('[data-testid="feedback-close"]').click()
 
-  // ask the assistant; the destination opens with its AI overview
+  // open the Lowell report through the typeahead (a choice, no navigator call); the page opens with its AI overview
   const input = page.locator('[data-testid="assistant-input"]').first()
-  await input.fill('Take me to the Hurricane Lowell report')
-  await input.press('Enter')
-  const ready = await page.waitForFunction(() => document.querySelector('[data-testid="ai-summary"]')?.dataset.status === 'ready', null, { timeout: 60000 }).then(() => true).catch(() => false)
-  check('desktop: the assistant navigated and the AI overview is ready', ready, new URL(page.url()).pathname)
+  await input.fill('Hurricane Lowell report')
+  const pick = page.locator('[data-testid="typeahead-row"]', { hasText: 'Hurricane Lowell report' }).first()
+  await pick.click({ timeout: 8000 }).catch(() => {})
+  const ready = await page.waitForFunction(() => document.querySelector('[data-testid="ai-summary"]')?.dataset.status === 'ready', null, { timeout: 30000 }).then(() => true).catch(() => false)
+  check(`desktop: the Lowell report opened with its AI overview${STUB ? ' (overview text stubbed)' : ''}`, ready, `${new URL(page.url()).pathname}${ready ? '' : ' — no overview: is the summary model answering? (/api/health → summary.stats)'}`)
   if (ready) {
     const row = page.locator('[data-testid="overview-feedback"]')
     await row.scrollIntoViewIfNeeded()

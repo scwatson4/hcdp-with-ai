@@ -244,7 +244,8 @@ apps; everything else keeps its HCDP address (new tab, ↗).
   title, or the override) and the canonical link while the page shows; "Copied from HCDP on <date> · see the original" when
   `copied_at` is set; "This page is on HCDP ↗" for a 404 with an address. `AppEmbed`: the app at `calc(100dvh -
   var(--hcdp-sticky-h))` under a slim strip (the title as the page's h1, "Open full screen ↗"), a tap-to-interact cover on coarse
-  pointers, the per-question overview above the strip; the Climate Summary (`{type:'routeChange', hash}`) and the Mesonet live
+  pointers, the per-question overview above the strip — below 768 px (M6 A, the phone checklist) no frame: the overview, then
+  `EmbedCard` (the title and a 44 px "Open ↗" that opens the app full screen in a new tab); the Climate Summary (`{type:'routeChange', hash}`) and the Mesonet live
   viewer (a `#/<view>?id=<station>` string) post their route — origin `https://cherryleh.github.io`, from our frame only — and our
   address follows with `replace` without reloading the frame. Old addresses keep working: `/pacific#american-samoa|#guam`,
   `/extreme-events#<storm>` and `/extreme-events/kona-lows` land on the pages that replaced them. `Library` = the mirrored
@@ -797,6 +798,8 @@ Every change is held to these at 390 px (and 360 px) before it ships — the 8 O
    wide screens (its legend and title card keep the portal's sizes) and citation superscripts. A test scans the components.
 7. **No horizontal overflow.** `scrollWidth == innerWidth` on every page. Wide tables become stacked cards under 640 px
    (`.hcdp-stack` on the table, `.hcdp-stack-wrap` on its wrapper, a `data-label` per cell); a desktop app is never framed
-   under 768 px (`EmbedFrame phoneCard`: a card with its title and an "Open ↗" button instead).
+   under 768 px (`EmbedCard` — `EmbedFrame`'s `phoneCard` and the mirror's `AppEmbed` — a card with its title and an "Open ↗"
+   button instead). The mirrored pages are HCDP's own markup and styles inside a shadow root: the site's rules do not reach
+   into them, so what they look like on a phone is HCDP's.
 8. **Test at 390 px.** Components are tested with a `(max-width: 767px)` matchMedia mock; pages are re-measured with the
    phone audit (iPhone 390 × 844 and Android 360 × 780, touch, iOS / Android user agents) before they ship.

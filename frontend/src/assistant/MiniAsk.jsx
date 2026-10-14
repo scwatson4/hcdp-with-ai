@@ -14,11 +14,19 @@ import { cn } from '../lib/utils'
 export const MINI_GOO_MS = 480
 
 export default function MiniAsk({ folded, onFold, onUnfold }) {
-  const { wait, messages, mode, setMode, epoch } = useAssistant()
+  const { wait, messages, mode, setMode, epoch, strip, holdStrip, releaseStrip } = useAssistant()
   const [closing, setClosing] = useState(false)
   const [popped, setPopped] = useState(false)
   const timer = useRef(null)
   useEffect(() => () => clearTimeout(timer.current), [])
+  // When an answer's overview cannot be written, the reply strip under the docked bar explains it instead. The docked bar
+  // is hidden in full screen, so the strip waits too: held while the map stays full screen, it starts its five seconds
+  // when the normal page comes back (this box goes away).
+  useEffect(() => {
+    if (!strip) return undefined
+    holdStrip()
+    return () => releaseStrip()
+  }, [strip?.id]) // eslint-disable-line react-hooks/exhaustive-deps
   const fold = () => {
     if (closing) return
     if (prefersReducedMotion()) { onFold(); return }

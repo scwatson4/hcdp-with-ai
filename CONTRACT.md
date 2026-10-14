@@ -347,7 +347,9 @@ it into an **"Ask AI" pill** at the bottom-left with the **goo** (`hcdp-goo-clos
 `hcdp-goo-pop`); the pill opens it again; the compass and the scale bar rise above whichever is shown
 (`--hcdp-mini-clear`). An ask that navigates to another map **changes the map in place** (`send(…, { inPlace: true })`: the
 full-screen entry is replaced, still full screen) and its **AI overview is not shown in full screen** — it waits in the rail
-for the normal page. Not on phones: there the viewer is full screen already (M1 C), and its Ask AI is the pill in its bar.
+for the normal page; when the overview cannot be written, the reply strip that stands in for it waits too (held while the map
+is full screen, its five seconds start when the normal page returns). Not on phones: there the viewer is full screen already
+(M1 C), and its Ask AI is the pill in its bar.
 
 ## Viewer data endpoints (the HCDP token never leaves the server)
 ```

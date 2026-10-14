@@ -1697,6 +1697,26 @@ describe('the full-screen map on wide screens', () => {
     expect(screen.getByTestId('ai-summary')).toBeInTheDocument()
   })
 
+  it('when the overview cannot be written, the reply strip waits for the normal page too (held in full screen, five seconds after exit)', async () => {
+    navigateReply = { intent: 'navigate', reply: 'Here is Oʻahu for the same month.', actions: [{ type: 'navigate', path: '/viewer/rainfall/month/2026-09/oahu' }], alternatives: [], destination: { title: 'Monthly rainfall map', path: '/viewer/rainfall/month/2026-09/oahu' } }
+    const base = global.fetch
+    global.fetch = vi.fn(async (url, init = {}) => (String(url) === '/api/summary' ? { ok: false, status: 503, json: async () => ({}) } : base(url, init)))
+    renderWithAssistant('/viewer/rainfall/month/2026-09/statewide')
+    fireEvent.click(screen.getByTestId('map-fullscreen'))
+    const field = within(screen.getByTestId('mini-ask-box')).getByTestId('assistant-input')
+    fireEvent.change(field, { target: { value: 'oahu instead' } })
+    fireEvent.keyDown(field, { key: 'Enter' })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/month/2026-09/oahu'))
+    await waitFor(() => expect(assistant.strip?.reply).toBe('Here is Oʻahu for the same month.'))
+    expect(within(screen.getByTestId('mini-ask')).queryByText('Here is Oʻahu for the same month.')).toBeNull()   // not drawn in full screen
+    await act(async () => { await new Promise((r) => setTimeout(r, 5300)) })   // longer than the strip's five seconds
+    expect(assistant.strip).not.toBeNull()                                         // held while the map is full screen
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(screen.getByTestId('map-column')).not.toHaveAttribute('data-full'))
+    expect(assistant.strip).not.toBeNull()                                         // the normal page shows it…
+    await waitFor(() => expect(assistant.strip).toBeNull(), { timeout: 6000 })     // …for its five seconds
+  }, 20000)
+
   it('a reply with nowhere to go shows as one line under the box (never the thread)', async () => {
     navigateReply = { intent: 'info', reply: 'Monthly maps come out a few days after the month ends.', actions: [], alternatives: [] }
     renderWithAssistant('/viewer/rainfall/month/2026-09/statewide')

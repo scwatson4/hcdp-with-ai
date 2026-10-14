@@ -848,7 +848,7 @@
 
 /* ── HCDP with AI: rainbow accents used sparingly ── */
 /* The header's hairline: the logo's spectrum, quiet (it is the one permanent instance). */
-.hcdp-band { height: 3px; background: var(--hcdp-rainbow); opacity: 0.8; }
+.hcdp-hairline { height: 3px; background: var(--hcdp-rainbow); opacity: 0.8; }   /* was .hcdp-band — portal.css now owns that name */
 /* A 1.5 px rainbow border drawn with two backgrounds (card fill over the spectrum). */
 .hcdp-rainbow-border {
   border: 1.5px solid transparent;

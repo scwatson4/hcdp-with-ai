@@ -67,3 +67,12 @@ describe('SiteHeader', () => {
     expect(within(mobile).getByText('Climate Tools')).toBeInTheDocument()
   })
 })
+
+describe('the header’s hairline (14 Oct)', () => {
+  it('is its own class, not the mirror’s page-title band (.hcdp-band: 30 px of padding and a grey fill)', () => {
+    render(<ThemeProvider><TooltipProvider><MemoryRouter initialEntries={['/data']}><AssistantProvider><SiteHeader /></AssistantProvider></MemoryRouter></TooltipProvider></ThemeProvider>)
+    const line = screen.getByTestId('header-hairline')
+    expect(line.className).toBe('hcdp-hairline')
+    expect(document.querySelector('header .hcdp-band')).toBeNull()
+  })
+})

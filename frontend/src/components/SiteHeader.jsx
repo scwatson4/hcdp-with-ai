@@ -38,7 +38,8 @@ export default function SiteHeader() {
   const utility = pathname !== '/' && shell !== 'phone-map'
   return (
     <header className="border-b border-border bg-canvas/95 backdrop-blur">
-      <div className="hcdp-band" aria-hidden="true" />
+      {/* the logo's spectrum as a 3 px hairline (renamed from .hcdp-band on 14 Oct: the mirror's page-title band took that name) */}
+      <div className="hcdp-hairline" aria-hidden="true" data-testid="header-hairline" />
       <div className="mx-auto grid w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 pb-1 pt-3" data-testid="logo-row">
         <div className="flex min-w-0 items-center justify-start">{utility && <ShareView />}</div>
         <Link to="/" aria-label="Hawaiʻi Climate Data Portal home" className="block max-md:-my-2 max-md:py-2" onClick={() => reset()} data-testid="logo-home">

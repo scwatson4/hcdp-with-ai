@@ -777,12 +777,14 @@ Viewer entries carry `internal_path` templates such as `/viewer/rainfall/day/{da
 ## The phone checklist (M6 A, 14 Oct)
 Every change is held to these at 390 px (and 360 px) before it ships — the 8 Oct phone audit's findings, made rules:
 1. **16 px inputs.** Every text field, select and textarea is at least 16 px on phones and touch screens — iOS zooms the
-   page when a smaller one takes the focus. `globals.css` enforces it under `(max-width: 767px), (pointer: coarse)`;
+   page when a smaller one takes the focus. `globals.css` enforces it under `(max-width: 767px), (pointer: coarse)`
+   (wrapped in `:is()`, so no text utility can beat it — note that this site's `text-base` is 15 px: write `text-[16px]`);
    checkboxes, radios and sliders are exempt.
 2. **44 px targets on touch.** Anything tappable is at least 44 × 44 px below 768 px or on a coarse pointer (a negative margin
    may take the extra height back out of a dense row, as the logo row's Share / Original links do); rows in sheets and the
-   menu are 48 px. The `TabsTrigger` primitive, the viewer's fields and steps, the landing's buttons, the storm day chips
-   and Leaflet's zoom buttons all follow it.
+   menu are 48 px. The `Button` and `TabsTrigger` primitives, the viewer's fields and steps, the landing's buttons, the
+   storm day chips, the sheets' grab handles and Leaflet's zoom buttons all follow it; inline links inside a sentence are
+   the one exception (WCAG's own).
 3. **Hover is never the only way.** Whatever appears on hover also appears on focus and is there on touch (`(hover: none)`);
    no keyboard hint on touch — no Tab ↹ keycap, no "(Esc)" in a visible label.
 4. **dvh and visualViewport for anything pinned to the bottom.** Heights use `dvh` (never `100vh` / `h-screen`); a field

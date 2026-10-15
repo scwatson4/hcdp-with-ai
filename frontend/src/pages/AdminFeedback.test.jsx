@@ -26,6 +26,7 @@ const fetchMock = (url, init) => {
   if (init?.headers?.['X-Admin-Key'] !== 'right-key') return Promise.resolve(res(401, { detail: 'Not authorised' }))
   if (url.startsWith('/api/admin/feedback/review.csv')) return Promise.resolve(res(200, null, 'id,when\r\n'))
   if (url === '/api/admin/feedback/evals.json') return Promise.resolve(res(200, { as_of: '2026-10-14', cases: [] }))
+  if (init?.method === 'DELETE') return Promise.resolve(res(200, { ok: true, id: url.split('/').pop() }))
   if (init?.method === 'PATCH') {
     const id = url.split('/').pop()
     return Promise.resolve(res(200, { ok: true, row: { ...ROWS.find((r) => r.id === id), ...body, updated_at: '2026-10-14T00:00:00.000Z' } }))
@@ -131,6 +132,21 @@ describe('/admin/feedback', () => {
     await tick()
     expect(calls.at(-1)).toMatchObject({ url: `/api/admin/feedback/${'d'.repeat(32)}`, method: 'PATCH', body: { admin_note: 'Add the CSV link to the overview.' } })
     expect(within(screen.getAllByTestId('admin-row')[0]).getByRole('status')).toHaveTextContent('Saved')
+  })
+
+  it('Delete removes an entry for good — DELETE with the key after a confirm — and the row and the counts follow', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    await open()
+    const rows = screen.getAllByTestId('admin-row')
+    const n = rows.length
+    fireEvent.click(within(rows[0]).getByTestId('admin-delete'))
+    await tick()
+    expect(calls.at(-1)).toMatchObject({ url: `/api/admin/feedback/${rows[0].getAttribute('data-id') || calls.at(-1).url.split('/').pop()}`, method: 'DELETE', key: 'right-key' })
+    expect(screen.getAllByTestId('admin-row')).toHaveLength(n - 1)
+    window.confirm.mockReturnValue(false)
+    fireEvent.click(within(screen.getAllByTestId('admin-row')[0]).getByTestId('admin-delete'))
+    await tick()
+    expect(screen.getAllByTestId('admin-row')).toHaveLength(n - 1)                                          // a cancelled confirm deletes nothing
   })
 
   it('Export CSV (with the filters), Export as eval cases, Add to backlog and Forget key', async () => {

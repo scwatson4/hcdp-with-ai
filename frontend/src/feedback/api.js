@@ -34,6 +34,14 @@ export async function fetchOthers(name) {
   return Array.isArray(d?.rows) ? d.rows : []
 }
 
+/** GET /api/feedback/names → the reviewer names already saved with feedback, newest first (the name picker, 15 Oct). */
+export async function fetchNames() {
+  const r = await fetch('/api/feedback/names', { cache: 'no-store' })
+  const d = await body(r)
+  if (!r.ok) throw failure(r, d, 'The saved names could not be loaded.')
+  return Array.isArray(d?.names) ? d.names.filter((n) => typeof n === 'string' && n.trim()) : []
+}
+
 /** POST /api/feedback/rename {from, to} → how many items now carry the new name. */
 export async function renameReviewer(from, to) {
   const r = await fetch('/api/feedback/rename', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ from, to }) })

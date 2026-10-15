@@ -5,9 +5,10 @@ import { useNarrow } from './useNarrow'
 import FeedbackPanel from './FeedbackPanel'
 import SelectionPill from './SelectionPill'
 import { HIGHLIGHT_NAME } from './highlight'
+import { useShellMode } from '../components/shellMode'
 
 // Everything the review-period feedback puts over the page (App.jsx mounts it once, inside FeedbackProvider): the
-// right-edge "Give feedback" tab, the selection pill, the panel (composer / My feedback / Others) and the toast.
+// bottom-left "Give feedback" pill, the selection pill, the panel (composer / My feedback / Others) and the toast.
 
 // Where content runs to the screen's edge (phones, tablets, touch screens) a fixed edge tab sits on whatever is there —
 // the 👍 / 👎 at the end of an overview row included — so there it tucks away while the page scrolls down and comes back
@@ -33,18 +34,22 @@ export function useTucked() {
   return [tucked, setTucked]
 }
 
-/** F1 A (c): the right-edge tab — vertical, the portal's chip style (white, a 1 px border), 44 px wide, on every page,
- *  the landing included; hidden in print and (invisibly kept) while the panel is open. */
+/** F1 A (c), moved 15 Oct at the user's request: a horizontal pill at the page's bottom-left corner (it was a vertical
+ *  tab on the right edge) — the portal's chip style (white, a 1 px border), 44 px tall, on every page, the landing
+ *  included; hidden in print, on the full-screen map shells (the mini Ask AI box owns that corner) and (invisibly kept)
+ *  while the panel is open. On narrow and touch screens it slides down out of the way while the page scrolls down. */
 export function FeedbackTab() {
   const fb = useFeedback()
   const [tucked, setTucked] = useTucked()
+  const shell = useShellMode()
   const open = !!fb.panel   // kept in the page (invisible) while the panel is open, so the focus can come back to it
+  if (shell === 'phone-map' || shell === 'map-full') return null
   return (
     <button type="button" onClick={() => fb.openPanel('compose')} onFocus={() => setTucked(false)} aria-haspopup="dialog" aria-expanded={open} aria-hidden={open || undefined} tabIndex={open ? -1 : undefined}
       data-testid="feedback-tab" data-feedback-ui="" data-open={open ? 'true' : 'false'} data-tucked={tucked ? 'true' : 'false'}
-      className={`fixed right-0 top-1/2 z-40 flex w-11 -translate-y-1/2 flex-col items-center gap-2 rounded-l-lg border border-r-0 border-border bg-card py-3 text-[13px] font-medium text-foreground shadow-sm transition-[transform,border-color] duration-200 hover:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none print:hidden ${open ? 'invisible' : ''} ${tucked && !open ? 'translate-x-full' : ''}`}>
+      className={`fixed bottom-4 left-4 z-40 inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-[13px] font-medium text-foreground shadow-sm transition-[transform,border-color] duration-200 hover:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none print:hidden ${open ? 'invisible' : ''} ${tucked && !open ? 'translate-y-[calc(100%+1.5rem)]' : ''}`}>
       <MessageSquarePlus className="h-4 w-4 shrink-0" aria-hidden="true" />
-      <span className="rotate-180 whitespace-nowrap [writing-mode:vertical-rl]">Give feedback</span>
+      <span className="whitespace-nowrap">Give feedback</span>
     </button>
   )
 }

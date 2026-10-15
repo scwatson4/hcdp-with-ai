@@ -355,3 +355,34 @@ def test_admin_review_list_patch_csv_and_eval_export_behind_the_key(tmp_path):
     assert {x["id"] for x in out["cases"]} == {f"feedback-{ids['down'][:8]}", f"feedback-{wp[:8]}"}
     down = next(x for x in out["cases"] if x["id"] == f"feedback-{ids['down'][:8]}")
     assert down["query"] == "station data" and down["expected_intent"] == "navigate" and down["expected_path_prefix"] == "/data"
+
+
+# ── 15 Oct: the name picker and the admin delete ──────────────────────────────
+def test_names_lists_saved_reviewer_names_newest_first_without_duplicates(tmp_path):
+    c = client(tmp_path)
+    assert c.get("/api/feedback/names").json() == {"names": []}
+    c.post("/api/feedback", json=SEL)                                   # Leilani
+    c.post("/api/feedback", json=UP)                                    # the UP reviewer
+    c.post("/api/feedback", json={**TAB, "reviewer_name": " leilani "})   # the same person, spelt differently: folded
+    c.post("/api/feedback", json={**TAB, "reviewer_name": ""})            # no name: not listed
+    r = c.get("/api/feedback/names")
+    assert r.status_code == 200 and r.headers["cache-control"] == "no-store"
+    names = r.json()["names"]
+    assert len(names) == 2 and names[0].lower() == "leilani" and names[1] == UP["reviewer_name"]
+
+
+def test_admin_delete_removes_a_row_from_either_table_behind_the_key(tmp_path):
+    c = client(tmp_path, key="correct-horse", db="del.sqlite")
+    K = {"X-Admin-Key": "correct-horse"}
+    fid = c.post("/api/feedback", json=SEL).json()["id"]
+    wp = c.post("/api/feedback/wrong-page", json=REPORT).json()["id"]
+    assert c.delete(f"/api/admin/feedback/{fid}").status_code == 401
+    assert c.delete(f"/api/admin/feedback/{fid}", headers={"X-Admin-Key": "wrong"}).status_code == 401
+    assert c.delete("/api/admin/feedback/not-an-id", headers=K).status_code == 404
+    assert c.delete(f"/api/admin/feedback/{'0' * 32}", headers=K).status_code == 404
+    r = c.delete(f"/api/admin/feedback/{fid}", headers=K)
+    assert r.status_code == 200 and r.json() == {"ok": True, "id": fid} and r.headers["cache-control"] == "no-store"
+    assert c.delete(f"/api/admin/feedback/{wp}", headers=K).status_code == 200
+    assert c.get("/api/admin/feedback/review", headers=K).json()["count"] == 0
+    assert c.delete(f"/api/admin/feedback/{fid}", headers=K).status_code == 404     # gone for good
+

@@ -4,10 +4,13 @@ import { useFeedback } from './FeedbackProvider'
 import { fetchMine, fetchOthers, renameReviewer } from './api'
 import { FEATURE_LABEL, LIMITS, STATUS_LABEL, ago } from './features'
 import { cn } from '../lib/utils'
+import { KnownNames, KNOWN_NAMES_LIST, useKnownNames } from './useKnownNames'
 
 // F3 A: the panel's "My feedback" (the reviewer's own items, by the name this browser remembers) and "Others" (everyone
 // else's as titles and statuses — never a name). A tap on an item goes to its page and, for a quoted passage, marks the
 // spot. The reviewer's name is shown and changed here; earlier feedback follows the new name (POST /api/feedback/rename).
+// 15 Oct: "My feedback" leads with an "Entries (N)" count, the helper sentences are gone, and the name field offers the
+// names already saved (GET /api/feedback/names) as a datalist.
 
 const STATUS_TONE = {
   new: 'border-border text-subtle',
@@ -49,6 +52,7 @@ export function NameLine({ onRenamed }) {
   const [editing, setEditing] = useState(!fb.name)
   const [draft, setDraft] = useState(fb.name)
   const [state, setState] = useState('idle')   // 'idle' | 'saving' | 'error'
+  const known = useKnownNames(editing)
   useEffect(() => { setDraft(fb.name) }, [fb.name])
   const save = async (e) => {
     e?.preventDefault()
@@ -77,13 +81,14 @@ export function NameLine({ onRenamed }) {
     <form onSubmit={save} className="space-y-1" data-testid="reviewer-form">
       <label className="block text-[12px] font-medium uppercase tracking-wide text-subtle" htmlFor="feedback-reviewer-name">Your name</label>
       <div className="flex gap-2">
-        <input id="feedback-reviewer-name" value={draft} onChange={(e) => setDraft(e.target.value.slice(0, LIMITS.name))} placeholder="For example, Ikaika" autoComplete="name"
+        <input id="feedback-reviewer-name" value={draft} onChange={(e) => setDraft(e.target.value.slice(0, LIMITS.name))} placeholder="e.g. Ikaika" autoComplete="name" list={KNOWN_NAMES_LIST}
           className="min-h-10 min-w-0 flex-1 rounded-md border border-border bg-card px-3 text-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" data-testid="reviewer-input" />
         <button type="submit" disabled={!draft.trim() || state === 'saving'} className="hcdp-send min-h-10 rounded-md px-4 text-[13px] font-medium text-accent-foreground disabled:opacity-40 [@media(pointer:coarse)]:min-h-11" data-testid="reviewer-save">
           {state === 'saving' ? 'Saving…' : 'Save'}
         </button>
       </div>
-      <p className="text-[12px] text-subtle">{fb.name ? 'Your earlier feedback follows the new name.' : 'The name your feedback is listed under; remembered in this browser for the review period.'}</p>
+      <KnownNames names={known} />
+      {fb.name && <p className="text-[12px] text-subtle">Your earlier feedback follows the new name.</p>}
       {state === 'error' && <p role="alert" className="text-[12px] text-destructive">The name could not be changed. Try again.</p>}
     </form>
   )
@@ -109,7 +114,7 @@ export function MyFeedback() {
   return (
     <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3" data-testid="feedback-mine">
       <NameLine />
-      {!fb.name && <p className="text-[13px] text-subtle" data-testid="mine-needs-name">Add your name to see the feedback you send from this browser.</p>}
+      <p className="text-[12px] font-medium uppercase tracking-wide text-subtle" data-testid="mine-count">Entries ({fb.name && Array.isArray(rows) ? rows.length : 0})</p>
       {fb.name && rows === null && <p className="text-[13px] text-subtle" role="status">Loading…</p>}
       {error && <p role="alert" className="text-[13px] text-destructive">{error}</p>}
       {fb.name && rows?.length === 0 && !error && <p className="text-[13px] text-subtle" data-testid="mine-empty">Nothing yet under this name. Select any text, use 👍 / 👎 on an AI answer, or the Give feedback tab.</p>}
@@ -123,7 +128,7 @@ export function OthersFeedback() {
   const { rows, error } = useRows(() => fetchOthers(fb.name), [fb.name])
   return (
     <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3" data-testid="feedback-others">
-      <p className="text-[12px] text-subtle">Everyone else’s feedback during the review — titles and where the team is with each; no names.</p>
+      <p className="text-[12px] text-subtle">Feedback given by other team members</p>
       {rows === null && <p className="text-[13px] text-subtle" role="status">Loading…</p>}
       {error && <p role="alert" className="text-[13px] text-destructive">{error}</p>}
       {rows?.length === 0 && !error && <p className="text-[13px] text-subtle" data-testid="others-empty">No one else has sent feedback yet.</p>}

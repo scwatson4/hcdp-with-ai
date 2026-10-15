@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { KnownNames, useKnownNames } from './useKnownNames'
 import { Pencil, ThumbsDown, X } from 'lucide-react'
 import { useFeedback } from './FeedbackProvider'
 import { EXCHANGE_FEATURES, FEATURES, FEATURE_LABEL, LIMITS, clip } from './features'
@@ -25,6 +26,7 @@ const box = 'rounded-md border border-border bg-surface px-3 py-2 text-[13px]'
 const field = 'w-full rounded-md border border-border bg-card px-3 text-[14px] text-foreground placeholder:text-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
 export default function Composer({ draft, narrow = false }) {
+  const known = useKnownNames(true)
   const fb = useFeedback()
   const uid = useId().replace(/:/g, '')
   const [feature, setFeature] = useState(draft.feature || 'other')
@@ -154,8 +156,9 @@ export default function Composer({ draft, narrow = false }) {
         </div>
         <div>
           <label htmlFor={`${uid}-name`} className="text-[12px] font-medium uppercase tracking-wide text-subtle">Your name</label>
-          <input id={`${uid}-name`} value={name} onChange={(e) => setName(e.target.value.slice(0, LIMITS.name))} autoComplete="name" placeholder="For example, Ikaika"
+          <input id={`${uid}-name`} value={name} onChange={(e) => setName(e.target.value.slice(0, LIMITS.name))} autoComplete="name" placeholder="e.g. Ikaika" list={`${uid}-known-names`}
             aria-describedby={`${uid}-name-note`} data-testid="composer-name" className={cn(field, 'mt-1 min-h-10')} />
+          <KnownNames id={`${uid}-known-names`} names={known} />
           <p id={`${uid}-name-note`} className="mt-1 text-[12px] leading-snug text-subtle" data-testid="composer-name-note">{NAME_NOTE}</p>
         </div>
         {error && <p role="alert" className="text-[13px] text-destructive" data-testid="composer-error">{error}</p>}

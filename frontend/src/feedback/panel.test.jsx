@@ -51,7 +51,7 @@ describe('My feedback and Others', () => {
     const items = within(panel).getAllByTestId('others-item')
     expect(items.map((i) => within(i).getByTestId('item-title').textContent)).toEqual(['The legend hides the compass on my phone.', 'Wrong page — wanted Access Data'])
     expect(items.map((i) => within(i).getByTestId('status-chip').textContent)).toEqual(['Reviewed', 'New'])
-    expect(panel).toHaveTextContent('no names')
+    expect(panel).toHaveTextContent('Feedback given by other team members')
     expect(within(panel).queryByTestId('reviewer-line')).toBeNull()
   })
 
@@ -74,11 +74,11 @@ describe('My feedback and Others', () => {
     expect(screen.getByTestId('composer-name')).toHaveValue('Ikaika K.')
   })
 
-  it('without a name, "My feedback" asks for one (no rename for a first name)', async () => {
+  it('without a name, "My feedback" shows Entries (0) and the name form (no rename for a first name)', async () => {
     renderApp('/data')
     await click(screen.getByTestId('feedback-tab'))
     await click(screen.getByTestId('feedback-view-mine'))
-    expect(screen.getByTestId('mine-needs-name')).toBeInTheDocument()
+    expect(screen.getByTestId('mine-count')).toHaveTextContent('Entries (0)')
     expect(gets('/api/feedback/mine')).toHaveLength(0)
     fireEvent.change(screen.getByTestId('reviewer-input'), { target: { value: 'Leilani' } })
     await click(screen.getByTestId('reviewer-save'))

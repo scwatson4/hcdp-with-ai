@@ -592,7 +592,12 @@ the shell, `FeedbackLayer` at its end); `AISummary.jsx` and `AssistantPanel.jsx`
   /api/feedback/mine?name=`) lists the items sent under that name, newest first, with a status chip (New · Reviewed · Fixed ·
   Won't fix; never the team's note) — a tap goes to the page and marks the quoted passage; Others (`GET
   /api/feedback/others?name=`) lists everyone else's — the anonymous "Wrong page?" reports included — as titles and statuses,
-  never a name. The name is changed there; earlier items follow it (`POST /api/feedback/rename {from, to}` → `{ok, changed}`).
+  never a name (the tab's line reads "Feedback given by other team members"). My feedback leads with an "Entries (N)" count
+  (0 until a name is set). The name is changed there; earlier items follow it (`POST /api/feedback/rename {from, to}` →
+  `{ok, changed}`), and both name fields (the panel's and the composer's) offer the names already saved as a datalist
+  (`GET /api/feedback/names` → `{names}`, newest first, case-insensitive duplicates folded; 15 Oct). The "Give feedback"
+  control is a horizontal pill at the page's bottom-left corner (15 Oct; it was a vertical right-edge tab), hidden on the
+  full-screen map shells, which the mini Ask AI box owns.
 - **The API.** `POST /api/feedback` body `{ kind: "thumbs" | "selection" | "tab", rating: "up" | "down" | null (a thumbs item
   needs one), feature, page: { path (a path here), title }, quote, ask, reply, overview_id, wanted: {title, url} | {text} | null,
   text (required except for a 👍), reviewer_name }` → `{ id }`; 400 for an unknown kind, rating or feature, a missing text, a
@@ -607,7 +612,9 @@ the shell, `FeedbackLayer` at its end); `AISummary.jsx` and `AssistantPanel.jsx`
   status, ▲ / ▼ thumbs, by kind; they follow a status change at once), filters by kind, feature and status, and per row when ·
   kind · feature · page · what was said (the rating, the quote, the text, ask → reply, the wanted page, where a wrong-page visitor
   went instead) · reviewer · a status dropdown saved at once and a team note saved on Save (`PATCH /api/admin/feedback/{id}`
-  `{status?, admin_note?}` → `{ok, row}`; 400 for an unknown status or nothing to change, 404 for an unknown id) · **Add to
+  `{status?, admin_note?}` → `{ok, row}`; 400 for an unknown status or nothing to change, 404 for an unknown id) · **Delete**
+  (`DELETE /api/admin/feedback/{id}` → `{ok, id}` after a confirm; removes the row from either table for good, meant for
+  smoke-test and sample entries; 404 for an unknown id; 15 Oct) · **Add to
   backlog**, which copies a ready-made team-backlog command for the row (`docker exec hcdp-team-backlog python /app/cli.py add
   --actor 'HCDP website feedback' --id FB-YYYYMMDD-xxxxxxxx --category ai-behavior|general-ui --title … --summary …`, the quote,
   page, ask, reply and wanted page in the summary, quoted for the shell) — the backlog CLI lives on another VM, so the admin

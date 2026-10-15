@@ -164,23 +164,9 @@
   --hcdp-hairline-opacity: 0.78;
 }
 
-/* B1 — the band is the whole app's top edge, so it runs the full window
-   width and crosses the conversations sidebar rather than starting where
-   the content column does. Drawn on the app's row container (not the
-   header, which lives inside that column) and pinned to the header's
-   height, so it lands exactly on the 1px border both panels share.
-   z-index clears the sidebar's own chrome but stays under dialogs. */
-.hcdp-hairline {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(3rem - 1px);
-  height: 1px;
-  z-index: 10;
-  background-image: var(--hcdp-rainbow);
-  opacity: var(--hcdp-hairline-opacity);
-  pointer-events: none;
-}
+/* The header's 3 px rainbow hairline is a normal block at the top of the header (its rule sits with the
+   other rainbow accents below). An absolute rule copied from the AI interface used to pin it 3 rem down,
+   which put it across the logo once the class was renamed on 14 Oct; removed 15 Oct. */
 
 /* B3 — composer focus ring. The class owns the border at a constant
    1.5px in both states so focusing never nudges the layout; only the
@@ -902,7 +888,7 @@
    fill was 0.86 for 4.53:1 there; the user asked for more transparency (13 Oct) — 0.62 with a darker ghost (foreground at 70 %). Dark mode: the same with the dark canvas. Without backdrop-filter the
    field falls back to a solid canvas fill. */
 .hcdp-ask-glass {
-  background: hsl(var(--canvas) / 0.5);   /* 13 Oct: more see-through still, so the islands show through the bar */
+  background: hsl(var(--canvas) / 0.65);   /* 13 Oct: 0.5; 15 Oct: 30 % less transparent at the user's request (transparency 0.5 → 0.35) */
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }

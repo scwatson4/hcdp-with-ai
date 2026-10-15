@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ClipboardCopy, Download, FileJson, KeyRound } from 'lucide-react'
+import { ClipboardCopy, Download, FileJson, KeyRound, Trash2 } from 'lucide-react'
 import { FEATURES, FEATURE_LABEL, KINDS, KIND_LABEL, STATUSES, STATUS_LABEL, clip } from '../feedback/features'
 import { BACKLOG_TIP, backlogEntry } from '../feedback/backlog'
 import { copyText } from '../feedback/copy'
@@ -164,6 +164,30 @@ export default function AdminFeedback() {
     } catch { setProblem('That change was not saved. Try again.'); return false }
   }, [key])
 
+  // 15 Oct: an entry can be removed for good (smoke-test and sample rows) — DELETE with the key, after a confirm.
+  const remove = useCallback(async (id) => {
+    if (typeof window !== 'undefined' && typeof window.confirm === 'function' && !window.confirm('Delete this feedback entry for good?')) return false
+    try {
+      const r = await fetch(`/api/admin/feedback/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { 'X-Admin-Key': key } })
+      if (!r.ok) { if (r.status === 401) fail(401); setProblem('That entry was not deleted. Try again.'); return false }
+      setProblem('')
+      setData((cur) => {
+        if (!cur) return cur
+        const before = cur.rows.find((x) => x.id === id)
+        let counts = cur.counts
+        if (counts && before) {
+          const st = { ...(counts.by_status || {}) }
+          const was = before.status || 'new'
+          st[was] = Math.max(0, (st[was] || 0) - 1)
+          if (!st[was]) delete st[was]
+          counts = { ...counts, by_status: st, total: Math.max(0, (counts.total || 1) - 1) }
+        }
+        return { ...cur, counts, rows: cur.rows.filter((x) => x.id !== id) }
+      })
+      return true
+    } catch { setProblem('That entry was not deleted. Try again.'); return false }
+  }, [key])
+
   const download = async (url, filename) => {
     try {
       const r = await fetch(url, { headers: { 'X-Admin-Key': key }, cache: 'no-store' })
@@ -233,7 +257,15 @@ export default function AdminFeedback() {
                       </select>
                     </td>
                     <td className="px-3 py-2"><NoteCell row={r} onSave={patch} /></td>
-                    <td className="px-3 py-2"><BacklogButton row={r} /></td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-1">
+                        <BacklogButton row={r} />
+                        <button type="button" onClick={() => remove(r.id)} title="Delete this entry for good" aria-label="Delete this entry for good" data-testid="admin-delete"
+                          className="inline-flex min-h-8 items-center gap-1 rounded border border-border px-2 text-[12.5px] text-subtle hover:border-destructive hover:text-destructive [@media(pointer:coarse)]:min-h-11">
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />Delete
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

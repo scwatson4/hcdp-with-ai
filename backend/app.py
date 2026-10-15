@@ -10,9 +10,10 @@ Endpoints
   POST /api/feedback                       a reviewer's feedback item (F1–F5, 13 Oct): thumbs on an answer/overview, a note on a selection, the tab, a 👎 with the wanted page → {id}
   GET  /api/feedback/mine?name=            the reviewer's own items (by the name their browser remembers)
   GET  /api/feedback/others?name=          everyone else's items as titles + status only (no names)
+  GET  /api/feedback/names                 the reviewer names already saved (the name picker)
   POST /api/feedback/rename {from, to}     the reviewer's earlier items follow a new name
   GET  /api/admin/feedback(.csv)           the wrong-page reports, newest first, behind ADMIN_KEY (X-Admin-Key; 404 when unset, 401 when wrong)
-  GET  /api/admin/feedback/review(.csv)    the review list over both tables (?kind&feature&status), with counts; PATCH /api/admin/feedback/{id} {status, admin_note}
+  GET  /api/admin/feedback/review(.csv)    the review list over both tables (?kind&feature&status), with counts; PATCH /api/admin/feedback/{id} {status, admin_note}; DELETE /api/admin/feedback/{id} removes a row
   GET  /api/admin/feedback/evals.json      the 👎 / wrong-page rows that named a page, as usecases.json-shaped eval cases (F5)
   GET  /api/raster            GeoTIFF proxy to the HCDP API (token stays here; disk cache; ETag + Range)
   GET  /api/dates             available date range for a dataset (proxy, memory cache)
@@ -1282,6 +1283,14 @@ async def api_feedback_others(request: Request, name: str = Query(default="", ma
     return JSONResponse({"rows": rows}, headers={"Cache-Control": "no-store"})
 
 
+@app.get("/api/feedback/names")
+async def api_feedback_names(request: Request):
+    """The reviewer names already saved with feedback, newest first — the panel's name picker (15 Oct)."""
+    store = _feedback_store(request)
+    names = await run_in_threadpool(store.names)
+    return JSONResponse({"names": names}, headers={"Cache-Control": "no-store"})
+
+
 @app.post("/api/feedback/rename")
 async def api_feedback_rename(body: FeedbackRenameBody, request: Request):
     """The reviewer changed their name in the panel: their earlier items follow it."""
@@ -1354,6 +1363,19 @@ async def api_admin_feedback_patch(fid: str, body: FeedbackPatchBody, request: R
         raise HTTPException(404, "unknown item")
     return JSONResponse({"ok": True, "row": row}, headers={"Cache-Control": "no-store"})
 
+
+
+@app.delete("/api/admin/feedback/{fid}")
+async def api_admin_feedback_delete(fid: str, request: Request):
+    """Remove one row of either table for good (smoke-test and sample entries); 404 for an unknown id."""
+    _admin_check(request)
+    if not FEEDBACK_ID_RE.match(fid):
+        raise HTTPException(404, "unknown item")
+    store = _feedback_store(request)
+    gone = await run_in_threadpool(store.delete, fid)
+    if not gone:
+        raise HTTPException(404, "unknown item")
+    return JSONResponse({"ok": True, "id": fid}, headers={"Cache-Control": "no-store"})
 
 # ----- the built site ---------------------------------------------------------
 @app.get("/{full_path:path}", include_in_schema=False)

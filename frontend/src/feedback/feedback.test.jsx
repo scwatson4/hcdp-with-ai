@@ -122,13 +122,14 @@ describe('👍 / 👎 on every AI answer (F1 A)', () => {
   })
 })
 
-describe('the right-edge tab and the composer (F1 A, F2 A, F4 A)', () => {
-  it('the tab is on every page, the landing included: vertical, 44 px wide, chip-styled, hidden in print; it opens the composer with the feature picker', async () => {
+describe('the bottom-left tab and the composer (F1 A, F2 A, F4 A)', () => {
+  it('the tab is on every page, the landing included: a horizontal pill at the bottom-left, 44 px tall, chip-styled, hidden in print; it opens the composer with the feature picker', async () => {
     renderApp('/')
     const tab = screen.getByTestId('feedback-tab')
     expect(tab).toHaveTextContent('Give feedback')
-    for (const c of ['fixed', 'right-0', 'w-11', 'print:hidden', 'border', 'bg-card']) expect(tab.className).toContain(c)
-    expect(tab.querySelector('span').className).toContain('[writing-mode:vertical-rl]')
+    for (const c of ['fixed', 'bottom-4', 'left-4', 'min-h-11', 'rounded-full', 'print:hidden', 'border', 'bg-card']) expect(tab.className).toContain(c)
+    expect(tab.className).not.toContain('right-0')
+    expect(tab.querySelector('span').className).not.toContain('vertical-rl')
     expect(tab).toHaveAttribute('aria-haspopup', 'dialog')
     tab.focus()                                                                                        // a keyboard user on the tab
     await click(tab)
@@ -200,7 +201,7 @@ describe('the right-edge tab and the composer (F1 A, F2 A, F4 A)', () => {
     const scrollTo = async (y) => { Object.defineProperty(window, 'scrollY', { value: y, configurable: true, writable: true }); await act(async () => { window.dispatchEvent(new Event('scroll')) }) }
     expect(tab).toHaveAttribute('data-tucked', 'false')
     await scrollTo(400)
-    expect(tab).toHaveAttribute('data-tucked', 'true'); expect(tab.className).toContain('translate-x-full')
+    expect(tab).toHaveAttribute('data-tucked', 'true'); expect(tab.className).toContain('translate-y-[calc(100%+1.5rem)]')
     await scrollTo(390)
     expect(tab).toHaveAttribute('data-tucked', 'true')                                                // a small wobble does not bring it back
     await scrollTo(300)

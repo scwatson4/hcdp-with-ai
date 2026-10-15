@@ -280,6 +280,17 @@ class FeedbackStore:
                 return None
         return self.find(fid)
 
+    def delete(self, fid: str) -> bool:
+        """Remove one row of either table for good (an admin action, meant for smoke-test and sample entries);
+        True when a row went."""
+        if not ID_RE.match(fid or ""):
+            return False
+        with self._lock, self._connect() as c:
+            for table in ("feedback", "wrong_page"):
+                if c.execute(f"DELETE FROM {table} WHERE id = ?", (fid,)).rowcount == 1:
+                    return True
+        return False
+
     # ----- reads (feedback) --------------------------------------------------------
     def _feedback_rows(self, c: sqlite3.Connection, where: str = "", args: tuple = (), limit: int = MAX_ROWS) -> list[dict]:
         cur = c.execute(f"SELECT {', '.join(FEEDBACK_COLUMNS)} FROM feedback {where} ORDER BY created_at DESC, rowid DESC LIMIT ?", (*args, max(1, min(int(limit), 5000))))
@@ -329,6 +340,14 @@ class FeedbackStore:
             r.pop("admin_note", None)
             r["title"] = item_title(r)
         return rows
+
+    def names(self, limit: int = 50) -> list[str]:
+        """The reviewer names already saved with feedback (most recent first, case-insensitive duplicates folded), for
+        the panel's name picker (15 Oct)."""
+        with self._lock, self._connect() as c:
+            cur = c.execute("SELECT reviewer_name, MAX(created_at) AS last FROM feedback WHERE reviewer_name IS NOT NULL AND trim(reviewer_name) != '' "
+                            "GROUP BY lower(trim(reviewer_name)) ORDER BY last DESC LIMIT ?", (max(1, min(int(limit), 500)),))
+            return [str(r[0]).strip() for r in cur.fetchall()]
 
     def others(self, exclude_name: str | None = None, limit: int = 200) -> list[dict]:
         """Everyone else's items as titles and statuses only — no names, no text, no quotes beyond the title line; the

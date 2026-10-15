@@ -123,11 +123,11 @@ describe('👍 / 👎 on every AI answer (F1 A)', () => {
 })
 
 describe('the bottom-left tab and the composer (F1 A, F2 A, F4 A)', () => {
-  it('the tab is on every page, the landing included: a horizontal pill at the bottom-left, 44 px tall, chip-styled, hidden in print; it opens the composer with the feature picker', async () => {
+  it('the tab is on every page, the landing included: a small horizontal pill at the bottom-left, chip-styled, hidden in print; it opens the composer with the feature picker', async () => {
     renderApp('/')
     const tab = screen.getByTestId('feedback-tab')
     expect(tab).toHaveTextContent('Give feedback')
-    for (const c of ['fixed', 'bottom-4', 'left-4', 'min-h-11', 'rounded-full', 'print:hidden', 'border', 'bg-card']) expect(tab.className).toContain(c)
+    for (const c of ['fixed', 'bottom-3', 'left-3', 'min-h-6', 'text-[12px]', 'rounded-full', 'print:hidden', 'border', 'bg-card']) expect(tab.className).toContain(c)
     expect(tab.className).not.toContain('right-0')
     expect(tab.querySelector('span').className).not.toContain('vertical-rl')
     expect(tab).toHaveAttribute('aria-haspopup', 'dialog')
@@ -135,6 +135,8 @@ describe('the bottom-left tab and the composer (F1 A, F2 A, F4 A)', () => {
     await click(tab)
     const panel = screen.getByTestId('feedback-panel')
     expect(panel).toHaveAttribute('role', 'dialog')
+    expect(panel.className).not.toContain('right-0')                                                  // 15 Oct: it opens from the left, the pill's side
+    if (panel.dataset.variant === 'panel') expect(panel.className).toContain('left-0')
     expect(within(panel).getByTestId('feedback-panel-title')).toHaveTextContent('Give feedback')
     const labels = [...panel.querySelectorAll('[data-testid="composer-feature"]')].map((r) => r.closest('label').textContent)
     expect(labels).toEqual(['AI answer', 'Navigation result', 'AI Overview', 'Maps viewer', 'Downloads', 'Feedback itself', 'A page', 'Other'])
@@ -181,7 +183,7 @@ describe('the bottom-left tab and the composer (F1 A, F2 A, F4 A)', () => {
     const name = screen.getByTestId('composer-name')
     expect(name).toHaveValue('Leilani')
     const note = screen.getByTestId('composer-name-note')
-    expect(note).toHaveTextContent('Remembered in this browser (local storage) for the review period')
+    expect(note).toHaveTextContent('Remembered in your browser')
     expect(name).toHaveAttribute('aria-describedby', note.id)
     fireEvent.change(screen.getByTestId('composer-text'), { target: { value: 'The legend hides the compass.' } })
     await click(screen.getByTestId('composer-send'))

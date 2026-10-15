@@ -11,7 +11,7 @@ import { cn } from '../lib/utils'
 // answer, attached automatically when the feedback is about an answer, a navigation result or an overview (shown,
 // removable); after a 👎 the page that was wanted (removable); the feature picker; the free text (required); the
 // reviewer's name (F4 A: remembered in this browser — said under the field); Send. Ctrl/⌘ + Enter sends too.
-export const NAME_NOTE = 'Remembered in this browser (local storage) for the review period — the one exception to “nothing stored”, made for reviewers. Leave it empty to send anonymously.'
+export const NAME_NOTE = 'Remembered in your browser'
 
 function Removable({ label, onRemove, testid }) {
   return (

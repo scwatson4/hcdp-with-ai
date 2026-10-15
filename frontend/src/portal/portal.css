@@ -52,7 +52,8 @@
 .hcdp-library .hcdp-lib-title { color: #333; }
 .hcdp-library .hcdp-lib-meta { font-size: 13px; }
 .hcdp-library .hcdp-lib-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 4px 0 8px; }
-.hcdp-library input[type="search"] { height: 36px; min-width: 240px; padding: 0 10px; border: 1px solid #ddd; border-radius: 3px; font: inherit; color: #555; }
+.hcdp-library .hcdp-lib-tools label { flex: 1 1 340px; max-width: 36rem; }   /* 15 Oct: wide enough for the whole placeholder */
+.hcdp-library input[type="search"] { height: 36px; width: 100%; min-width: 240px; padding: 0 10px; border: 1px solid #ddd; border-radius: 3px; font: inherit; color: #555; }
 @media (pointer: coarse) { .hcdp-library input[type="search"] { height: 44px; } }
 .hcdp-library .hcdp-lib-years { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 13px; }
 .hcdp-library .hcdp-lib-years a { color: #03c4eb; text-decoration: none; }

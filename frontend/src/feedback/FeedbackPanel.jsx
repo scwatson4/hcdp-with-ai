@@ -39,7 +39,7 @@ export default function FeedbackPanel() {
       className={cn('fixed z-[1300] flex flex-col bg-card text-card-foreground print:hidden',
         narrow
           ? 'inset-x-0 bottom-0 max-h-[88dvh] rounded-t-xl border-t border-border shadow-[0_-4px_16px_rgba(0,0,0,0.12)] animate-slide-up'
-          : 'inset-y-0 right-0 w-[400px] max-w-[92vw] border-l border-border shadow-2xl animate-fade-in')}>
+          : 'inset-y-0 left-0 w-[400px] max-w-[92vw] border-r border-border shadow-2xl hcdp-panel-in-left')}>
       {narrow && <span aria-hidden="true" className="mx-auto mt-2 block h-1 w-10 shrink-0 rounded-full bg-border-strong" data-testid="sheet-grab" />}
       <header className="shrink-0 border-b border-border px-4 pb-2 pt-3">
         <div className="flex items-center gap-2">

@@ -34,8 +34,9 @@ export function useTucked() {
   return [tucked, setTucked]
 }
 
-/** F1 A (c), moved 15 Oct at the user's request: a horizontal pill at the page's bottom-left corner (it was a vertical
- *  tab on the right edge) — the portal's chip style (white, a 1 px border), 44 px tall, on every page, the landing
+/** F1 A (c), moved 15 Oct at the user's request: a small horizontal pill at the page's bottom-left corner (it was a
+ *  vertical 44 px tab on the right edge; the user then asked for a third of the size: 12 px type (the M6 A floor), 24 px tall, an invisible
+ *  8 px halo keeps it easy to hit) — the portal's chip style (white, a 1 px border), on every page, the landing
  *  included; hidden in print, on the full-screen map shells (the mini Ask AI box owns that corner) and (invisibly kept)
  *  while the panel is open. On narrow and touch screens it slides down out of the way while the page scrolls down. */
 export function FeedbackTab() {
@@ -47,8 +48,8 @@ export function FeedbackTab() {
   return (
     <button type="button" onClick={() => fb.openPanel('compose')} onFocus={() => setTucked(false)} aria-haspopup="dialog" aria-expanded={open} aria-hidden={open || undefined} tabIndex={open ? -1 : undefined}
       data-testid="feedback-tab" data-feedback-ui="" data-open={open ? 'true' : 'false'} data-tucked={tucked ? 'true' : 'false'}
-      className={`fixed bottom-4 left-4 z-40 inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-[13px] font-medium text-foreground shadow-sm transition-[transform,border-color] duration-200 hover:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none print:hidden ${open ? 'invisible' : ''} ${tucked && !open ? 'translate-y-[calc(100%+1.5rem)]' : ''}`}>
-      <MessageSquarePlus className="h-4 w-4 shrink-0" aria-hidden="true" />
+      className={`fixed bottom-3 left-3 z-40 inline-flex min-h-6 items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[12px] font-medium leading-none text-foreground shadow-sm transition-[transform,border-color] duration-200 after:absolute after:-inset-2 after:content-[''] hover:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none print:hidden ${open ? 'invisible' : ''} ${tucked && !open ? 'translate-y-[calc(100%+1.5rem)]' : ''}`}>
+      <MessageSquarePlus className="h-3 w-3 shrink-0" aria-hidden="true" />
       <span className="whitespace-nowrap">Give feedback</span>
     </button>
   )

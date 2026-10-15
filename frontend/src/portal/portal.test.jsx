@@ -4,7 +4,7 @@ import { render, screen, fireEvent, act, within, cleanup } from '@testing-librar
 import { MemoryRouter, Routes, Route, Outlet, useLocation } from 'react-router-dom'
 import { AssistantProvider, HOLD_MS, TRAVEL_MS } from '../assistant/AssistantProvider'
 import AssistantBar from '../assistant/AssistantBar'
-import { renderTerms } from '../assistant/AISummary'
+import { renderTerms, PAGE_REVEAL } from '../assistant/AISummary'
 import { ThemeProvider } from '../components/ThemeProvider'
 import { TooltipProvider } from '../components/ui/tooltip'
 import MirroredPage, { Mirror, pageMarkup, pageOverview, copiedDate, hashTarget } from './MirroredPage'
@@ -15,6 +15,9 @@ import { HOST_CSS, THEME_URL, resetTheme } from './portalTheme'
 import { forgetPortalPages } from './usePortalPage'
 import { originalFor } from '../site/original'
 import { NAV } from '../site/nav'
+
+// 15 Oct: a cached page overview plays a short "Writing…" beat before its sentences; these tests read the sentences at once.
+beforeEach(() => { PAGE_REVEAL.ms = 0 })
 
 const HCDP = 'https://www.hawaii.edu/climate-data-portal'
 const json = (body, status = 200) => ({ ok: status >= 200 && status < 300, status, json: () => Promise.resolve(body), text: () => Promise.resolve(typeof body === 'string' ? body : JSON.stringify(body)) })
@@ -222,7 +225,7 @@ describe('a mirrored page', () => {
 })
 
 describe('the AI overview on a mirrored page', () => {
-  it('a direct load shows the page’s cached overview (QB-O1 B) at the top, above the band: sources, sentences with bold key terms, no "Wrong page?"', async () => {
+  it('a direct load shows the page’s cached overview (QB-O1 B) collapsed at the top, above the band; opened: sources, sentences with bold key terms, no "Wrong page?"', async () => {
     pages['/about/history'] = { ...HISTORY, overview: OVERVIEW }
     renderAt('/about/history')
     await flush(10)
@@ -230,6 +233,11 @@ describe('the AI overview on a mirrored page', () => {
     expect(block).toHaveAttribute('data-kind', 'page')
     expect(before(block, screen.getByTestId('mirror-band'))).toBe(true)
     expect(before(block, screen.getByTestId('mirror-host'))).toBe(true)
+    // 15 Oct: it arrives collapsed ("Show AI Overview"); a tap opens it
+    expect(block).toHaveAttribute('data-status', 'collapsed')
+    expect(within(block).getByTestId('ai-overview-title')).toHaveTextContent('Show AI Overview')
+    fireEvent.click(within(block).getByTestId('ai-overview-open'))
+    await flush(10)
     expect(within(block).getByTestId('ai-summary-sources')).toHaveTextContent('Team')
     const terms = within(block).getAllByTestId('ai-summary-term').map((t) => t.textContent)
     expect(terms).toEqual(['Team', 'HCDP'])

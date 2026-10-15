@@ -564,7 +564,7 @@ features as the AI data analysis interface has. `frontend/src/feedback/*`, mount
 the shell, `FeedbackLayer` at its end); `AISummary.jsx` and `AssistantPanel.jsx` hook in with one line each.
 - **Three ways in (F1 A).** (a) 👍 / 👎 on every AI answer (the landing card, the docked dropdown, the phone's Ask AI sheet) and
   at the end of every AI overview: two quiet 28 px icons (44 px on coarse pointers) at the LEFT of the last row — on an overview
-  right before "Wrong page?" (the right edge belongs to the tab and Back to top). 👍 is one tap: `POST /api/feedback` with the
+  right before "Wrong page?" (the right edge belongs to Back to top; the feedback pill sits at the bottom-left). 👍 is one tap: `POST /api/feedback` with the
   exchange, a toast "Thanks", the thumb stays filled. 👎 (F5 A) unfolds "Which page did you want?" in place — the answer's
   alternatives (and did-you-mean options) as rows, "Other…" with a line of text and Next, and "Skip — it is not about the page" —
   then opens the composer with the choice attached (the pick files; it does not navigate). (b) Select text anywhere (not in form
@@ -573,11 +573,12 @@ the shell, `FeedbackLayer` at its end); `AISummary.jsx` and `AssistantPanel.jsx`
   with the passage quoted (≤ 500 characters), the feature guessed from where it sits (an overview → AI Overview with its exchange,
   an answer → AI answer with its exchange, `/viewer/…` → Maps viewer, `/download` → Downloads, else A page) and the passage
   marked on the page while the composer is open (CSS Custom Highlight API, `::highlight(hcdp-feedback)` — the page's DOM is never
-  touched). (c) The right-edge **"Give feedback"** tab: vertical, the portal's chip style (white, a 1 px border), 44 px wide,
-  centred on the right edge of every page with the landing, hidden in print and kept (inert, invisible) while the panel is open
-  so the focus can come back to it; on narrow or touch screens (`(max-width: 1023px), (pointer: coarse)`) it tucks off the edge
-  while the page scrolls down and returns on the way up or near the top.
-- **The composer (F2 A).** A non-modal 400 px right-side panel on desktop, a bottom sheet (≤ 88 dvh, a grab bar) below 640 px,
+  touched). (c) The **"Give feedback"** pill (15 Oct; it was a vertical right-edge tab): horizontal, the portal's chip style (white, a
+  1 px border), 44 px tall, fixed at the bottom-left corner of every page with the landing, hidden in print and on the full-screen
+  map shells (the mini Ask AI box owns that corner) and kept (inert, invisible) while the panel is open so the focus can come back
+  to it; on narrow or touch screens (`(max-width: 1023px), (pointer: coarse)`) it slides down out of the way while the page
+  scrolls down and returns on the way up or near the top.
+- **The composer (F2 A).** A non-modal 400 px left-side (15 Oct; it opens from the pill's side) panel on desktop, a bottom sheet (≤ 88 dvh, a grab bar) below 640 px,
   in the portal's fonts; above every layer of the site (z 1300 — the Ask AI sheet is 71, the full-screen map 60, the phone
   viewer's sheet 1100); ✕ or Esc closes it (the Esc stops there) and the focus returns. In order: the quote (removable); the page
   — title and path, editable; the last question and answer, attached automatically when the feature is AI answer, Navigation
@@ -649,15 +650,14 @@ on the overview with the tile ringed below it). It shows while the provider hold
 overview for that very pathname, keyed by the answer, so a follow-up that lands on the same page fades a new one in. On the
 mirrored HCDP pages (below) the overview sits at the very top, in the content column above HCDP's grey band; on the native
 embeds above the strip; `/tools/<slug>` lands on it with the tile ringed below. **Direct loads (QB-O1 B, 14 Oct):** a mirrored
-page opened without an ask shows its own cached overview instead (`fallback`, `data-kind="page"`): written once per copy of
+page opened without an ask shows its own cached overview instead (`fallback`, `data-kind="page"`): it arrives with the same beat as a live one (the header, then "Writing an overview of this page…" with the comet ring for 0.7 s, `PAGE_REVEAL.ms`, then the sources and the sentences 350 ms apart; reduced motion shows it at once; 15 Oct) and is written once per copy of
 the page by `Summarizer.page_overview` (the catalog entry + the page's first ~1,500 characters, `llm.PAGE_OVERVIEW_SYSTEM`,
 "describe this page"), regenerated when the copy changes; its sources are the page's own HCDP address first, then up to two
 related entries; three generic follow-ups go to the docked bar's ghost; no "Wrong page?" (there was no question). A
 navigation's per-question overview replaces it; ✕ on either hides both for that visit to the page. **Key terms (14 Oct):**
 both prompts ask for up to three key terms wrapped in `**…**`; `summary.py` keeps at most three across the summary and the
 "more" sentences (none in follow-ups) and strips every other asterisk; the client renders them bold (`renderTerms`). A quiet block, no card: a 3 px vertical spectrum rule on the left; a header row with a four-point
-star in the logo's spectrum, the words **"AI Overview"** and, at the right, the small **"Generated by HCDP AI"** (the AI words
-carry a thin spectrum rule) and a ✕; then the numbered **sources first** — "From HCDP: ¹ Hurricane Lowell report ↗ · ² Access
+star in the logo's spectrum, the words **"AI Overview"** and, at the right, the ✕ (the small "Generated by HCDP AI" eyebrow went on 15 Oct: repetitive next to the star and the words) and a ✕; then the numbered **sources first** — "From HCDP: ¹ Hurricane Lowell report ↗ · ² Access
 Data ↗", real HCDP pages resolved from the catalog, external, new tab; then the summary's two or three sentences, each fading
 and rising 350 ms apart (reduced motion: all at once), each ending in small superscript links to the sources it rests on; then
 **"Show more ⌄"** — a full-width rounded button that unfolds, with the same fade, the `more` sentences, "Also:" (the navigator's

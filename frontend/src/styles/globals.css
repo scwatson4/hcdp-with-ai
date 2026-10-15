@@ -888,7 +888,7 @@
    fill was 0.86 for 4.53:1 there; the user asked for more transparency (13 Oct) — 0.62 with a darker ghost (foreground at 70 %). Dark mode: the same with the dark canvas. Without backdrop-filter the
    field falls back to a solid canvas fill. */
 .hcdp-ask-glass {
-  background: hsl(var(--canvas) / 0.65);   /* 13 Oct: 0.5; 15 Oct: 30 % less transparent at the user's request (transparency 0.5 → 0.35) */
+  background: hsl(var(--canvas) / 0.72);   /* 13 Oct: 0.5; 15 Oct: 30 % then 20 % less transparent at the user's request (transparency 0.5 → 0.35 → 0.28) */
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
@@ -1058,13 +1058,16 @@ html.hcdp-scroll-lock, html.hcdp-scroll-lock body { overflow: hidden; overscroll
 /* A side sheet (the phone menu) slides in from the right edge. */
 @keyframes hcdp-side-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
 .hcdp-side-in { animation: hcdp-side-in 240ms cubic-bezier(.22,1,.36,1) both; }
+/* The feedback panel (15 Oct) opens from the left edge, the side its pill sits on. */
+@keyframes hcdp-panel-in-left { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+.hcdp-panel-in-left { animation: hcdp-panel-in-left 240ms cubic-bezier(.22,1,.36,1) both; }
 /* The toast ("Link copied") rises a little and fades in. */
 @keyframes hcdp-toast-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 .hcdp-toast-in { animation: hcdp-toast-in 180ms ease both; }
 @media (prefers-reduced-motion: reduce) {
   .hcdp-goo-close { animation: none; opacity: 0; transition: opacity 200ms; }
   .hcdp-goo-wrap { filter: none; }
-  .hcdp-goo-pop, .hcdp-sheet-in, .hcdp-scrim-in, .hcdp-side-in, .hcdp-toast-in { animation: none; }
+  .hcdp-goo-pop, .hcdp-sheet-in, .hcdp-scrim-in, .hcdp-side-in, .hcdp-panel-in-left, .hcdp-toast-in { animation: none; }
 }
 
 /* M1 C (14 Oct): the phone viewer's map furniture. The floating bar's height is --hcdp-fab-clear (set on the viewer):

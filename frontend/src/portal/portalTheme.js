@@ -19,6 +19,10 @@ export const HOST_CSS = `
 .hcdp-body{background:#fff;min-height:1px}
 .hcdp-mirror-sr{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .hcdp-mirror-ext{font-size:.85em;text-decoration:none}
+/* 15 Oct: HCDP's icon buttons (the Library's "Search Publications", class btn fa fa-search) get a gap between the glyph and
+   the words, and no external-link arrow inside the button (the sr-only "(opens in a new tab)" stays). */
+.btn.fa::before,.btn[class*=" fa-"]::before{margin-right:.6em}
+.btn .hcdp-mirror-ext,.wp-block-button__link .hcdp-mirror-ext{display:none}
 .hcdp-mirror-iframe{display:block;border:0;max-width:100%}
 .hcdp-mirror-iframe-fluid{width:100%;min-height:360px}
 .hcdp-mirror-form-frame{display:block;width:100%;border:0}

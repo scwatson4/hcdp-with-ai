@@ -92,8 +92,9 @@ describe('the AI overview after a navigation', () => {
     expect(sources).toHaveTextContent('From HCDP:')
     const links = within(sources).getAllByRole('link')
     expect(links.map((a) => a.getAttribute('href'))).toEqual([MESONET, LIVE])
-    expect(links[0]).toHaveTextContent('¹ Hawaiʻi Mesonet ↗')
-    expect(links[1]).toHaveTextContent('² Hawaiʻi Mesonet Live Data Access ↗')
+    expect(links[0]).toHaveTextContent('¹ Hawaiʻi Mesonet')
+    expect(links[0].textContent).not.toContain('↗')                                                  // no visible arrow (15 Oct)
+    expect(links[1]).toHaveTextContent('² Hawaiʻi Mesonet Live Data Access')
     links.forEach((a) => { expect(a).toHaveAttribute('target', '_blank'); expect(a.getAttribute('rel')).toMatch(/noopener/) })
     // the block sits above the page's heading
     expect(before(block, screen.getByRole('heading', { level: 1 }))).toBe(true)
@@ -194,7 +195,7 @@ describe('the AI overview after a navigation', () => {
     expect(screen.getByTestId('probe').textContent).toBe('/extreme-events/lowell')
     const block = screen.getByTestId('ai-summary')
     expect(within(block).getAllByTestId('ai-summary-chunk').map((c) => c.textContent.split('¹')[0])).toEqual(['You asked for the Hurricane Lowell report.', 'This section tells the story of the storm.'])
-    expect(within(block).getByTestId('ai-summary-sources')).toHaveTextContent('¹ Hurricane Lowell report ↗')
+    expect(within(block).getByTestId('ai-summary-sources')).toHaveTextContent('¹ Hurricane Lowell report')
     expect(screen.queryByTestId('reply-strip')).toBeNull()
     await tick(700)
     const typedB = within(bar).getByTestId('composer-ghost-text').textContent

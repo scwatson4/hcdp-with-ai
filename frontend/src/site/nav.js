@@ -61,13 +61,13 @@ export const SIDEBAR = {
   // The portal's five buttons in its order, recoloured with the logo's spectrum (globals.css --hcdp-rainbow),
   // one shade deeper each so white type stays legible; linked to this site's pages where it has them.
   buttons: [
-    { label: "Access Data", to: "/data", href: "https://www.hawaii.edu/climate-data-portal/data-portal/", color: "#357c78" },
-    { label: "Hawaiʻi Mesonet", to: "/mesonet", href: "https://www.hawaii.edu/climate-data-portal/hawaii-mesonet/", color: "#4f7a30" },
-    { label: "Climate Summary", to: "/climate-summary", href: "https://www.hawaii.edu/climate-data-portal/climate-summary/", color: "#a85a1c" },
-    { label: "Pacific Portal", to: "/pacific", href: "https://www.hawaii.edu/climate-data-portal/pacific-portal/", color: "#303078" },
-    { label: "Extreme Events", to: "/extreme-events", href: "https://www.hawaii.edu/climate-data-portal/extreme-event/", color: "#b8452f" },
+    { label: "Access Data", to: "/data", href: "https://www.hawaii.edu/climate-data-portal/data-portal/", color: "#357c78", tip: "Maps of rainfall, temperature, drought, humidity, vegetation and fire risk, 1920 to yesterday, with downloads." },
+    { label: "Hawaiʻi Mesonet", to: "/mesonet", href: "https://www.hawaii.edu/climate-data-portal/hawaii-mesonet/", color: "#4f7a30", tip: "Live readings every five minutes from about eighty stations across the islands and American Samoa." },
+    { label: "Climate Summary", to: "/climate-summary", href: "https://www.hawaii.edu/climate-data-portal/climate-summary/", color: "#a85a1c", tip: "The monthly climate report: rainfall and temperature by island, moku and watershed, ranked against the record." },
+    { label: "Pacific Portal", to: "/pacific", href: "https://www.hawaii.edu/climate-data-portal/pacific-portal/", color: "#303078", tip: "Climate data for American Samoa, Guam and the Pacific Marine National Monuments." },
+    { label: "Extreme Events", to: "/extreme-events", href: "https://www.hawaii.edu/climate-data-portal/extreme-event/", color: "#b8452f", tip: "Storm trackers and reports: Tropical Storm Nolo, Hurricane Lowell, Hurricane Lala, the March Kona lows." },
     // The sixth button: white with the 1.5 px rainbow border, dark type, opens the AI interface in a new tab.
-    { label: AI_TOOL.label, href: AI_TOOL.href, ai: true },
+    { label: AI_TOOL.label, href: AI_TOOL.href, ai: true, tip: "Ask about HCDP’s data in plain English and get charts, maps and analysis. Opens in a new tab." },
   ],
   resources: [
     { label: 'Rainfall Atlas of Hawaiʻi', href: `${HCDP}/rainfall-atlas` },

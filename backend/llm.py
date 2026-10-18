@@ -204,6 +204,29 @@ PAGE_OVERVIEW_SYSTEM = (
     'Respond with ONLY a JSON object: {"summary": "…", "more": "…", "followups": ["…", "…", "…"]}'
 )
 
+APP_OVERVIEW_SYSTEM = (
+    "You write the short AI overview shown, closed under an 'AI Overview' line, at the top of a page of the Hawaiʻi Climate "
+    "Data Portal (HCDP) website when a visitor opens it directly. The page is one of HCDP's interactive apps shown full "
+    "screen on this site (a storm report, the Monthly Climate Summary, the Hawaiʻi Mesonet live data, the Guam viewer) or "
+    "the Access Data page. You are given its title, what kind of page it is, what the site's catalog says about it and a "
+    "numbered list of HCDP pages (the sources; the first is this page).\n"
+    "1. summary: 2 or 3 short plain sentences, at most 60 words in all: what this page is, what it shows or offers, and "
+    "what a visitor can do with it.\n"
+    "2. more: 2 to 4 further plain sentences, at most 80 words in all, on how to use it — only what the description "
+    "supports.\n"
+    "3. followups: 3 short questions a visitor might ask next about THIS page, phrased as asks the site's navigator can act "
+    "on (for example 'Show me the daily rainfall map for the storm's peak day', 'Where do I download the rainfall data?', "
+    "'Take me to the Mesonet station map'), each under 90 characters, each about HCDP, its data or Hawaiʻi's climate. A "
+    "follow-up that names a date uses the latest available one given below: yesterday for a daily map, the last complete "
+    "month for a monthly map or summary.\n"
+    "Rules for the sentences: address the visitor as 'you'; plain words only — no markdown, no lists, no URLs, no "
+    "quotation marks, no first person; use only facts from the description and the sources; never invent numbers, names, "
+    "dates or features. End each sentence with the number(s) of the source(s) it rests on, in square brackets after the "
+    "full stop, for example '… the storm's rainfall. [1]'.\n"
+    + KEY_TERMS_RULE +
+    'Respond with ONLY a JSON object: {"summary": "…", "more": "…", "followups": ["…", "…", "…"]}'
+)
+
 FOLLOWUPS_SYSTEM = (
     "You suggest follow-up questions on the Hawaiʻi Climate Data Portal (HCDP) website. You are given the page a "
     "visitor is looking at: its kind, title, a description and when it is the right answer, and for a map, what it "

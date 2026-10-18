@@ -12,7 +12,9 @@ HCDP's WordPress pages are copied into this site and kept current by a backgroun
   800 px WebP from a disk cache the job fills (a picture not cached yet redirects to HCDP's own file — the visitor's
   browser fetches it, our server does not); `GET /api/portal/library` the Library from HCDP's public Zotero group;
 - each mirrored page gets an AI overview for direct loads (QB-O1 B), written once per copy by the Summarizer and
-  regenerated when the copy changes.
+  regenerated when the copy changes; so do the app pages that have no copy (18 Oct: the storm reports, the Monthly Climate
+  Summary, the Mesonet's live and Nolo viewers, the Guam viewer — routes.APP_OVERVIEWS), written from the catalog and
+  rewritten when the catalog or the month changes (`GET /api/portal/overview?path=`).
 
 uvicorn runs two workers: the job runs in whichever holds CACHE_DIR/portal/leader.lock (an flock); the other waits.
 """
@@ -232,6 +234,16 @@ class PortalStore:
 
     def save_overview(self, slug: str, ov: dict) -> None:
         write_json(self.overview_file(slug), ov)
+
+    # -- the app pages' overviews (18 Oct; no HCDP copy behind them) --
+    def app_overview_file(self, path: str) -> Path:
+        return self.root / "overviews" / f"{routes.app_overview_stem(path)}.json"
+
+    def load_app_overview(self, path: str) -> dict | None:
+        return read_json(self.app_overview_file(path))
+
+    def save_app_overview(self, path: str, ov: dict) -> None:
+        write_json(self.app_overview_file(path), ov)
 
     # -- the job's bookkeeping --
     def index_file(self) -> Path:
@@ -515,38 +527,51 @@ class MirrorJob:
 
     # -- overviews for direct loads (QB-O1 B) --
     async def overviews_pass(self, limit: int = OVERVIEWS_PER_TICK) -> int:
-        """Write the missing or outdated direct-load overviews: one call at a time, OVERVIEW_GAP s apart, at most `limit`
-        a tick; the first failure ends the pass and backs off (10 min, doubling up to 6 h); a success resets the backoff."""
+        """Write the missing or outdated direct-load overviews — the mirrored pages' (once per copy), then the app pages'
+        (from the catalog: once per catalog text and month): one call at a time, OVERVIEW_GAP s apart, at most `limit` a
+        tick; the first failure ends the pass and backs off (10 min, doubling up to 6 h); a success resets the backoff."""
         if self.summarizer is None or not getattr(getattr(self.summarizer, "llm", None), "configured", False):
             return 0
         if self.clock() < self.overview_wait_until:
             return 0
-        made = 0
-        calls = 0
+        todo = []   # (label, fingerprint, the call, where it is kept)
         for slug, path in self.work_list():
-            if made >= limit or not self._overview_budget():
-                break
             rec, _ = self.store.best(slug)
             if not rec:
                 continue
             ov = self.store.load_overview(slug)
             if ov and ov.get("for_sha") == rec.get("sha256"):
                 continue
+            todo.append((slug, rec.get("sha256"), (lambda p=path, r=rec: self.summarizer.page_overview(p, r)),
+                         (lambda out, s=slug, p=path, sha=rec.get("sha256"): self.store.save_overview(s, dict(out, for_sha=sha, generated_at=now_iso(), path=p)))))
+        if getattr(self.summarizer, "app_overview", None) and getattr(self.summarizer, "app_fingerprint", None):
+            for path in routes.APP_OVERVIEWS:
+                fp = self.summarizer.app_fingerprint(path)
+                ov = self.store.load_app_overview(path)
+                if ov and ov.get("for_sha") == fp:
+                    continue
+                todo.append((path, fp, (lambda p=path: self.summarizer.app_overview(p)),
+                             (lambda out, p=path, f=fp: self.store.save_app_overview(p, dict(out, for_sha=f, generated_at=now_iso(), path=p)))))
+        made = 0
+        calls = 0
+        for label, _fp, call, save in todo:
+            if made >= limit or not self._overview_budget():
+                break
             if calls:
                 await self.sleep(OVERVIEW_GAP)
             calls += 1
             try:
-                out = await asyncio.to_thread(self.summarizer.page_overview, path, rec)
+                out = await asyncio.to_thread(call)
             except Exception:  # noqa: BLE001
                 out = None
             self._spend_overview()
             if not (out and out.get("chunks")):
                 self.overview_wait_until = self.clock() + self.overview_backoff
                 self.overview_backoff = min(self.overview_backoff * 2, OVERVIEW_BACKOFF_MAX)
-                log.warning("portal: the overview for %s failed; next try in %.0f s", slug, self.overview_wait_until - self.clock())
+                log.warning("portal: the overview for %s failed; next try in %.0f s", label, self.overview_wait_until - self.clock())
                 break
             self.overview_backoff = OVERVIEW_BACKOFF
-            self.store.save_overview(slug, dict(out, for_sha=rec.get("sha256"), generated_at=now_iso(), path=path))
+            save(out)
             made += 1
         if made:
             self._refresh_page_index()
@@ -781,7 +806,8 @@ def health(store: PortalStore) -> dict:
         "mirrored": len(routes.mirrored_slugs()), "cached": len(pages), "seed": len(seed.get("pages") or {}),
         "seed_generated_at": seed.get("generated_at"), "newest_fetched_at": times[-1] if times else None, "oldest_fetched_at": times[0] if times else None,
         "rest_at": idx.get("rest_at"), "sweep_at": idx.get("sweep_at"), "failures_24h": len(fails), "last_failure": (idx.get("failures") or [None])[0],
-        "fetches": idx.get("fetches"), "images": _count_images(store), "overviews": _count(store.root / "overviews", ".json"), "library_items": idx.get("library_items"),
+        "fetches": idx.get("fetches"), "images": _count_images(store), "overviews": _count(store.root / "overviews", ".json"),
+        "app_overviews": sum(1 for p in routes.APP_OVERVIEWS if store.app_overview_file(p).exists()), "library_items": idx.get("library_items"),
         "library_at": idx.get("library_at"), "leader": idx.get("leader"),
     }
 
@@ -802,6 +828,27 @@ async def api_portal_page(request: Request, path: str = Query(..., max_length=40
     if status != 200:
         return JSONResponse(body, status_code=status, headers={"Cache-Control": "no-store"})
     etag = '"' + sha1(f"{body.get('sha256')}|{body.get('source')}|{body.get('copied_at')}|{(body.get('overview') or {}).get('generated_at')}") + '"'
+    headers = {"ETag": etag, "Cache-Control": PAGE_CACHE}
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers=headers)
+    return JSONResponse(body, headers=headers)
+
+
+@router.get("/api/portal/overview")
+async def api_portal_overview(request: Request, path: str = Query(..., max_length=400)):
+    """The direct-load AI overview of an app page with no HCDP copy (18 Oct: the storm reports, the Monthly Climate
+    Summary, the Mesonet's live and Nolo viewers, the Guam viewer): {path, overview} — `path` is the address it is kept
+    under (a station or a month in the query shows the viewer's or the app's one overview); 404 until the job has written
+    it, or for an address that has none (the page then shows no overview)."""
+    if not path.startswith("/"):
+        raise HTTPException(400, "path must start with /")
+    key = routes.app_overview_path(path)
+    ov = await asyncio.to_thread(_store(request).load_app_overview, key) if key else None
+    if not ov or not ov.get("chunks"):
+        detail = "The overview has not been written yet." if key else "This address has no app overview."
+        return JSONResponse({"detail": detail, "path": key}, status_code=404, headers={"Cache-Control": "no-store"})
+    body = {"path": key, "overview": {k: ov.get(k) for k in ("chunks", "cites", "more", "more_cites", "sources", "followups", "generated_at")}}
+    etag = '"' + sha1(f"{key}|{ov.get('generated_at')}|{ov.get('for_sha')}") + '"'
     headers = {"ETag": etag, "Cache-Control": PAGE_CACHE}
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=304, headers=headers)

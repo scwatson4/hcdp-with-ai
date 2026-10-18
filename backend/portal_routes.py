@@ -80,6 +80,11 @@ EMBEDS: dict[str, dict] = {
     "/pacific/guam": {"src": "https://hcdp.github.io/gcdp/", "slug": "guam-data-viewer", "title": "Guam Data Viewer"},
     "/climate-summary": {"src": _SUMMARY_APP + "#/", "slug": "climate-summary", "title": "Monthly Climate Summary"},
 }
+# Our own addresses that have no HCDP copy but still get an AI overview for direct loads (18 Oct, the user: the app pages show
+# the AI overview above the app, closed): the app shells above and the Mesonet's live and Nolo viewers — written by the job
+# from the catalog (summary.Summarizer.app_overview), stored under overviews/app-<address>.json, served by
+# GET /api/portal/overview. (The Hawaiʻi Mesonet phone app, /mesonet?viewer=app, is not framed: it opens directly.)
+APP_OVERVIEWS: tuple[str, ...] = (*EMBEDS, "/mesonet?viewer=live", "/mesonet?viewer=nolo")
 # HCDP pages this site answers with its own native page.
 NATIVE = {
     "": "/", "data-portal": "/data", "hawaii-mesonet-data": "/mesonet?viewer=live", "hawaii-mesonet-data-access": "/mesonet?viewer=live",
@@ -176,6 +181,25 @@ def slug_for_path(path: str) -> str | None:
 
 def embed_for_path(path: str) -> dict | None:
     return EMBEDS.get(_clean_path(path))
+
+
+def app_overview_path(path: str) -> str | None:
+    """The APP_OVERVIEWS address a visitor's address shows — '/climate-summary?year=2026&month=8' → '/climate-summary',
+    '/mesonet?station=0115&view=graphing' → '/mesonet?viewer=live' — or None (a mirrored page, the Mesonet page itself …)."""
+    base, _, query = (path or "").split("#", 1)[0].partition("?")
+    base = unquote(base).rstrip("/") or "/"
+    if base == "/mesonet":
+        q = dict(parse_qsl(query))
+        if not any(k in q for k in ("viewer", "station", "view")):
+            return None
+        key = f"/mesonet?viewer={q.get('viewer') or 'live'}"
+        return key if key in APP_OVERVIEWS else None
+    return base if base in APP_OVERVIEWS else None
+
+
+def app_overview_stem(path: str) -> str:
+    """The file name an app address's overview is kept under: '/extreme-events/nolo' → 'app-extreme-events-nolo'."""
+    return "app-" + (re.sub(r"[^a-z0-9]+", "-", (path or "").lower()).strip("-") or "home")
 
 
 def hcdp_url(slug: str) -> str:

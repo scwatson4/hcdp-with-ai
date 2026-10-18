@@ -147,7 +147,7 @@ the URL, register the query keys / route pattern in `backend/navigator.py` (`PAG
 ```
 /extreme-events/{lowell|lala|nolo|kona-low-1|kona-low-2}         one storm's report (HCDP's app, embedded; kona-lows → /extreme-events)
 /tools/{slug}                                                     one tool tile on HCDP's Climate Tools page, ringed (vmap-vog-forecast, vmap-fire-weather …)
-/mesonet?viewer=live|app|nolo&station={id}&view=dashboard|graphing|station-map|station-table|wind-map
+/mesonet?viewer=live|nolo&station={id}&view=dashboard|graphing|station-map|station-table|wind-map   (viewer=app, the old address of the phone app, opens hawaiimesonet.app itself)
 /climate-summary?year=YYYY&month=M                                one month in the summary app (follows the app's own route)
 /pacific/{slug} · /cultural-resources/{slug} · /research/posts/{slug} · /data/tutorials/{slug}   one mirrored HCDP page
 /?ask={url-encoded question}                                      asks the assistant on arrival
@@ -161,7 +161,7 @@ the URL, register the query keys / route pattern in `backend/navigator.py` (`PAG
 /data                     Access Data (native: the viewer, the Export form and the AI line; the original app is linked for the rest)
 /data/api                 HCDP's API page, mirrored, with the AI-prepared download's offer card on top
 /data/tutorials (+/data/tutorials/{slug})                                   HCDP's tutorials, mirrored
-/mesonet                  HCDP's Hawaiʻi Mesonet page, mirrored; /mesonet?viewer|station|view= the live viewer (native embed)
+/mesonet                  HCDP's Hawaiʻi Mesonet page, mirrored; /mesonet?viewer|station|view= the live viewer (native embed; viewer=app → hawaiimesonet.app)
 /climate-summary          the Monthly Climate Summary app (native embed, URL sync)
 /pacific (+/pacific/{slug})  HCDP's Pacific Portal and American Samoa pages, mirrored; /pacific/guam the Guam viewer (native embed)
 /extreme-events           HCDP's Extreme Events page (the cards), mirrored; /extreme-events/{storm} the report (native embed)
@@ -184,7 +184,9 @@ apps; everything else keeps its HCDP address (new tab, ↗).
   and `/pacific/countries-and-territories` being friendlier names — and `/cultural-resources/`), every HCDP post at
   `/research/posts/<slug>` (the list moves with HCDP's REST listing), `EMBEDS` (the five storm reports → cherryleh routes
   hurricane-nolo, hurricane-lowell, hurricane-lala, storm-viewer, storm-viewer-march2026-2; `/pacific/guam` → hcdp.github.io/gcdp;
-  `/climate-summary`), `NATIVE` (data-portal → /data, hawaii-mesonet-data → /mesonet?viewer=live, …) and the title overrides.
+  `/climate-summary`), `APP_OVERVIEWS` (those embeds and `/mesonet?viewer=live|nolo`: the app pages whose direct-load overview the
+  job writes from the catalog, 18 Oct), `NATIVE` (data-portal → /data, hawaii-mesonet-data → /mesonet?viewer=live, …) and the title
+  overrides.
   `navigator.py` validates the families through it (`ROUTE_PATTERNS`, posts by `slug_for_path`); `site/original.js` mirrors its
   families and aliases for "Original HCDP version" (keep the two in step); the catalog's entries carry the paths.
 - **The job** (`backend/portal.py`, started with the app; it runs in the one uvicorn worker holding the flock
@@ -230,8 +232,14 @@ apps; everything else keeps its HCDP address (new tab, ↗).
   HCDP's own file (`no-store`; the visitor's browser fetches it) and a note for the job, which fetches only pictures a mirrored
   page shows and revalidates them weekly (ETag/Last-Modified). `GET /api/portal/library` → the Zotero group 2846077's top-level
   items `{key, year, title, authors, venue, type, url, zotero}` (cached daily, 100 a request). `/api/health` → `portal`: mirrored,
-  cached, seed, newest/oldest `fetched_at`, the job's last runs, `failures_24h`, fetch counts, pictures, overviews, the leader.
-  `index.html` on a mirrored or embedded address carries its title and `<link rel="canonical">` to HCDP's page.
+  cached, seed, newest/oldest `fetched_at`, the job's last runs, `failures_24h`, fetch counts, pictures, overviews, `app_overviews`,
+  the leader. `GET /api/portal/overview?path=<our address>` (18 Oct) → `{path, overview}` for an app page with no HCDP copy — the
+  storm reports, the Monthly Climate Summary, the Mesonet's live and Nolo viewers (any station or view: `app_overview_path`), the
+  Guam viewer; written by the job after the mirrored pages' (`Summarizer.app_overview`: the catalog entry, the page's kind and the
+  catalog's sources, `llm.APP_OVERVIEW_SYSTEM`; stored as `overviews/app-<address>.json`; rewritten when the catalog text, the
+  sources or the month change, `app_fingerprint`), the same gentle pace and backoff; 404 `{detail, path}` until it is written (the
+  page then shows none). `index.html` on a mirrored or embedded address carries its title and `<link rel="canonical">` to HCDP's
+  page.
 - **The client** (`frontend/src/portal/`): `MirroredPage` renders the copy in an **open shadow root** inside HCDP's own page
   structure (`.hcdp-body > #content.site-content > #content-inside.container.no-sidebar > #primary > .site-main > article`) with
   three adopted sheets — the theme bundle, `HOST_CSS` (`:host{display:block;font:400 14px/1.7 <system stack>;color:#777;
@@ -243,9 +251,18 @@ apps; everything else keeps its HCDP address (new tab, ↗).
   sr-only h1 when there is neither a band nor a content h1; `document.title` "<title> – Hawaiʻi Climate Data Portal" (HCDP's
   title, or the override) and the canonical link while the page shows; "Copied from HCDP on <date> · see the original" when
   `copied_at` is set; "This page is on HCDP ↗" for a 404 with an address. `AppEmbed`: the app at `calc(100dvh -
-  var(--hcdp-sticky-h))` under a slim strip (the title as the page's h1, "Open full screen ↗"), a tap-to-interact cover on coarse
-  pointers, the per-question overview above the strip — below 768 px (M6 A, the phone checklist) no frame: the overview, then
-  `EmbedCard` (the title and a 44 px "Open ↗" that opens the app full screen in a new tab); the Climate Summary (`{type:'routeChange', hash}`) and the Mesonet live
+  var(--hcdp-sticky-h))`, full width, under a slim strip (the title as the page's h1, "Open full screen ↗"), with the AI overview
+  above the strip — **on every width, phones included, with no cover over the app** (18 Oct, the user: "integrate them properly";
+  the M6 A card and the tap-to-interact cover are gone). Checked with Playwright at 390 px (`iPhone 13`, the frame 390 × 740 under
+  a 104 px header): the five storm reports, the Monthly Climate Summary, the Mesonet live data, the Nolo Mesonet viewer and the Guam
+  viewer each work in the frame exactly as they do opened on their own (no X-Frame-Options or CSP refuses them; the Kona-low
+  reports' 18 px overflow and the Mesonet app's cramped User Agreement are the apps' own, the same unframed). **The one app that is
+  not framed:** the Hawaiʻi Mesonet phone app (hawaiimesonet.app) breaks inside a frame on a phone — it cannot be installed from
+  there, its stations near you need a location the frame does not get (the permissions policy refuses it), and its saved stations
+  live on its own site — so its catalog entry has no address here (the navigator opens it in a new tab; `Navigator.normalize`
+  turns a navigation to `/mesonet?viewer=app[&station=…]` into that open action, `direct_app_url`) and the old address itself goes
+  straight to the app (`AppDirect`, `location.replace`). The app page's own overview (closed on a direct load) comes from
+  `GET /api/portal/overview` below; the Climate Summary (`{type:'routeChange', hash}`) and the Mesonet live
   viewer (a `#/<view>?id=<station>` string) post their route — origin `https://cherryleh.github.io`, from our frame only — and our
   address follows with `replace` without reloading the frame. Old addresses keep working: `/pacific#american-samoa|#guam`,
   `/extreme-events#<storm>` and `/extreme-events/kona-lows` land on the pages that replaced them. `Library` = the mirrored
@@ -650,7 +667,8 @@ on the overview with the tile ringed below it). It shows while the provider hold
 overview for that very pathname, keyed by the answer, so a follow-up that lands on the same page fades a new one in. On the
 mirrored HCDP pages (below) the overview sits at the very top, in the content column above HCDP's grey band; on the native
 embeds above the strip; `/tools/<slug>` lands on it with the tile ringed below. **Direct loads (QB-O1 B, 14 Oct):** a mirrored
-page opened without an ask shows its own cached overview instead (`fallback`, `data-kind="page"`): it waits closed, "AI Overview ›", and a tap opens it with the same beat as a live one (the header, then "Writing an overview of this page…" with the comet ring for 0.7 s, `PAGE_REVEAL.ms`, then the sources and the sentences 350 ms apart; reduced motion shows it at once; 15 Oct; reopened later it shows at once) and is written once per copy of
+page (and since 18 Oct an app page — a storm report, the Climate Summary, the Mesonet's live and Nolo viewers, the Guam viewer —
+whose overview comes from `GET /api/portal/overview`) opened without an ask shows its own cached overview instead (`fallback`, `data-kind="page"`): it waits closed, "AI Overview ›", and a tap opens it with the same beat as a live one (the header, then "Writing an overview of this page…" with the comet ring for 0.7 s, `PAGE_REVEAL.ms`, then the sources and the sentences 350 ms apart; reduced motion shows it at once; 15 Oct; reopened later it shows at once) and is written once per copy of
 the page by `Summarizer.page_overview` (the catalog entry + the page's first ~1,500 characters, `llm.PAGE_OVERVIEW_SYSTEM`,
 "describe this page"), regenerated when the copy changes; its sources are the page's own HCDP address first, then up to two
 related entries; three generic follow-ups go to the docked bar's ghost; no "Wrong page?" (there was no question). A
@@ -811,9 +829,9 @@ Every change is held to these at 390 px (and 360 px) before it ships — the 8 O
 6. **12 px type floor.** No interface text under 12 px; labels 12–13 px. The exceptions: the portal's own map furniture on
    wide screens (its legend and title card keep the portal's sizes) and citation superscripts. A test scans the components.
 7. **No horizontal overflow.** `scrollWidth == innerWidth` on every page. Wide tables become stacked cards under 640 px
-   (`.hcdp-stack` on the table, `.hcdp-stack-wrap` on its wrapper, a `data-label` per cell); a desktop app is never framed
-   under 768 px (`EmbedCard` — `EmbedFrame`'s `phoneCard` and the mirror's `AppEmbed` — a card with its title and an "Open ↗"
-   button instead). The mirrored pages are HCDP's own markup and styles inside a shadow root: the site's rules do not reach
-   into them, so what they look like on a phone is HCDP's.
+   (`.hcdp-stack` on the table, `.hcdp-stack-wrap` on its wrapper, a `data-label` per cell). HCDP's app shells are framed on
+   phones too, full width (18 Oct, the user's pick, superseding M6 A's card; an app that breaks inside a frame on a phone opens
+   directly instead — "Mirrored pages"); the generic `EmbedFrame` keeps its opt-in `phoneCard`. The mirrored pages are HCDP's own
+   markup and styles inside a shadow root: the site's rules do not reach into them, so what they look like on a phone is HCDP's.
 8. **Test at 390 px.** Components are tested with a `(max-width: 767px)` matchMedia mock; pages are re-measured with the
    phone audit (iPhone 390 × 844 and Android 360 × 780, touch, iOS / Android user agents) before they ship.

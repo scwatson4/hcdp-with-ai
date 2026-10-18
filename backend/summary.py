@@ -13,9 +13,10 @@ back to its reply strip.
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import re
 
-from llm import FOLLOWUPS_SYSTEM, PAGE_OVERVIEW_SYSTEM, SUMMARY_SYSTEM
+from llm import APP_OVERVIEW_SYSTEM, FOLLOWUPS_SYSTEM, PAGE_OVERVIEW_SYSTEM, SUMMARY_SYSTEM
 from navigator import describe_view, parse_viewer_path, valid_internal_path
 
 MAX_WORDS = 60
@@ -39,6 +40,13 @@ PAGE_HINTS = {
     "/extreme-events": "HCDP's Extreme Events page (copied live from the portal): a card per storm report — Hurricane Nolo, Hurricane Lowell, Hurricane Lala and the two March 2026 Kona lows — each opening that report",
     "/tools": "HCDP's Climate Tools page (copied live from the portal): a picture tile per tool, each opening the tool itself",
     "/library": "HCDP's Library: the portal's publications list from its Zotero group, by year",
+    "/pacific/guam": "the Guam Climate Data Portal app (HCDP's Guam data viewer), embedded full screen as on the portal: maps of Guam's climate data to view and export",
+}
+# The Mesonet's live viewers are /mesonet with a query (the page itself is HCDP's Hawaiʻi Mesonet page).
+MESONET_VIEWER_HINTS = {
+    "live": "the Hawaiʻi Mesonet live data app, embedded full screen as on the portal: station dashboards, graphs, reports, the station map and table and the wind map, updated every five minutes",
+    "nolo": "the Tropical Storm Nolo Mesonet viewer, embedded full screen as on the portal: the Mesonet stations' rainfall and wind during the storm",
+    "app": "the Hawaiʻi Mesonet phone app, which opens on its own site",
 }
 KIND_HINTS = {
     "event": "a storm's report: HCDP's interactive storm report embedded full screen, as on the portal (maps, charts and station data for the storm)",
@@ -156,9 +164,12 @@ def clean_followups(items) -> list[str]:
 
 
 def page_hint(path: str, entry: dict | None) -> str:
-    base = (path or "").split("#", 1)[0].partition("?")[0]
+    base, _, query = (path or "").split("#", 1)[0].partition("?")
     if parse_viewer_path(path or ""):
         return VIEWER_HINT
+    if base == "/mesonet" and re.search(r"(^|&)(viewer|station|view)=", query):
+        viewer = re.search(r"(?:^|&)viewer=([a-z]+)", query)
+        return MESONET_VIEWER_HINTS.get(viewer.group(1) if viewer else "live", MESONET_VIEWER_HINTS["live"])
     if base in PAGE_HINTS:
         return PAGE_HINTS[base]
     return KIND_HINTS.get((entry or {}).get("kind") or "", "a page on this site")
@@ -259,6 +270,35 @@ class Summarizer:
         user = "\n".join([f"Page title: {rec.get('title') or ''}", f"Grey title band on HCDP: {rec.get('band') or '(none)'}", grounding,
                           f"The page's own text (its first part):\n{excerpt}", f"Sources (cite by number):\n{numbered}"])
         raw = self.llm.complete(PAGE_OVERVIEW_SYSTEM, user)
+        return self._shape(raw, sources) if isinstance(raw, dict) else None
+
+    # ----- the direct-load overview of an app page (18 Oct) ------------------
+    def app_grounding(self, path: str) -> tuple[list[dict], str]:
+        """(sources, the model's input) for one of this site's own pages with no HCDP copy — an app shell (a storm report,
+        the Monthly Climate Summary, the Mesonet live or Nolo viewer, the Guam viewer) or Access Data: the catalog entry and
+        the page's kind, with the newest month (the date rule) and the numbered sources."""
+        sources = self.nav.sources_for(path)
+        entry, grounding = self.describe_destination(path)
+        numbered = "\n".join(f"{i}. {s['title']}" for i, s in enumerate(sources, 1)) or "(none)"
+        user = "\n".join([f"Page title: {(entry or {}).get('title') or ''}", grounding, f"Sources (cite by number):\n{numbered}"])
+        return sources, user
+
+    def app_fingerprint(self, path: str) -> str:
+        """What an app overview was written from, less the day: a new catalog text, new sources or a new month rewrite it."""
+        _, user = self.app_grounding(path)
+        today = self.nav.today()
+        last_month = (today.replace(day=1) - dt.timedelta(days=1)).strftime("%Y-%m")
+        stable = re.sub(r"^Dates: .*$", "", user, flags=re.M)
+        return hashlib.sha1(f"{stable}|{last_month}".encode("utf-8")).hexdigest()
+
+    def app_overview(self, path: str) -> dict | None:
+        """The overview an app page shows when it is opened directly (no ask), closed under its "AI Overview ›" line:
+        written once from the catalog (the job rewrites it when the catalog or the month changes), with three generic
+        follow-ups. None when the model is not configured or wrote nothing usable."""
+        if self.llm is None or not getattr(self.llm, "configured", False) or not valid_internal_path(path or ""):
+            return None
+        sources, user = self.app_grounding(path)
+        raw = self.llm.complete(APP_OVERVIEW_SYSTEM, user)
         return self._shape(raw, sources) if isinstance(raw, dict) else None
 
     # ----- follow-ups alone -------------------------------------------------

@@ -1,18 +1,22 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import AISummary from '../assistant/AISummary'
-import { useMediaQuery } from '../viewer/useMediaQuery'
 import { HCDP } from '../site/nav'
-import { usePageHead } from './MirroredPage'
-import { EmbedCard } from '../pages/content/EmbedFrame'
+import { pageOverview, usePageFollowups, usePageHead } from './MirroredPage'
+import { useAppOverview } from './usePortalPage'
 import './portal.css'
 
 // HCDP's app shells — pages that are one full-screen iframe (the storm reports, the Monthly Climate Summary, the Mesonet
-// live data, the Guam viewer) — rebuilt here as native embeds of the same apps, looking as they do on HCDP: the app fills
-// the window below the sticky header (header + docked bar). All we add is the AI overview at the top (after a navigation)
-// and a slim strip with the title and "Open full screen ↗"; on touch screens a cover asks for one tap first, so a swipe
-// scrolls the page instead of the map. The Climate Summary and the Mesonet viewer keep their URL sync: the apps post their
-// route (origin-checked, from our frame only) and our address follows it with replaceState, as HCDP's pages do.
+// live data, the Nolo Mesonet viewer, the Guam viewer) — rebuilt here as native embeds of the same apps, looking as they
+// do on HCDP: the app fills the window below the sticky header (header + docked bar), full width. All we add is the AI
+// overview at the top — closed ("AI Overview ›") on a direct load, open after a navigation — and a slim strip with the
+// title and "Open full screen ↗". 18 Oct (the user): the same on every width, phones included — no card in place of the
+// app and no tap-to-interact cover over it (checked with Playwright at 390 px: each app works in the frame as it does on
+// its own). The one exception is the Hawaiʻi Mesonet phone app (hawaiimesonet.app), which breaks inside a frame on a phone
+// (it cannot be installed from there, its stations near you need a location the frame does not get, and its saved
+// stations live on its own site): it is never framed — its links open it in a new tab, and its old address here
+// (/mesonet?viewer=app) goes straight to it. The Climate Summary and the Mesonet viewer keep their URL sync: the apps post
+// their route (origin-checked, from our frame only) and our address follows it with replaceState, as HCDP's pages do.
 export const SUMMARY_APP = 'https://cherryleh.github.io/climate-summary/'
 export const MESONET_APP = 'https://cherryleh.github.io/mesonet'
 export const CHERRY_ORIGIN = 'https://cherryleh.github.io'
@@ -25,13 +29,15 @@ export const STORMS = {
   'kona-low-2': { route: 'storm-viewer-march2026-2', title: 'Kona Low Storm (#2)', hcdp: `${HCDP}/2026-kona-low-2/` },
 }
 
-/** One app, full window height under the sticky header, with the strip and (on touch screens) the tap-to-interact cover. */
-export function AppEmbed({ title, src, openHref, canonical, origin = null, onMessage = null, testid = 'app-embed' }) {
-  const coarse = useMediaQuery('(pointer: coarse)')
-  const narrow = useMediaQuery('(max-width: 767px)')   // M6 A (14 Oct): no desktop app squeezed into a phone
-  const [armed, setArmed] = useState(false)
+/** One app, full window height under the sticky header, full width on every screen, with the strip; the app page's own
+ *  overview (`overviewPath`, written by the mirror's job) waits closed above it on a direct load. */
+export function AppEmbed({ title, src, openHref, canonical, overviewPath = null, origin = null, onMessage = null, testid = 'app-embed' }) {
   const frameRef = useRef(null)
+  const { pathname } = useLocation()
   usePageHead(title, canonical)
+  const record = useAppOverview(overviewPath)
+  const fallback = useMemo(() => pageOverview(record, pathname), [record, pathname])
+  usePageFollowups(fallback)
   useEffect(() => {
     if (!onMessage || !origin) return undefined
     const onMsg = (e) => {
@@ -43,33 +49,33 @@ export function AppEmbed({ title, src, openHref, canonical, origin = null, onMes
     window.addEventListener('message', onMsg)
     return () => window.removeEventListener('message', onMsg)
   }, [onMessage, origin])
-  // M6 A, the user's pick for phones: below 768 px the app opens full screen in a new tab from a card (EmbedFrame's
-  // EmbedCard) instead of running at 358 px (the 8 Oct audit: the Mesonet app's "Accept" clipped, nested scrolling).
-  if (narrow) {
-    return (
-      <div className="hcdp-embed" data-testid={testid}>
-        <div className="hcdp-mirror-container hcdp-embed-overview"><AISummary /></div>
-        <div className="hcdp-mirror-container py-4"><EmbedCard title={title} href={openHref || src} /></div>
-      </div>
-    )
-  }
   return (
     <div className="hcdp-embed" data-testid={testid}>
-      <div className="hcdp-mirror-container hcdp-embed-overview"><AISummary /></div>
+      <div className="hcdp-mirror-container hcdp-embed-overview"><AISummary fallback={fallback} /></div>
       <div className="hcdp-embed-strip" data-testid="embed-strip">
         <h1>{title}</h1>
         <a href={openHref || src} target="_blank" rel="noopener noreferrer" data-testid="embed-fullscreen">
           Open full screen<span aria-hidden="true">&nbsp;↗</span><span className="sr-only"> (opens in a new tab)</span>
         </a>
       </div>
-      <div className="hcdp-embed-frame">
+      <div className="hcdp-embed-frame" data-testid="embed-frame-box">
         <iframe ref={frameRef} src={src} title={title} allow="fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" data-testid="embed-frame" />
-        {coarse && !armed && (
-          <button type="button" className="hcdp-embed-cover" onClick={() => setArmed(true)} aria-label={`Tap to interact with ${title}`} data-testid="embed-cover">
-            <span>Tap to interact</span>
-          </button>
-        )}
       </div>
+    </div>
+  )
+}
+
+/** An app that is not framed (it breaks inside a frame on a phone): its address here goes straight to the app, in this tab
+ *  (a link that comes here was followed on purpose; new links to the app open it in a new tab). The line stays only if the
+ *  browser refuses to leave. */
+export function AppDirect({ title, href }) {
+  useEffect(() => {
+    try { window.location.replace(href) } catch { /* the link below stays */ }
+  }, [href])
+  return (
+    <div className="hcdp-mirror-container py-10 text-sm text-subtle" data-testid="app-direct">
+      Opening the {title} on its own site…{' '}
+      <a href={href} className="underline underline-offset-2 hover:text-foreground" data-testid="app-direct-link">Open it</a>
     </div>
   )
 }
@@ -78,11 +84,11 @@ export function AppEmbed({ title, src, openHref, canonical, origin = null, onMes
 export function StormEmbed({ slug }) {
   const storm = STORMS[slug]
   const src = `${SUMMARY_APP}#/${storm.route}`
-  return <AppEmbed key={slug} title={storm.title} src={src} canonical={storm.hcdp} testid="storm-embed" />
+  return <AppEmbed key={slug} title={storm.title} src={src} canonical={storm.hcdp} overviewPath={`/extreme-events/${slug}`} testid="storm-embed" />
 }
 
 export function GuamEmbed() {
-  return <AppEmbed title="Guam Data Viewer" src="https://hcdp.github.io/gcdp/" canonical={`${HCDP}/guam-data-viewer/`} testid="guam-embed" />
+  return <AppEmbed title="Guam Data Viewer" src="https://hcdp.github.io/gcdp/" canonical={`${HCDP}/guam-data-viewer/`} overviewPath="/pacific/guam" testid="guam-embed" />
 }
 
 // ----- address ⇄ app route ------------------------------------------------------------------------------------------------
@@ -165,7 +171,7 @@ export function ClimateSummaryEmbed() {
     if (!data || data.type !== 'routeChange' || typeof data.hash !== 'string') return
     follow(summarySearchFromHash(data.hash))
   }, [follow])
-  return <AppEmbed title="Monthly Climate Summary" src={src} canonical={`${HCDP}/climate-summary/`} origin={CHERRY_ORIGIN} onMessage={onMessage} testid="summary-embed" />
+  return <AppEmbed title="Monthly Climate Summary" src={src} canonical={`${HCDP}/climate-summary/`} overviewPath="/climate-summary" origin={CHERRY_ORIGIN} onMessage={onMessage} testid="summary-embed" />
 }
 
 const MESONET_VIEWERS = {
@@ -177,6 +183,11 @@ const MESONET_VIEWERS = {
 export function MesonetViewerEmbed() {
   const { search } = useLocation()
   const viewer = MESONET_VIEWERS[new URLSearchParams(search).get('viewer')] ? new URLSearchParams(search).get('viewer') : 'live'
+  if (viewer === 'app') return <AppDirect title={MESONET_VIEWERS.app.title} href={mesonetSrc(search)} />   // 18 Oct: never framed
+  return <MesonetFrame key={viewer} viewer={viewer} />
+}
+
+function MesonetFrame({ viewer }) {
   const [src, follow] = useSyncedSrc(mesonetSrc)
   const onMessage = useCallback((data) => {
     if (typeof data !== 'string' || !data.startsWith('#')) return
@@ -184,6 +195,6 @@ export function MesonetViewerEmbed() {
   }, [follow])
   const live = viewer === 'live'
   const open = live ? src.replace('/?source=iframe', '/') : src
-  return <AppEmbed key={viewer} title={MESONET_VIEWERS[viewer].title} src={src} openHref={open} canonical={MESONET_VIEWERS[viewer].canonical}
-    origin={live ? CHERRY_ORIGIN : null} onMessage={live ? onMessage : null} testid="mesonet-embed" />
+  return <AppEmbed title={MESONET_VIEWERS[viewer].title} src={src} openHref={open} canonical={MESONET_VIEWERS[viewer].canonical}
+    overviewPath={`/mesonet?viewer=${viewer}`} origin={live ? CHERRY_ORIGIN : null} onMessage={live ? onMessage : null} testid="mesonet-embed" />
 }

@@ -71,6 +71,19 @@ export function pageOverview(record, pathname) {
   }
 }
 
+/** The page's own follow-up asks (from its direct-load overview) go to the docked bar's ghost, unless an answer already
+ *  brought some for this address. */
+export function usePageFollowups(fallback) {
+  const assistant = useAssistantOptional()
+  const { pathname, search } = useLocation()
+  useEffect(() => {
+    if (!assistant || !fallback?.followups?.length) return
+    if (assistant.followupsFor?.(pathname, search)) return
+    assistant.setFollowups?.(pathname + (search || ''), fallback.followups, { source: 'page' })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fallback, pathname])
+}
+
 /** document.title "<title> – Hawaiʻi Climate Data Portal" and the canonical link to HCDP's page, while this page shows. */
 export function usePageHead(title, canonical) {
   useEffect(() => {
@@ -170,18 +183,11 @@ export default function MirroredPage({ path: forced, top = null, after = null, o
   const path = forced || pathname
   const state = usePortalPage(path)
   const record = state.status === 'ready' ? state.data : null
-  const assistant = useAssistantOptional()
   const [root, setRoot] = useState(null)
   usePageHead(record?.title, record?.url)
   useHashScroll(root)
   const fallback = useMemo(() => pageOverview(record, pathname), [record, pathname])
-  // The page's own follow-up asks go to the docked bar's ghost, unless an answer already brought some for this address.
-  useEffect(() => {
-    if (!assistant || !fallback?.followups?.length) return
-    if (assistant.followupsFor?.(pathname, search)) return
-    assistant.setFollowups?.(pathname + (search || ''), fallback.followups, { source: 'page' })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fallback, pathname])
+  usePageFollowups(fallback)
   if (state.status === 'missing') return state.hcdpUrl ? <MissingCard hcdpUrl={state.hcdpUrl} /> : <NotFound />
   if (state.status === 'error') return <MissingCard hcdpUrl={originalFor(pathname, search).url} />
   const band = record?.band

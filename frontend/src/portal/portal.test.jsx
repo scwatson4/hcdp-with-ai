@@ -8,7 +8,7 @@ import { renderTerms, PAGE_REVEAL } from '../assistant/AISummary'
 import { ThemeProvider } from '../components/ThemeProvider'
 import { TooltipProvider } from '../components/ui/tooltip'
 import MirroredPage, { Mirror, pageMarkup, pageOverview, copiedDate, hashTarget } from './MirroredPage'
-import { ApiRoute, ClimateSummaryEmbed, ExtremeEventsRoute, MesonetRoute, PacificRoute, StormRoute, ToolsRoute, findTile, RING_MS } from './routes'
+import { ApiRoute, ClimateSummaryEmbed, ExtremeEventsRoute, GuamEmbed, MesonetRoute, PacificRoute, StormRoute, ToolsRoute, findTile, RING_MS } from './routes'
 import { SUMMARY_APP, mesonetSearchFromHash, mesonetSrc, summarySearchFromHash, summarySrc } from './AppEmbed'
 import { LibraryList, groupByYear, matches } from './Library'
 import { HOST_CSS, THEME_URL, resetTheme } from './portalTheme'
@@ -50,6 +50,11 @@ const fetchMock = (url, init) => {
     if (p.status) return Promise.resolve(json(p.body, p.status))
     return Promise.resolve(json(p))
   }
+  if (url.startsWith('/api/portal/overview?path=')) {
+    const path = decodeURIComponent(url.split('path=')[1])
+    const ov = (pages.__overviews || {})[path]
+    return Promise.resolve(ov ? json({ path, overview: ov }) : json({ detail: 'not written yet', path }, 404))
+  }
   if (url === '/api/navigate') return Promise.resolve(json(replies.shift()))
   if (url === '/api/summary') return Promise.resolve(json(summaries.shift()))
   if (url === '/api/portal/library') return Promise.resolve(json(pages.__library || { items: [] }))
@@ -65,6 +70,7 @@ const ROUTES = (
     <Route path="mesonet" element={<MesonetRoute />} />
     <Route path="climate-summary" element={<ClimateSummaryEmbed />} />
     <Route path="pacific" element={<PacificRoute />} />
+    <Route path="pacific/guam" element={<GuamEmbed />} />
     <Route path="pacific/:slug" element={<Mirror />} />
     <Route path="extreme-events" element={<ExtremeEventsRoute />} />
     <Route path="extreme-events/:slug" element={<StormRoute />} />
@@ -328,7 +334,7 @@ describe('app shells as native embeds', () => {
     expect(screen.getByTestId('embed-fullscreen')).toHaveAttribute('target', '_blank')
     expect(document.title).toBe('Hurricane Lowell – Hawaiʻi Climate Data Portal')
     expect(document.head.querySelector('link[rel="canonical"]').getAttribute('href')).toBe(`${HCDP}/hurricane-lowell/`)
-    expect(screen.queryByTestId('embed-cover')).toBeNull()   // a mouse: no cover
+    expect(screen.queryByTestId('embed-cover')).toBeNull()   // no cover over the app
   })
 
   it('each storm opens its own route; kona-lows (both lows) and the old #sections land on the pages that replaced them', async () => {
@@ -352,12 +358,56 @@ describe('app shells as native embeds', () => {
     expect(screen.getByTestId('probe').textContent).toBe('/pacific/american-samoa')
   })
 
-  it('on a touch screen the app waits for a tap', async () => {
-    window.matchMedia = (q) => ({ matches: q === '(pointer: coarse)', addEventListener() {}, removeEventListener() {} })
-    renderAt('/extreme-events/nolo')
+  it('18 Oct: on a phone and on a touch screen the app itself is framed — full width, the viewport’s height, no card and no cover', async () => {
+    window.matchMedia = (q) => ({ matches: /max-width:\s*767px/.test(q) || q === '(pointer: coarse)', addEventListener() {}, removeEventListener() {} })
+    for (const [path, src] of [['/extreme-events/nolo', `${SUMMARY_APP}#/hurricane-nolo`], ['/climate-summary', `${SUMMARY_APP}#/`],
+      ['/mesonet?viewer=live', 'https://cherryleh.github.io/mesonet/?source=iframe#/dashboard'], ['/mesonet?viewer=nolo', `${SUMMARY_APP}#/nolo-viewer`], ['/pacific/guam', 'https://hcdp.github.io/gcdp/']]) {
+      renderAt(path)
+      await flush(10)
+      const frame = screen.getByTestId('embed-frame')
+      expect(frame.getAttribute('src')).toBe(src)
+      expect(frame.parentElement.className).toContain('hcdp-embed-frame')        // width 100 %, calc(100dvh - the sticky height) (portal.css)
+      expect(screen.queryByTestId('embed-cover')).toBeNull()
+      expect(screen.queryByTestId('embed-card')).toBeNull()
+      expect(screen.getByTestId('embed-fullscreen')).toHaveAttribute('target', '_blank')
+      cleanup()
+    }
+  })
+
+  it('the app page’s own overview waits closed above the strip on a direct load; an answer’s opens', async () => {
+    pages.__overviews = { '/extreme-events/lala': { chunks: ['This is the **Hurricane Lala** report. [1]'], cites: [[1]], more: [], more_cites: [], sources: [{ title: 'Hurricane Lala report', url: `${HCDP}/hurricane-lala/` }], followups: ['Show me the Lala rainfall map'], generated_at: '2026-10-18T00:00:00+00:00' } }
+    renderAt('/extreme-events/lala')
     await flush(10)
-    fireEvent.click(screen.getByTestId('embed-cover'))
-    expect(screen.queryByTestId('embed-cover')).toBeNull()
+    expect(calls.some((c) => c.url === '/api/portal/overview?path=%2Fextreme-events%2Flala')).toBe(true)
+    const block = screen.getByTestId('ai-summary')
+    expect(block).toHaveAttribute('data-kind', 'page')
+    expect(block).toHaveAttribute('data-status', 'collapsed')
+    expect(within(block).getByTestId('ai-overview-chevron')).toHaveAttribute('data-direction', 'right')
+    expect(before(block, screen.getByTestId('embed-strip'))).toBe(true)
+    fireEvent.click(within(block).getByTestId('ai-overview-toggle'))
+    await flush(10)
+    expect(within(block).getByTestId('ai-summary-sources')).toHaveTextContent('Hurricane Lala report')
+    // a page without one written yet shows none (the line comes once the job has written it)
+    cleanup()
+    renderAt('/extreme-events/lowell')
+    await flush(10)
+    expect(screen.queryByTestId('ai-summary')).toBeNull()
+    expect(screen.getByTestId('embed-frame')).toBeInTheDocument()
+  })
+
+  it('the Hawaiʻi Mesonet phone app is never framed: /mesonet?viewer=app goes straight to the app', async () => {
+    const replace = vi.fn()
+    const loc = window.location
+    Object.defineProperty(window, 'location', { configurable: true, value: { ...loc, replace } })
+    try {
+      renderAt('/mesonet?viewer=app&station=0115')
+      await flush(10)
+      expect(replace).toHaveBeenCalledWith('https://hawaiimesonet.app/station/0115')
+      expect(screen.queryByTestId('embed-frame')).toBeNull()
+      expect(screen.getByTestId('app-direct-link')).toHaveAttribute('href', 'https://hawaiimesonet.app/station/0115')
+    } finally {
+      Object.defineProperty(window, 'location', { configurable: true, value: loc })
+    }
   })
 
   it('the Monthly Climate Summary follows the app’s route (origin-checked) without reloading it', async () => {

@@ -27,7 +27,7 @@ import { OverviewFeedback } from '../feedback/Thumbs'
 // Other reports the text and asks the assistant with it. The visitor's next page is attached to the report by the provider.
 // F1 A (13 Oct): the review-period 👍 / 👎 sit at the right of that last row (feedback/Thumbs.jsx, OverviewFeedback).
 export const CHUNK_STAGGER_MS = 350
-// 15 Oct: a cached page overview (a mirrored page opened directly) waits closed — "AI Overview ›" — for a tap, and
+// 15 Oct: a cached page overview (a mirrored or app page opened directly) waits closed — "AI Overview ›" — for a tap, and
 // then plays the same beat as a live one — the header, then
 // "Writing an overview of this page…" with the comet ring for PAGE_REVEAL.ms, then the sources and the sentences fading in
 // one after another — so it reads as written for this visit. Reduced motion, or ms = 0 (tests), shows it at once.
@@ -37,8 +37,9 @@ export const superscript = (n) => String(n).split('').map((d) => SUP[Number(d)] 
 
 // 14 Oct (QB-O1 B): a mirrored HCDP page opened directly, with no ask, shows its cached overview instead — `fallback`, the
 // same shape with `page: true` (written once per copy of the page; no "Wrong page?", there was no question); a navigation's
-// per-question overview replaces it. Key terms: the model wraps up to three in **…** (summary.py keeps at most three);
-// they render bold, stray asterisks go.
+// per-question overview replaces it. 18 Oct: the app pages (the storm reports, the Climate Summary, the Mesonet's viewers,
+// the Guam viewer) have one too, written by the mirror's job from the catalog. Key terms: the model wraps up to three in
+// **…** (summary.py keeps at most three); they render bold, stray asterisks go.
 export default function AISummary({ className, scrollIntoView = false, fallback = null }) {
   const assistant = useAssistantOptional()
   const { pathname } = useLocation()

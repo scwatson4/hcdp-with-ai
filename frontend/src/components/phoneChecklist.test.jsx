@@ -92,7 +92,7 @@ describe('1 · the phone menu is a sheet (was: an inline block growing the stick
   })
 })
 
-describe('2 · embeds under 768 px (was: desktop apps at 358 px with a clipped Accept)', () => {
+describe('2 · embeds under 768 px (was: desktop apps at 358 px with a clipped Accept; 18 Oct: the app shells framed full width)', () => {
   const props = { src: 'https://cherryleh.github.io/mesonet/?source=iframe#/dashboard', title: 'Hawaiʻi Mesonet Live Data Access', fallbackHref: 'https://www.hawaii.edu/climate-data-portal/hawaii-mesonet-data/#/' }
   it('with phoneCard: a card with the title and a 44 px "Open ↗" in a new tab instead of the frame', () => {
     render(<EmbedFrame {...props} phoneCard />)
@@ -114,15 +114,15 @@ describe('2 · embeds under 768 px (was: desktop apps at 358 px with a clipped A
     expect(document.querySelector('iframe')).not.toBeNull()
     expect(screen.queryByTestId('embed-card')).toBeNull()
   })
-  it('the mirror’s app embeds (the Climate Summary, the storm reports, the Mesonet viewer) opt in on phones', () => {
+  it('18 Oct (the user): HCDP’s app shells are framed on phones too — the app itself, full width, no card', () => {
     const { unmount } = render(<MemoryRouter initialEntries={['/climate-summary']}><ClimateSummaryEmbed /></MemoryRouter>)
-    expect(screen.getByTestId('embed-card')).toHaveTextContent('Climate Summary')
-    expect(document.querySelector('iframe')).toBeNull()
+    expect(screen.queryByTestId('embed-card')).toBeNull()
+    expect(document.querySelector('iframe')).toHaveAttribute('src', 'https://cherryleh.github.io/climate-summary/#/')
     unmount()
     render(<MemoryRouter initialEntries={['/extreme-events/lowell']}><StormEmbed slug="lowell" /></MemoryRouter>)
-    expect(screen.getByTestId('embed-card')).toHaveTextContent('Hurricane Lowell')
-    expect(within(screen.getByTestId('embed-card')).getByTestId('embed-open')).toHaveAttribute('target', '_blank')
-    expect(document.querySelector('iframe')).toBeNull()
+    expect(screen.queryByTestId('embed-card')).toBeNull()
+    expect(document.querySelector('iframe')).toHaveAttribute('title', 'Hurricane Lowell')
+    expect(screen.getByTestId('embed-fullscreen')).toHaveAttribute('target', '_blank')
   })
 })
 

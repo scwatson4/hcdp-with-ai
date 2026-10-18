@@ -595,3 +595,97 @@ def test_the_server_head_names_mirrored_and_embedded_pages(tmp_path):
     assert portal.head_for(store, "/mesonet")["canonical"] == f"{HCDP}/hawaii-mesonet/"
     assert portal.head_for(store, "/pacific/guam")["title"] == "Guam Data Viewer"
     assert portal.head_for(store, "/data") is None and portal.head_for(store, "/viewer/rainfall/day/2026-09-07/kauai") is None
+
+
+# ----- the app pages' direct-load overviews (18 Oct) ------------------------------------------------------------------------
+def test_app_overview_addresses():
+    assert set(routes.APP_OVERVIEWS) >= {"/extreme-events/nolo", "/extreme-events/lowell", "/extreme-events/lala", "/extreme-events/kona-low-1",
+                                         "/extreme-events/kona-low-2", "/climate-summary", "/pacific/guam", "/mesonet?viewer=live", "/mesonet?viewer=nolo"}
+    assert "/mesonet?viewer=app" not in routes.APP_OVERVIEWS                                      # the phone app opens on its own site
+    assert routes.app_overview_path("/climate-summary?year=2026&month=8") == "/climate-summary"
+    assert routes.app_overview_path("/mesonet?station=0115&view=graphing") == "/mesonet?viewer=live"
+    assert routes.app_overview_path("/mesonet?viewer=nolo") == "/mesonet?viewer=nolo"
+    assert routes.app_overview_path("/mesonet?viewer=app") is None and routes.app_overview_path("/mesonet") is None
+    assert routes.app_overview_path("/extreme-events/nolo/") == "/extreme-events/nolo" and routes.app_overview_path("/about/team") is None
+    assert routes.app_overview_stem("/mesonet?viewer=live") == "app-mesonet-viewer-live" and routes.app_overview_stem("/extreme-events/kona-low-1") == "app-extreme-events-kona-low-1"
+    assert all(valid_internal_path(p) for p in routes.APP_OVERVIEWS)
+
+
+def test_app_overviews_are_written_by_the_job_once_per_catalog_text_and_month(tmp_path, monkeypatch):
+    monkeypatch.setattr(portal.routes, "MIRRORED", {"/about/team": "team"})
+    monkeypatch.setattr(portal.routes, "FAMILIES", {})
+    monkeypatch.setattr(portal.routes, "post_slugs", lambda: [])
+    monkeypatch.setattr(portal, "PRIORITY", ["team"])
+    monkeypatch.setattr(portal.routes, "APP_OVERVIEWS", ("/extreme-events/nolo", "/mesonet?viewer=live"))
+    store = portal.PortalStore(tmp_path, seed_dir=tmp_path / "none")
+    store.save(rec_for("team", sha="v1"))
+    made, prints = [], {"/extreme-events/nolo": "a", "/mesonet?viewer=live": "b"}
+
+    class Summ:
+        llm = type("L", (), {"configured": True})()
+
+        def page_overview(self, path, rec):
+            made.append(path)
+            return {"summary": "x", "chunks": ["The page. "], "cites": [[]], "more": [], "more_cites": [], "sources": [], "followups": []}
+
+        def app_fingerprint(self, path):
+            return prints[path]
+
+        def app_overview(self, path):
+            made.append(path)
+            return {"summary": "x", "chunks": [f"The {path} app."], "cites": [[1]], "more": [], "more_cites": [], "sources": [{"title": "Hurricane Nolo report", "url": f"{HCDP}/hurricane-nolo/"}],
+                    "followups": ["Show me the Nolo rainfall map"]}
+
+    job = portal.MirrorJob(store, Summ(), FakeFetcher({}), clock=lambda: 1000.0)
+
+    async def no_sleep(_):
+        return None
+    job.sleep = no_sleep
+    assert asyncio.run(job.overviews_pass()) == 3 and made == ["/about/team", "/extreme-events/nolo", "/mesonet?viewer=live"]   # the pages first, then the apps
+    assert asyncio.run(job.overviews_pass()) == 0                                                     # written once
+    prints["/mesonet?viewer=live"] = "b2"                                                             # the catalog (or the month) moved
+    assert asyncio.run(job.overviews_pass()) == 1 and made[-1] == "/mesonet?viewer=live"
+    ov = store.load_app_overview("/extreme-events/nolo")
+    assert ov["for_sha"] == "a" and ov["path"] == "/extreme-events/nolo" and ov["generated_at"]
+    assert (tmp_path / "overviews" / "app-extreme-events-nolo.json").exists()
+    assert portal.health(store)["app_overviews"] == 2
+
+
+def test_app_overview_endpoint(client):
+    c, store = client
+    r = c.get("/api/portal/overview", params={"path": "/extreme-events/nolo"})
+    assert r.status_code == 404 and r.json()["path"] == "/extreme-events/nolo" and r.headers["cache-control"] == "no-store"   # not written yet
+    assert c.get("/api/portal/overview", params={"path": "/about/team"}).status_code == 404                  # a mirrored page has its own
+    assert c.get("/api/portal/overview", params={"path": "nolo"}).status_code == 400
+    store.save_app_overview("/mesonet?viewer=live", {"chunks": ["You are on the **Hawaiʻi Mesonet** live data. [1]"], "cites": [[1]], "more": [], "more_cites": [],
+                                                       "sources": [{"title": "Hawaiʻi Mesonet Live Data Access", "url": f"{HCDP}/hawaii-mesonet-data/#/"}],
+                                                       "followups": ["Show me the Mesonet wind map"], "generated_at": "2026-10-18T00:00:00+00:00", "for_sha": "x"})
+    r = c.get("/api/portal/overview", params={"path": "/mesonet?viewer=live&station=0115&view=dashboard"})
+    assert r.status_code == 200 and r.json()["path"] == "/mesonet?viewer=live"
+    assert r.json()["overview"]["chunks"][0].startswith("You are on the") and "for_sha" not in r.json()["overview"]
+    assert r.headers["cache-control"] == "public, max-age=300, stale-while-revalidate=86400"
+    assert c.get("/api/portal/overview", params={"path": "/mesonet?viewer=live"}, headers={"If-None-Match": r.headers["etag"]}).status_code == 304
+
+
+def test_app_overview_is_grounded_on_the_catalog():
+    from llm import APP_OVERVIEW_SYSTEM
+    from navigator import Navigator, load_catalog
+    from summary import page_hint
+    nav = Navigator(None, load_catalog(), today=dt.date(2026, 10, 18))
+    llm = FakeLLM({"summary": "This is the **Hurricane Nolo** report. [1] Press Play to watch the storm pass. [1]", "more": "",
+                   "followups": ["Show me the Nolo rainfall map", "Where is the Nolo Mesonet viewer?", "How do I download the storm data?"]})
+    s = Summarizer(nav, llm)
+    out = s.app_overview("/extreme-events/nolo")
+    assert out["sources"][0]["url"] == f"{HCDP}/hurricane-nolo/" and out["chunks"][0] == "This is the **Hurricane Nolo** report."
+    system, user = llm.calls[0]
+    assert system == APP_OVERVIEW_SYSTEM and "Page title: Hurricane Nolo report" in user and "Sources (cite by number):" in user
+    # the fingerprint ignores the day but not the month or the catalog
+    a = s.app_fingerprint("/extreme-events/nolo")
+    nav._today = dt.date(2026, 10, 19)
+    assert s.app_fingerprint("/extreme-events/nolo") == a
+    nav._today = dt.date(2026, 11, 2)
+    assert s.app_fingerprint("/extreme-events/nolo") != a
+    assert s.app_overview("nolo") is None
+    assert page_hint("/mesonet?viewer=live&station=0115", None).startswith("the Hawaiʻi Mesonet live data app")
+    assert page_hint("/mesonet?viewer=nolo", None).startswith("the Tropical Storm Nolo Mesonet viewer")
+    assert page_hint("/mesonet", None).startswith("HCDP's Hawaiʻi Mesonet page")

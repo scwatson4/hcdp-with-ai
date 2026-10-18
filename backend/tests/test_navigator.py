@@ -282,6 +282,21 @@ def test_destination_names_the_page_the_answer_opens():
     assert "destination" not in nav.normalize({"intent": "off_topic", "reply": "x", "actions": [], "alternatives": []}, "x")
 
 
+# ── the Hawaiʻi Mesonet phone app is not framed (18 Oct): its old address here opens the app itself ──────────
+def test_the_mesonet_phone_app_opens_on_its_own_site():
+    from navigator import direct_app_url, load_catalog
+    assert direct_app_url("/mesonet?viewer=app") == "https://hawaiimesonet.app/"
+    assert direct_app_url("/mesonet?viewer=app&station=0115") == "https://hawaiimesonet.app/station/0115"
+    assert direct_app_url("/mesonet?viewer=live&station=0115") is None and direct_app_url("/mesonet") is None and direct_app_url("/data") is None
+    nav = Navigator(FakeLLM({}), load_catalog(), today=dt.date(2026, 10, 18))
+    out = nav.normalize({"intent": "navigate", "reply": "Opening the Mesonet app.", "actions": [{"type": "navigate", "path": "/mesonet?viewer=app"}],
+                         "alternatives": [{"title": "Mesonet app", "url": "/mesonet?viewer=app&station=0602", "why": "on your phone"}]}, "mesonet app")
+    assert out["actions"] == [{"type": "open", "url": "https://hawaiimesonet.app/"}]
+    assert out["destination"]["url"] == "https://hawaiimesonet.app/"
+    assert out["alternatives"][0]["url"] == "https://hawaiimesonet.app/station/0602"
+    assert "viewer=live|nolo" in nav.system_prompt({"path": "/"}) and "viewer=live|app|nolo" not in nav.system_prompt({"path": "/"})
+
+
 # ── did-you-mean options for an ambiguous ask (R5 C, 13 Oct) ─────────────────
 def test_clarify_options_are_resolved_from_the_catalog_and_unknowns_dropped():
     from navigator import load_catalog

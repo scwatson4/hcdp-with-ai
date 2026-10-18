@@ -429,6 +429,24 @@ def valid_internal_path(path: str) -> bool:
     return True
 
 
+# 18 Oct: HCDP's app shells are framed on this site at every width — except the Hawaiʻi Mesonet phone app, which breaks
+# inside a frame on a phone (it cannot be installed from there, the stations near you need a location the frame may not
+# ask for, and its saved stations live on its own site). Its old address here, /mesonet?viewer=app, opens the app itself.
+MESONET_APP = "https://hawaiimesonet.app/"
+
+
+def direct_app_url(path: str) -> str | None:
+    """The app's own address for an address of ours that is not framed (/mesonet?viewer=app[&station=…]), else None."""
+    base, _, query = str(path or "").split("#", 1)[0].partition("?")
+    if base.rstrip("/") != "/mesonet":
+        return None
+    q = dict(p.split("=", 1) for p in query.split("&") if "=" in p)
+    if q.get("viewer") != "app":
+        return None
+    station = q.get("station") or ""
+    return f"{MESONET_APP}station/{quote(station)}" if re.fullmatch(r"[A-Za-z0-9_.-]{1,20}", station) else MESONET_APP
+
+
 def _mirrored_post(base: str) -> bool:
     """/research/posts/<slug> for an HCDP post the mirror carries (the list moves with HCDP, so no fixed pattern)."""
     return base.startswith(portal_routes.POSTS_PREFIX) and portal_routes.slug_for_path(base) is not None
@@ -544,7 +562,7 @@ MORE SHAREABLE LINKS (every state on this site has a URL; use ONLY these forms �
   /extreme-events/{{{"|".join(STORM_SLUGS)}}}   one storm's report (HCDP's interactive storm report, full screen; kona-lows is the Extreme Events page)
   /tools/{{{"|".join(TOOL_SLUGS)}}}   one tool's tile on Climate Tools — only these {len(TOOL_SLUGS)} slugs; any other catalog entry is reached with an open action on its url
   /pacific/<slug>, /cultural-resources/<slug>, /research/posts/<slug>, /data/tutorials/<slug>   HCDP's own pages, copied live onto this site: use the exact path a catalog entry gives
-  /mesonet?viewer=live|app|nolo&station={{id}}&view=dashboard|graphing|station-map|station-table|wind-map   the live Mesonet viewer on one station (use viewer=live with a station id; view=graphing for charts; app = the phone app)
+  /mesonet?viewer=live|nolo&station={{id}}&view=dashboard|graphing|station-map|station-table|wind-map   the live Mesonet viewer on one station (use viewer=live with a station id; view=graphing for charts; nolo = the Tropical Storm Nolo Mesonet viewer). The Hawaiʻi Mesonet phone app is not on this site: open its catalog url in a new tab
   /climate-summary?year=YYYY&month=M   the monthly summary for one month
   /?ask={{url-encoded question}}   a link that asks this assistant a question on arrival (for sharing a question)
 MESONET STATIONS (id name), by island — use the id in station links; say the name in the reply:
@@ -616,6 +634,10 @@ Respond with ONLY a JSON object:
                 continue
             t = a.get("type")
             if t == "navigate" and not navigated and valid_internal_path(a.get("path", "")):
+                direct = direct_app_url(a["path"])
+                if direct:
+                    actions.append({"type": "open", "url": direct})   # an app that is not framed opens on its own site
+                    continue
                 actions.append({"type": "navigate", "path": a["path"]})
                 navigated = True
             elif t == "open" and self.allowed_url(a.get("url")):
@@ -631,6 +653,7 @@ Respond with ONLY a JSON object:
             if not isinstance(alt, dict):
                 continue
             url = alt.get("url") or alt.get("path")
+            url = direct_app_url(url) or url
             if valid_internal_path(url or "") or self.allowed_url(url):
                 alternatives.append({"title": str(alt.get("title") or url)[:120], "url": url, "why": str(alt.get("why") or "")[:160]})
             if len(alternatives) == 4:

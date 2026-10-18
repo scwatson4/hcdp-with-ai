@@ -1,7 +1,7 @@
 /* The shell around a mirrored HCDP page (CONTRACT.md "Mirrored pages", 14 Oct). Everything HCDP draws is inside the
    page's shadow root; these rules style only what our shell adds around it: the column the AI overview sits in, the grey
    title band (drawn here, outside the shadow root, only when HCDP has one), the "Copied from HCDP" note, the native app
-   embeds' strip and touch cover, and the Library's list. The column is Bootstrap 4's .container, so the band's text, the
+   embeds' strip, and the Library's list. The column is Bootstrap 4's .container, so the band's text, the
    overview and HCDP's content share one left edge: 540/720/960/1140 px wide at 576/768/992/1200 px, 15 px gutters. */
 
 .hcdp-mirror { background: #fff; color: #777; }
@@ -26,7 +26,7 @@
 .hcdp-mirror-missing { padding: 48px 0 64px; }
 
 /* App shells as native embeds: a slim strip (the title and "Open full screen ↗"), then the app filling the viewport
-   below the sticky header; on touch screens a cover asks for a tap first, so a swipe scrolls the page, not the map. */
+   below the sticky header, full width — on every screen, phones included, with no cover over it (18 Oct). */
 .hcdp-embed-overview { padding-top: 20px; padding-bottom: 12px; }
 .hcdp-embed-strip { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; padding: 6px 15px;
   border-top: 1px solid #e9e9e9; border-bottom: 1px solid #e9e9e9; background: #f8f9f9; }
@@ -37,10 +37,6 @@
 @media (pointer: coarse) { .hcdp-embed-strip a { min-height: 44px; display: inline-flex; align-items: center; } }
 .hcdp-embed-frame { position: relative; width: 100%; height: calc(100dvh - var(--hcdp-sticky-h, 0px)); min-height: 360px; background: #fff; }
 .hcdp-embed-frame iframe { display: block; width: 100%; height: 100%; border: 0; }
-.hcdp-embed-cover { position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 28px;
-  background: linear-gradient(to bottom, rgba(255,255,255,0) 55%, rgba(255,255,255,.55)); border: 0; cursor: pointer; }
-.hcdp-embed-cover span { padding: 10px 18px; min-height: 44px; display: inline-flex; align-items: center; border-radius: 999px;
-  background: rgba(17, 24, 39, .82); color: #fff; font-size: 14px; }
 
 /* The Library's list (the publications from HCDP's Zotero group), in HCDP's body type. */
 .hcdp-library { font: 400 14px/1.7 -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #777; padding-bottom: 40px; }

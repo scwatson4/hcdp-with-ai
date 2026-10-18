@@ -2250,8 +2250,8 @@
    "kind": "tool",
    "title": "Hawaii Mesonet mobile app (hawaiimesonet.app)",
    "url": "https://hawaiimesonet.app/",
-   "internal_path": "/mesonet?viewer=app",
-   "summary": "A phone-friendly, installable web app with real-time Hawaiʻi Mesonet readings: stations near you, a map with wind arrows and charts per station (a separate American Samoa edition exists).",
+   "internal_path": null,
+   "summary": "A phone-friendly, installable web app with real-time Hawaiʻi Mesonet readings: stations near you, a map with wind arrows and charts per station (a separate American Samoa edition exists). It opens on its own site, in a new tab (it is not framed here: inside a frame it could not be installed or find the stations near you).",
    "when_to_use": "The visitor wants live station readings on a phone or a mobile app.",
    "example_queries": [
     "mesonet app for my phone",

@@ -118,13 +118,14 @@ try {
     const clip = await page.evaluate(() => navigator.clipboard.readText().catch(() => '')).catch(() => '')
     check(`${label}: share panel shows and copies the link`, shown === page.url() && (clip === page.url() || clip === '') && (await page.locator('[data-testid="share-copy"]').count()) === 1, `${shown.slice(-40)} | clipboard ${clip ? 'ok' : 'n/a'}`)
     // 14 Oct: the storm reports are HCDP's apps, embedded full height under the header (the old sections are gone).
-    // M6 A (14 Oct): on a phone (< 768 px) an app is never squeezed into the page — a card opens it full screen in a new tab.
-    const appSel = phoneMap ? '[data-testid="embed-card"] [data-testid="embed-open"]' : '[data-testid="embed-frame"]'
-    const appAttr = phoneMap ? 'href' : 'src'
+    // 18 Oct (the user): on a phone too — the app itself, full width, no card and no cover.
+    const appSel = '[data-testid="embed-frame"]'
+    const appAttr = 'src'
     await page.goto(BASE + '/extreme-events/lowell', { waitUntil: 'domcontentloaded' })
     await page.waitForSelector(appSel, { timeout: 20000 }).catch(() => {})
-    check(`${label}: storm route (${phoneMap ? 'the report as a card that opens it' : 'the report embedded, the strip'}, the original link)`, ((await page.locator(appSel).getAttribute(appAttr).catch(() => '')) || '').endsWith('#/hurricane-lowell')
-      && (phoneMap ? (await page.locator('[data-testid="embed-card"]').textContent().catch(() => '')).includes('Hurricane Lowell') : (await page.locator('[data-testid="embed-strip"] h1').textContent().catch(() => '')) === 'Hurricane Lowell')
+    check(`${label}: storm route (the report embedded full width, the strip, the original link)`, ((await page.locator(appSel).getAttribute(appAttr).catch(() => '')) || '').endsWith('#/hurricane-lowell')
+      && (await page.locator('[data-testid="embed-strip"] h1').textContent().catch(() => '')) === 'Hurricane Lowell'
+      && (await page.locator('[data-testid="embed-card"]').count()) === 0 && (await page.locator('[data-testid="embed-cover"]').count()) === 0
       && (await page.locator('[data-testid="original-link"]').getAttribute('href')).includes('hurricane-lowell'))
     // The embedded Mesonet dashboard keeps the network busy, so do not wait for idle; the station is in the app's address.
     await page.goto(BASE + '/mesonet?viewer=live&station=0115&view=dashboard', { waitUntil: 'domcontentloaded' })

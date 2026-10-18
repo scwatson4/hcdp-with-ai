@@ -233,19 +233,21 @@ describe('the AI overview on a mirrored page', () => {
     expect(block).toHaveAttribute('data-kind', 'page')
     expect(before(block, screen.getByTestId('mirror-band'))).toBe(true)
     expect(before(block, screen.getByTestId('mirror-host'))).toBe(true)
-    // 15 Oct: it arrives collapsed ("Show AI Overview"); a tap opens it
+    // it arrives closed as "AI Overview ›" (18 Oct: the chevron toggle; "Show AI Overview" is gone); a tap opens it
     expect(block).toHaveAttribute('data-status', 'collapsed')
-    expect(within(block).getByTestId('ai-overview-title')).toHaveTextContent('Show AI Overview')
-    fireEvent.click(within(block).getByTestId('ai-overview-open'))
+    expect(within(block).getByTestId('ai-overview-title')).toHaveTextContent('AI Overview')
+    expect(within(block).getByTestId('ai-overview-chevron')).toHaveAttribute('data-direction', 'right')
+    fireEvent.click(within(block).getByTestId('ai-overview-toggle'))
     await flush(10)
     expect(within(block).getByTestId('ai-summary-sources')).toHaveTextContent('Team')
     const terms = within(block).getAllByTestId('ai-summary-term').map((t) => t.textContent)
     expect(terms).toEqual(['Team', 'HCDP'])
     expect(within(block).getByTestId('ai-summary-text').textContent).not.toContain('*')   // the stray *contributors* lost its asterisks
     expect(within(block).queryByTestId('wrong-page')).toBeNull()
-    // ✕ hides it for this visit to the page
-    fireEvent.click(within(block).getByTestId('ai-summary-dismiss'))
-    expect(screen.queryByTestId('ai-summary')).toBeNull()
+    // the chevron closes it again (there is no ✕): the header line stays
+    fireEvent.click(within(block).getByTestId('ai-overview-toggle'))
+    expect(screen.getByTestId('ai-summary')).toHaveAttribute('data-status', 'collapsed')
+    expect(within(block).queryByTestId('ai-summary-dismiss')).toBeNull()
   })
 
   it('hands the page’s follow-ups to the docked bar’s ghost', async () => {

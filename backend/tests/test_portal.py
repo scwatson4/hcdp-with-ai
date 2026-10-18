@@ -600,7 +600,8 @@ def test_the_server_head_names_mirrored_and_embedded_pages(tmp_path):
 # ----- the app pages' direct-load overviews (18 Oct) ------------------------------------------------------------------------
 def test_app_overview_addresses():
     assert set(routes.APP_OVERVIEWS) >= {"/extreme-events/nolo", "/extreme-events/lowell", "/extreme-events/lala", "/extreme-events/kona-low-1",
-                                         "/extreme-events/kona-low-2", "/climate-summary", "/pacific/guam", "/mesonet?viewer=live", "/mesonet?viewer=nolo"}
+                                         "/extreme-events/kona-low-2", "/climate-summary", "/pacific/guam", "/mesonet?viewer=live", "/mesonet?viewer=nolo", "/data"}
+    assert routes.app_overview_path("/data") == "/data" and routes.app_overview_path("/data/export") is None
     assert "/mesonet?viewer=app" not in routes.APP_OVERVIEWS                                      # the phone app opens on its own site
     assert routes.app_overview_path("/climate-summary?year=2026&month=8") == "/climate-summary"
     assert routes.app_overview_path("/mesonet?station=0115&view=graphing") == "/mesonet?viewer=live"

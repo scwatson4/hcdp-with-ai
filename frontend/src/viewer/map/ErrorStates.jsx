@@ -20,9 +20,9 @@ const code = 'rounded bg-inset px-1 py-0.5 font-mono text-[0.85em]'
 export function friendlyReason(error = '') {
   const e = String(error)
   if (e === 'incomplete') return 'This viewer link is missing part of its address. A complete link names a dataset, a period, a date and a place, in that order.'
-  if (e.startsWith('unknown dataset')) return `There is no dataset called ${e.replace('unknown dataset ', '')}. The viewer knows ${Object.keys(DATASETS).join(', ')}.`
-  if (e.startsWith('unknown period')) return `${e.replace('unknown period ', 'The period ')} is not one the viewer knows: use month or day.`
-  if (e.startsWith('unknown extent')) return `There is no place called ${e.replace('unknown extent ', '')} in the viewer. Use ${Object.keys(EXTENTS).join(', ')}.`
+  if (e.startsWith('unknown dataset')) return `There is no dataset called ${e.replace('unknown dataset ', '')}. Visualize Data has ${Object.keys(DATASETS).join(', ')}.`
+  if (e.startsWith('unknown period')) return `${e.replace('unknown period ', 'The period ')} is not one Visualize Data knows: use month or day.`
+  if (e.startsWith('unknown extent')) return `There is no place called ${e.replace('unknown extent ', '')} in Visualize Data. Use ${Object.keys(EXTENTS).join(', ')}.`
   if (e === 'unreadable date') return 'The date in this link could not be read. Write it as YYYY-MM-DD for a day or YYYY-MM for a month.'
   if (e.startsWith('no such date ')) return `The calendar has no ${e.slice('no such date '.length)}: check the day and the month.`
   if (e.includes('full date')) return 'A daily map needs a full date, written YYYY-MM-DD.'
@@ -46,7 +46,7 @@ export function GrammarError({ error, pathname, search = '' }) {
   const fix = suggestionFor(pathname)
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-12" data-testid="viewer-grammar-error">
-      <p className="font-mono text-[12px] font-medium uppercase tracking-wide text-subtle">Climate viewer</p>
+      <p className="font-mono text-[12px] font-medium uppercase tracking-wide text-subtle" data-testid="viewer-eyebrow">Visualize Data</p>
       <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight">That map address did not work</h1>
       <p className="mt-3 text-base" data-testid="viewer-error">{friendlyReason(error)}</p>
       <p className="mt-2 break-all text-sm text-subtle">You opened <code className={code}>{pathname}{search}</code></p>
@@ -70,7 +70,7 @@ export function GrammarError({ error, pathname, search = '' }) {
         })}
       </ul>
       <p className="mt-6 text-sm text-subtle">
-        The pattern is <code className={code}>/viewer/{'{dataset}/{period}/{date}/{place}'}</code>. <Link to="/viewer" className="underline underline-offset-4 hover:text-foreground">How viewer addresses work</Link>.
+        The pattern is <code className={code}>/viewer/{'{dataset}/{period}/{date}/{place}'}</code>. <Link to="/viewer" className="underline underline-offset-4 hover:text-foreground">How map addresses work</Link>.
       </p>
     </div>
   )

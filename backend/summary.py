@@ -31,7 +31,9 @@ NO_SUMMARY_INTENTS = {"off_topic", "analysis"}
 
 # What kind of page the destination is, told to the model so "what to do next" fits it.
 PAGE_HINTS = {
-    "/data": "the Access Data page: what HCDP's data portal offers, the datasets, quick maps, and the Export form for downloading grids and station files",
+    "/data": "the Access Data page: two choices, as on HCDP's data portal — Visualize Data (the interactive climate maps) and Export Data (custom packages of grids and station files to download)",
+    "/data/visualize": "Visualize Data, the interactive climate map viewer, opening on the latest monthly rainfall map",
+    "/data/export": "the Export Data page: a line where the AI ticks the export form from a sentence, the Export form for rainfall and temperature grids and station files (small packages download at once, larger ones are emailed), and the datasets table",
     "/data/api": "HCDP's API page (copied live from the portal): how to request an API token with the form, and where the documentation is",
     "/data/tutorials": "HCDP's Tutorials page (copied live from the portal): step-by-step guides to making a map, exploring station data and exporting data",
     "/mesonet": "HCDP's Hawaiʻi Mesonet page (copied live from the portal): what the statewide station network is, why it is needed, what each station measures and who pays for it, with a link to the live data",
@@ -56,7 +58,7 @@ KIND_HINTS = {
     "atlas": "an atlas tool's tile on the Climate Tools page",
     "dataset": "the Access Data page",
 }
-VIEWER_HINT = ("an interactive climate map in this site's viewer: the visitor can change the dataset, period, date and island, "
+VIEWER_HINT = ("an interactive climate map in Visualize Data, this site's map viewer: the visitor can change the dataset, period, date and island, "
                "the colours and layers, turn on the stations and pick one for its record, compare two dates, download the map and "
                "share the address")
 

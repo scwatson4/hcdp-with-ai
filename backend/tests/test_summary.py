@@ -99,11 +99,11 @@ def test_summary_is_grounded_split_into_chunks_with_catalog_sources_and_validate
     assert LOWELL not in user                                                               # never the URLs
 
 
-def test_viewer_summary_tells_the_model_what_the_map_shows_and_leads_with_access_data():
+def test_viewer_summary_tells_the_model_what_the_map_shows_and_leads_with_visualize_data():
     s, llm = make({"summary": "You asked for Kauaʻi's rain on 7 September. The map shows that day's gridded rainfall. Turn on the stations or change the date.", "followups": FOLLOWUPS})
     out = s.summarize("rain on Kauai on Sept 7", "Taking you to the map.", "/viewer/rainfall/day/2026-09-07/kauai", "navigate")
     assert "The map shows: Rainfall, September 7, 2026, Kauaʻi" in llm.calls[0][1] and "Page kind: an interactive climate map" in llm.calls[0][1]
-    assert out["sources"][0]["title"].startswith("Access Data") and out["sources"][1]["url"] == LOWELL
+    assert out["sources"][0]["title"].startswith("Visualize Data") and out["sources"][1]["url"] == LOWELL   # Access Data's map tool (18 Oct)
     assert len(out["chunks"]) == 3 and out["cites"] == [[], [], []] and out["more"] == [] and out["more_cites"] == []
 
 

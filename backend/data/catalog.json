@@ -285,7 +285,7 @@
    "title": "Access Data (interactive data portal)",
    "url": "https://www.hawaii.edu/climate-data-portal/data-portal/",
    "internal_path": "/data",
-   "summary": "HCDP's map viewer and download tool: gridded rainfall (1990 to yesterday, legacy monthly 1920–2012), mean/min/max temperature (1990 on), relative humidity (2002 on), NDVI (2000 on), fire ignition probability (2002 on), SPI drought index (1–60 months), 1991–2020 and 1978–2007 climatologies and downscaled future projections, statewide or by county, plus station values, time series and file export.",
+   "summary": "HCDP's data portal, which opens — as on HCDP — on two choices: Visualize Data (the interactive maps) and Export Data (custom download packages). Behind them: gridded rainfall (1990 to yesterday, legacy monthly 1920–2012), mean/min/max temperature (1990 on), relative humidity (2002 on), NDVI (2000 on), fire ignition probability (2002 on), SPI drought index (1–60 months), 1991–2020 and 1978–2007 climatologies and downscaled future projections, statewide or by county, plus station values, time series and file export.",
    "when_to_use": "The visitor wants to explore or download HCDP maps or station data in the full portal tool, including datasets this site's viewer does not show (legacy rainfall, climatologies, projections).",
    "example_queries": [
     "download rainfall data",
@@ -340,12 +340,75 @@
    "http": 200
   },
   {
+   "id": "visualize-data",
+   "kind": "tool",
+   "title": "Visualize Data (the data portal's interactive maps)",
+   "url": "https://www.hawaii.edu/climate-data-portal/data-portal/",
+   "internal_path": "/data/visualize",
+   "summary": "Access Data's first choice, as on HCDP's data portal: the interactive climate maps — rainfall, temperature, relative humidity, vegetation (NDVI), fire ignition probability and the SPI drought index, by day or month, statewide or by island — with the station values, time series and a shareable address for every map. It opens on the latest monthly rainfall map, statewide.",
+   "when_to_use": "The visitor wants to look at or explore the climate maps in general, without naming a dataset, date or place (a named map has its own map entry).",
+   "example_queries": [
+    "visualize data",
+    "open the climate maps",
+    "I want to explore the data portal maps",
+    "where is the map viewer"
+   ],
+   "region": "hawaii",
+   "dates": {
+    "start": "1990-01-01",
+    "end": null
+   },
+   "tags": [
+    "visualize",
+    "maps",
+    "map viewer",
+    "viewer",
+    "explore",
+    "interactive",
+    "data portal"
+   ],
+   "checked": "2026-10-18",
+   "http": 200
+  },
+  {
+   "id": "export-data",
+   "kind": "tool",
+   "title": "Export Data (the data portal's download packages)",
+   "url": "https://www.hawaii.edu/climate-data-portal/data-portal/",
+   "internal_path": "/data/export",
+   "summary": "Access Data's second choice, as on HCDP's data portal: generate customized packages of data to export — rainfall and temperature grids (GeoTIFF) with their standard-error and anomaly maps, metadata and error metrics, and the station data as CSV, for the dates and islands chosen; small packages download at once, larger ones are emailed. A line at the top lets the AI tick the form from a sentence.",
+   "when_to_use": "The visitor wants to fill in the export form for data files themselves (GeoTIFF grids, station CSVs), or asks where the export or download form is.",
+   "example_queries": [
+    "export data",
+    "where is the export form",
+    "generate a data package from the portal",
+    "download form for rainfall grids"
+   ],
+   "region": "hawaii",
+   "dates": {
+    "start": "1920-01-01",
+    "end": null
+   },
+   "tags": [
+    "export",
+    "download",
+    "package",
+    "form",
+    "geotiff",
+    "csv",
+    "files",
+    "data portal"
+   ],
+   "checked": "2026-10-18",
+   "http": 200
+  },
+  {
    "id": "data-downloads",
    "kind": "dataset",
    "title": "Download maps and data files (GeoTIFF, CSV, zip)",
    "url": "https://www.hawaii.edu/climate-data-portal/data-portal/",
-   "internal_path": "/data",
-   "summary": "In Access Data's export tab you pick a dataset, period and date range and tick the files you want: the data map GeoTIFF, standard-error map, anomaly map, anomaly standard error, metadata and error metrics, and station data (partial-filled or unfilled CSV); large requests are sent to your email.",
+   "internal_path": "/data/export",
+   "summary": "In Access Data's Export Data form you pick a dataset, period and date range and tick the files you want: the data map GeoTIFF, standard-error map, anomaly map, anomaly standard error, metadata and error metrics, and station data (partial-filled or unfilled CSV); large requests are sent to your email.",
    "when_to_use": "The visitor wants files: GeoTIFF grids, CSV station tables, bulk or multi-date downloads.",
    "example_queries": [
     "download GeoTIFF of daily rainfall",
@@ -379,7 +442,7 @@
    "kind": "dataset",
    "title": "Station data and station metadata",
    "url": "https://www.hawaii.edu/climate-data-portal/data-portal/",
-   "internal_path": "/data",
+   "internal_path": "/data/export",
    "summary": "Access Data shows the rain gauges and temperature stations behind each map with their metadata (name, network, island, elevation, coordinates, IDs) and monthly or daily values as a time series; the station tables download as CSV, and the API serves the same through /stations.",
    "when_to_use": "The visitor wants historical observations from a particular rain gauge or weather station, or the list and metadata of stations used in the maps.",
    "example_queries": [
@@ -441,7 +504,7 @@
    "kind": "dataset",
    "title": "Climate normals (1991–2020 and 1978–2007 climatologies)",
    "url": "https://www.hawaii.edu/climate-data-portal/data-portal/",
-   "internal_path": "/data",
+   "internal_path": "/data/export",
    "summary": "Average-climate maps in Access Data: contemporary 1991–2020 rainfall and mean/min/max temperature (monthly, wet and dry season, 30-year annual and decadal 1991–2000, 2001–2010, 2011–2020) and legacy Rainfall Atlas normals (1978–2007 annual; 1920–2012 monthly means).",
    "when_to_use": "The visitor wants normal or average rainfall or temperature for a place or month, rather than a specific date.",
    "example_queries": [
@@ -493,7 +556,7 @@
    "kind": "dataset",
    "title": "Future climate projections for Hawaiʻi (downscaled)",
    "url": "https://www.hawaii.edu/climate-data-portal/data-portal/",
-   "internal_path": "/data",
+   "internal_path": "/data/export",
    "summary": "Downscaled rainfall and temperature projections in Access Data: statistical or dynamical downscaling, RCP 4.5 and RCP 8.5, present day, mid-century (2040–2069) and late century (2070–2099 statistical, 2080–2099 dynamical), as projected values or change maps; rainfall also by wet and dry season.",
    "when_to_use": "The visitor asks about future rainfall or temperature, climate change scenarios or projections for Hawaiʻi.",
    "example_queries": [

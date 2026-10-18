@@ -139,7 +139,7 @@ describe('the bottom-left tab and the composer (F1 A, F2 A, F4 A)', () => {
     if (panel.dataset.variant === 'panel') expect(panel.className).toContain('left-0')
     expect(within(panel).getByTestId('feedback-panel-title')).toHaveTextContent('Give feedback')
     const labels = [...panel.querySelectorAll('[data-testid="composer-feature"]')].map((r) => r.closest('label').textContent)
-    expect(labels).toEqual(['AI answer', 'Navigation result', 'AI Overview', 'Maps viewer', 'Downloads', 'Feedback itself', 'A page', 'Other'])
+    expect(labels).toEqual(['AI answer', 'Navigation result', 'AI Overview', 'Visualize Data', 'Downloads', 'Feedback itself', 'A page', 'Other'])
     expect(checkedFeature(panel)).toBe('page')
     expect(within(panel).getByTestId('composer-page-shown')).toHaveTextContent('/')
     expect(within(panel).queryByTestId('composer-exchange')).toBeNull()                               // nothing asked yet

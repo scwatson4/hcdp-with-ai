@@ -1,4 +1,4 @@
-// The shareable climate viewer behind
+// The shareable climate viewer — "Visualize Data" to visitors (18 Oct: Access Data's first tile) — behind
 //   /viewer/{dataset}/{period}/{date}/{extent}[?options]   (CONTRACT.md)
 // The URL is the state: every control navigates to a new address (push for
 // dataset, period, date, place, station and pin — Back undoes a choice;
@@ -41,6 +41,7 @@ import { useClaimShell } from '../components/shellMode'
 import { OriginalVersionLink } from '../components/OriginalLink'
 import Toast, { useToast } from '../components/Toast'
 import MiniAsk from '../assistant/MiniAsk'
+import { VISUALIZE_LABEL } from '../site/visualize'
 
 const ClimateMap = lazy(() => import('./map/ClimateMap'))
 const TimeSeriesPanel = lazy(() => import('./TimeSeriesPanel'))
@@ -104,6 +105,9 @@ export default function ViewerPage() {
   return <Viewer v={v} />
 }
 
+/** The tab's title on a map: "Rainfall, September 2026, Statewide · Visualize Data" (the tool's name for visitors, 18 Oct). */
+export const viewerTitle = (v) => `${describeViewer(v)} · ${VISUALIZE_LABEL}`
+
 /** The full-screen map's entry is "the same address" while only the camera moved (it moves by itself as the map resizes). */
 export function sameMapIgnoringCamera(a, b) {
   const strip = (s) => { const [p, q = ''] = String(s).split('#')[0].split('?'); const u = new URLSearchParams(q); for (const k of ['lat', 'lng', 'z']) u.delete(k); const r = u.toString(); return r ? `${p}?${r}` : p }
@@ -159,9 +163,10 @@ function Viewer({ v }) {
     for (const p of DATASETS[v.dataset].periods) if (p !== v.period) getDateRange(v.dataset, p, v.extent).catch(() => {})
   }, [v.dataset, v.period, v.extent])
 
+  // 18 Oct: the viewer is "Visualize Data" wherever visitors see it (Access Data's first tile)
   useEffect(() => {
     const before = document.title
-    document.title = `${describeViewer(v)} · HCDP climate viewer`
+    document.title = viewerTitle(v)
     return () => { document.title = before }
   }, [v.dataset, v.period, v.date, v.extent]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -379,7 +384,7 @@ function Viewer({ v }) {
   const addressNote = (
     <div className="space-y-1 text-xs text-subtle" data-testid="map-note">
       <p><span data-testid="viewer-units">{unitsLineFor(v)}</span> · <span data-testid="viewer-source">Source: {sourceLineFor(v)}</span></p>
-      <p>The address bar always describes this map. <Link to="/viewer" className="underline underline-offset-4 hover:text-foreground">How viewer addresses work</Link></p>
+      <p>The address bar always describes this map. <Link to="/viewer" className="underline underline-offset-4 hover:text-foreground">How map addresses work</Link></p>
     </div>
   )
 
@@ -508,7 +513,10 @@ function Viewer({ v }) {
           {/* 13 Oct: the assistant's AI summary tops the rail when it brought the visitor here. */}
           <AISummary />
           <header>
-            <p className={EYEBROW}>Climate viewer</p>
+            {/* 18 Oct: Access Data › Visualize Data (the tile this map is behind), where "Climate viewer" was */}
+            <nav aria-label="Breadcrumb" className={EYEBROW} data-testid="viewer-eyebrow">
+              <Link to="/data" className="hover:text-foreground hover:underline underline-offset-2">Access Data</Link><span aria-hidden="true"> › </span><span aria-current="page">{VISUALIZE_LABEL}</span>
+            </nav>
             <h1 className="mt-0.5 font-display text-xl leading-tight lg:text-2xl" data-testid="viewer-heading">{title}</h1>
           </header>
           {(() => {

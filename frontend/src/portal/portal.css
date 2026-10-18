@@ -53,3 +53,22 @@
 @media (pointer: coarse) { .hcdp-library input[type="search"] { height: 44px; } }
 .hcdp-library .hcdp-lib-years { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 13px; }
 .hcdp-library .hcdp-lib-years a { color: #03c4eb; text-decoration: none; }
+
+/* Access Data (18 Oct): HCDP's data portal opens on two tiles — Visualize Data over a map, Export Data over a spreadsheet —
+   copied from the portal app's own (rainfall.ikewai.org's .nav-tile: a row of the text, padded 20 px, and the picture at
+   width 100 %; the title an h1 at 32 px bold Roboto, a line break, the caption at 16 px; the picture cover-sized, centred,
+   fading out to the left with mask linear-gradient(to left, #000 25%, transparent 100%); hover: the inset rule
+   5px -5px / -1px 1px and a 10 % wash of the portal's blue #175db6). The two share the viewport under the sticky header
+   (less the AI overview line above them). */
+.hcdp-data-portal { background: #fff; }
+.hcdp-data-tiles { display: flex; flex-direction: column; font-family: Roboto, -apple-system, system-ui, "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+.hcdp-data-tile { position: relative; display: flex; flex-direction: row; width: 100%; min-height: 220px;
+  height: max(220px, calc((100dvh - var(--hcdp-sticky-h, 0px) - 72px) / 2)); box-sizing: border-box; overflow: hidden;
+  color: #000; background: #fff; text-decoration: none; cursor: pointer; }
+.hcdp-data-tile-text { flex: 0 1 auto; padding: 20px; }
+.hcdp-data-tile-text h2 { margin: 21px 0; font: 700 32px/1.17 Roboto, -apple-system, system-ui, "Segoe UI", Arial, sans-serif; color: #000; }
+.hcdp-data-tile-text p { margin: calc(1em + 18px) 0 16px; font-size: 16px; line-height: 1.17; color: #000; }
+.hcdp-data-tile-picture { flex: 0 1 100%; width: 100%; height: 100%; background-position: center; background-repeat: no-repeat; background-size: cover;
+  -webkit-mask-image: linear-gradient(to left, #000 25%, transparent 100%); mask-image: linear-gradient(to left, #000 25%, transparent 100%); }
+.hcdp-data-tile:hover, .hcdp-data-tile:focus-visible { box-shadow: 5px -5px inset, -1px 1px inset; outline: none; }
+.hcdp-data-tile:hover::after, .hcdp-data-tile:focus-visible::after { content: ""; position: absolute; inset: 0; background: rgba(23, 93, 182, .1); pointer-events: none; }

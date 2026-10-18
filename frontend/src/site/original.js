@@ -1,7 +1,7 @@
 // Every page on this site links to its "Original HCDP version": the page on
 // www.hawaii.edu/climate-data-portal that carries the same content. HCDP has no
 // shareable, customizable URLs, so many of our URLs map to one of theirs — every
-// viewer link maps to the data portal, every station view to the Mesonet viewer.
+// viewer link (Visualize Data) maps to the data portal, every station view to the Mesonet viewer.
 export const HCDP = 'https://www.hawaii.edu/climate-data-portal'
 // The portal's Access Data app (framed by the portal page). Its inbound dataset tags, by our viewer slug.
 export const PORTAL_APP = 'https://rainfall.ikewai.org'
@@ -33,6 +33,8 @@ const STATIC = {
   '/about/acknowledgements': `${HCDP}/acknowledgements/`,
   '/about/how-to-cite': `${HCDP}/how-to-cite-3/`,
   '/data': `${HCDP}/data-portal/`,
+  '/data/visualize': `${PORTAL_APP}/?datatype=rainfall&period=month`,   // Visualize Data's default map: the portal on its dataset (18 Oct)
+  '/data/export': `${HCDP}/data-portal/`,                               // Export Data: the data portal page (its export cannot be linked)
   '/data/api': `${HCDP}/hcdp-hawaii-mesonet-api/`,
   '/data/tutorials': `${HCDP}/tutorials/`,
   '/download': `${HCDP}/data-portal/`,   // the AI-prepared download draws on the portal's export (13 Oct)
@@ -84,6 +86,7 @@ export function originalFor(pathname, search = '', hash = '') {
   if (storm && STORM_PAGES[storm]) return { url: STORM_PAGES[storm], label: 'this storm on HCDP' }
   if (path.startsWith('/extreme-events')) return { url: STATIC['/extreme-events'], label: 'Extreme Events on HCDP' }
   if (path.startsWith('/tools')) return { url: STATIC['/tools'], label: 'Climate Tools on HCDP' }
+  if (path === '/data/visualize') return { url: STATIC[path], label: 'Visualize Data in the HCDP data portal', note: 'the portal opens the dataset; the date, place and view cannot be passed' }
   if (STATIC[path]) return { url: STATIC[path], label: path === '/' ? 'HCDP home page' : 'this page on HCDP' }
   if (FAMILY_ALIASES[path]) return { url: `${HCDP}/${FAMILY_ALIASES[path]}/`, label: 'this page on HCDP' }
   const prefix = FAMILY_PREFIXES.find((p) => path.startsWith(p) && path.length > p.length && !path.slice(p.length).includes('/'))

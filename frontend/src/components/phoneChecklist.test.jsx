@@ -8,7 +8,7 @@ import SiteHeader from './SiteHeader'
 import { phoneMenu } from './MobileMenu'
 import { AssistantProvider } from '../assistant/AssistantProvider'
 import EmbedFrame from '../pages/content/EmbedFrame'
-import { AccessData } from '../pages/content/DataPortal'
+import { ExportData } from '../pages/content/DataPortal'
 import { ToolTile } from '../pages/content/ToolTiles'
 import { ClimateSummaryEmbed, StormEmbed } from '../portal/AppEmbed'
 import { Tabs, TabsList, TabsTrigger } from './ui/tabs'
@@ -138,8 +138,8 @@ describe('3 · tables are stacked cards under 640 px (was: 640 / 520 px tables i
       })
     }
   }
-  it('Access Data’s datasets table (the API and Climate Summary pages are HCDP’s own now, mirrored)', () => {
-    render(<MemoryRouter><AccessData /></MemoryRouter>)
+  it('Export Data’s datasets table (on /data/export since 18 Oct; the API and Climate Summary pages are HCDP’s own, mirrored)', () => {
+    render(<MemoryRouter initialEntries={['/data/export']}><ExportData /></MemoryRouter>)
     stacked(screen.getByTestId('datasets-table'))
   })
   it('the stacking rules are in the stylesheet', () => {

@@ -1425,7 +1425,7 @@ def index_html_for(path: str, host: str | None = None) -> str:
     e = lambda s: htmlmod.escape(s, quote=True)  # noqa: E731
     what = describe_view(v)
     title = f"{what} — Hawaiʻi Climate Data Portal"
-    desc = f"HCDP climate viewer: {what}. A shareable map link from the Hawaiʻi Climate Data Portal."
+    desc = f"Visualize Data: {what}. A shareable map link from the Hawaiʻi Climate Data Portal."
     origin, canonical = site_origin(host), v["canonical"]
     image = f"{origin}/api/og.png?path={quote(canonical, safe='')}"
     html = re.sub(r"<title>.*?</title>", f"<title>{e(title)}</title>", html, count=1, flags=re.S)

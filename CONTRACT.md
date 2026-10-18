@@ -4,7 +4,7 @@
 A prototype of the Hawaiʻi Climate Data Portal website with an AI **navigator** as its front door.
 The visitor lands on a page that lists HCDP's tools and asks "What are you looking for?".
 The navigator answers by **taking the visitor to the right place**: an internal page, a deep link
-into the climate viewer, an external HCDP tool, or (for data analysis) the separate HCDP AI
+into the climate viewer (**Visualize Data** to visitors, 18 Oct), an external HCDP tool, or (for data analysis) the separate HCDP AI
 interface. Once it has navigated, the ask bar **docks under the header** and stays there on every
 inner page as the way to keep navigating (see "The assistant's states" below).
 
@@ -158,7 +158,9 @@ the URL, register the query keys / route pattern in `backend/navigator.py` (`PAG
 /                         landing: tools + "What are you looking for?" (native)
 /about /about/history /about/team /about/acknowledgements /about/how-to-cite
 /about/rainfall-mapping-history /about/climate-monitoring-history            HCDP's About pages, mirrored
-/data                     Access Data (native: the viewer, the Export form and the AI line; the original app is linked for the rest)
+/data                     Access Data: two tiles, as on HCDP's data portal — Visualize Data and Export Data (native; 18 Oct)
+/data/visualize           Visualize Data's door: replaces itself with the default map (monthly rainfall, statewide, the last complete month)
+/data/export              Export Data (native): the AI line, the Export form, the datasets table (the AI-prepared download's offer card too)
 /data/api                 HCDP's API page, mirrored, with the AI-prepared download's offer card on top
 /data/tutorials (+/data/tutorials/{slug})                                   HCDP's tutorials, mirrored
 /mesonet                  HCDP's Hawaiʻi Mesonet page, mirrored; /mesonet?viewer|station|view= the live viewer (native embed; viewer=app → hawaiimesonet.app)
@@ -168,7 +170,7 @@ the URL, register the query keys / route pattern in `backend/navigator.py` (`PAG
 /tools (+/tools/{slug})   HCDP's Climate Tools page, mirrored (the tile ringed)
 /cultural-resources (+/{slug}) · /library · /research/highlights · /research/external-resources · /research/presentations ·
 /research/posts/{slug} · /conditions-of-use                                    HCDP's pages, mirrored (the Library's list is native)
-/viewer/...               the deep-linkable climate viewer (grammar below)
+/viewer/...               Visualize Data, the deep-linkable climate viewer (grammar below)
 /admin/feedback           the feedback review table (linked nowhere; the admin key — "Feedback" below)
 /download                 the AI-prepared download's page
 ```
@@ -269,6 +271,27 @@ apps; everything else keeps its HCDP address (new tab, ↗).
   Publications List (band, "Search Publications ↗") + the native list by year with a filter. The three atlas pages and
   Publications Search stay on HCDP.
 
+## Access Data and Visualize Data (18 Oct, the user's pick)
+"'ACCESS DATA' should open to two options only: Visualize Data and Export Data (like in the screenshot of the original HCDP
+website)." `/data` (`AccessData` in `pages/content/DataPortal.jsx`) is the portal app's two tiles and nothing else but the AI
+overview line above them (the page's own overview, written by the mirror's job — `/data` is in `APP_OVERVIEWS` —, closed on a direct
+load; an answer's opens): **Visualize Data** ("Visualize available climate data in the portal.", over a map) → `/data/visualize`, and
+**Export Data** ("Generate customized packages of data to export from the portal.", over a spreadsheet) → `/data/export`. They copy
+the app's own tiles (rainfall.ikewai.org's `.nav-tile`): the title 32 px bold Roboto, the caption 16 px, 20 px padding, the picture
+the app uses (its `vis_tile_background.png` and `export_tile_background.jpg`, committed as WebP in `public/tiles/` — the image proxy
+takes only HCDP's WordPress uploads and these live in the app) cover-sized and fading out to the left (`mask-image:
+linear-gradient(to left, #000 25%, transparent 100%)`), the hover's inset rule and 10 % blue wash; the two share the viewport under
+the sticky header (`portal.css`). `/data/visualize` (`VisualizeData`) replaces itself with `defaultMapPath()` (`site/visualize.js`:
+monthly rainfall, statewide, the last complete month); the assistant resolves the door before it navigates (`resolveDoor`), so the
+answer's overview belongs to the map. `/data/export` (`ExportData`) holds the AI line and the offer card's slot on top, the
+per-question overview above the heading, the Export form (`#export`), the link to the original app for what the form does not cover,
+the datasets table ("Map it" opens Visualize Data) and the Data Portal menu as related links. **The viewer is "Visualize Data"
+wherever visitors see it**: the rail's eyebrow is the breadcrumb "Access Data › Visualize Data", the tab reads "<map> · Visualize
+Data" (`viewerTitle`), the launcher, the error page, the link previews' description, the feedback feature label ("Maps viewer" until
+18 Oct), the catalog (`visualize-data`, `export-data`; the overview's first source for a map is Visualize Data). "Original HCDP
+version": `/data/visualize` → the portal app on `?datatype=rainfall&period=month`; `/data/export` and `/data` → HCDP's data-portal page.
+The header menu stays HCDP's own, item for item (Data Portal → Access Data …).
+
 ## Deep-link grammar for the viewer (shareable, human-readable, stable)
 ```
 /viewer/{dataset}/{period}/{date}/{extent}[?options]
@@ -326,7 +349,7 @@ ndvi → ndvi_modis (day only); ignition → ignition_probability (day only; ign
 spi-N → datatype=spi&timescale=timescaleNNN (month only, statewide only).
 Extents: statewide, bi (hawaii), mn (maui, molokai, lanai), oa, ka.
 
-## The climate viewer on phones (M1 C, 14 Oct)
+## The climate viewer (Visualize Data) on phones (M1 C, 14 Oct)
 Below 768 px the viewer is a **full-screen map like a maps app** (`data-layout="phone-map"`; the page holds the shell in
 `phone-map`, `components/shellMode.jsx`): the header stays (logo and menu — no docked bar, no footer, no Back to top, and
 the page never scrolls); the map fills the screen under it (a comparison: the two maps one above the other, the second with
@@ -389,7 +412,7 @@ Numbers the site computes itself (the time-series panel's count, min, max, mean 
 points in view) carry a provenance tag in the UI — "computed from HCDP station data" for a station, "computed from
 HCDP gridded data" for a grid cell — so no computed figure reads as an HCDP product.
 
-## Export endpoints (the native Export form on /data; `backend/export.py` mirrors hcdp_v2's export recipes)
+## Export endpoints (the native Export form on /data/export; `backend/export.py` mirrors hcdp_v2's export recipes)
 ```
 GET  /api/export/options                   the products with their files, extents and station fills, and the limits
 POST /api/export/instant  {dataset, period, start, end, extents:[slugs], files:[ids], station_files:[fills], email?}
@@ -478,8 +501,8 @@ sheet around `download/DownloadPanel.jsx`: the checklist, live totals, the packa
 "Request one here" link, the optional email, **Download now** — or **Email me** past 150 files — the result with the Analyze link, errors
 in plain words). `/download?ask=…&picks=…` (`download/DownloadPage.jsx`, route registered in `ROUTES` / `PAGE_QUERY_KEYS`, catalog entry
 `ai-download`, original.js → the portal's data-portal page): the same panel as a page of its own, the address's picks ticking the items
-they name (else the AI's ticks). `/data`: the **AI line** at the top of Access Data (`download/AccessDataLine.jsx`: "Tell me what the data
-is for and I will tick it" + Prepare) runs the same planner, **pre-ticks the Export form** (`ExportForm`'s `prefill` prop: dataset,
+they name (else the AI's ticks). `/data/export` (since 18 Oct; it was `/data`): the **AI line** at the top of Export Data
+(`download/AccessDataLine.jsx`: "Tell me what the data is for and I will tick it" + Prepare; its context is the page's address) runs the same planner, **pre-ticks the Export form** (`ExportForm`'s `prefill` prop: dataset,
 period, dates, extents, files, station files from the plan's first picked grid item and matching station item; the form scrolls into
 view), offers **Visualize** (the plan's `primary_view`) and "Prepare the full package with AI" (the drawer on the same plan). Tests:
 `backend/tests/test_download.py` (HCDP and the model faked), `frontend/src/download/download.test.jsx`, and the end-to-end
@@ -588,7 +611,7 @@ the shell, `FeedbackLayer` at its end); `AISummary.jsx` and `AssistantPanel.jsx`
   fields, not in the feedback UI) → a small dark pill "Copy · Give feedback" over the selection (under it on touch screens, clear
   of the system menu); the next Tab moves into it, Esc puts it away until the selection changes. Give feedback opens the composer
   with the passage quoted (≤ 500 characters), the feature guessed from where it sits (an overview → AI Overview with its exchange,
-  an answer → AI answer with its exchange, `/viewer/…` → Maps viewer, `/download` → Downloads, else A page) and the passage
+  an answer → AI answer with its exchange, `/viewer/…` → Visualize Data (the map viewer; "Maps viewer" until 18 Oct), `/download` → Downloads, else A page) and the passage
   marked on the page while the composer is open (CSS Custom Highlight API, `::highlight(hcdp-feedback)` — the page's DOM is never
   touched). (c) The **"Give feedback"** pill (15 Oct; it was a vertical right-edge tab): horizontal, the portal's chip style (white, a
   1 px border), 44 px tall, fixed at the bottom-left corner of every page with the landing, hidden in print and on the full-screen
@@ -601,7 +624,7 @@ the shell, `FeedbackLayer` at its end); `AISummary.jsx` and `AssistantPanel.jsx`
   — title and path, editable; the last question and answer, attached automatically when the feature is AI answer, Navigation
   result or AI Overview (an overview's sentences follow the navigator's reply as "AI Overview: …", its `request_id` as
   `overview_id`), shown and removable; after a 👎 the wanted page (removable); the feature picker — AI answer · Navigation
-  result · AI Overview · Maps viewer · Downloads · Feedback itself · A page · Other; the text (required, ≤ 2000); the reviewer's
+  result · AI Overview · Visualize Data · Downloads · Feedback itself · A page · Other; the text (required, ≤ 2000); the reviewer's
   name; Send (Ctrl/⌘ + Enter). A refusal keeps the words and shows the server's reason; closing keeps the words for next time.
 - **The reviewer's name (F4 A).** Remembered per browser in `localStorage` (`hcdp-reviewer-name`, read and written in
   try/catch) — the review-period exception to "nothing persisted", said under the field; empty = anonymous. A label, not an
@@ -660,7 +683,7 @@ After every navigation the assistant performs — from the landing (after the tr
 or to the same one — the destination opens with an **AI overview** at the top of its main content (`assistant/AISummary.jsx`,
 rendered by `PageShell` above the page heading; by the viewer at the top of the rail on desktop and, on phones, as a card
 floating under the reading chips (M1 C; the full-screen desktop map holds it back until the normal page returns, QB-T3 B);
-by the data page above its Export form, which then scrolls into view on arrival; and, on the pages that scroll to a target on
+by Export Data above its heading (PageShell; Access Data's two tiles under it); and, on the pages that scroll to a target on
 load, where the visitor lands: a storm's own section on `/extreme-events/<slug>` or `#<id>`, the live viewers section on
 `/mesonet?viewer|station|view=`, the dashboard section on `/climate-summary?year&month`, and on `/tools/<slug>` the page lands
 on the overview with the tile ringed below it). It shows while the provider holds an

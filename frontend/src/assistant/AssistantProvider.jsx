@@ -6,6 +6,7 @@ import { clearDownload, currentDownload, noteDownload } from '../download/downlo
 import TravelProxy from './TravelProxy'
 import { shortTitle } from './localMatch'
 import { OVERLAY, liveState, overlayOf } from '../components/overlayHistory'
+import { resolveDoor } from '../site/visualize'
 
 // The navigator's client-side brain. Conversation lives in memory only (this
 // tab, this visit); nothing is stored. The assistant has three states:
@@ -328,7 +329,9 @@ export function AssistantProvider({ children }) {
       // External HCDP pages open now, in a new tab; the message keeps a link if the tab was blocked.
       for (const a of actions) if (a.type === 'open' && a.url) { if (!openNewTab(a.url)) a.blocked = true }
       if (!actions.some((a) => a.type === 'navigate')) { const op = actions.find((a) => a.type === 'open' && a.url); if (op) noteNavigation(op.url) }
-      const nav = actions.find((a) => a.type === 'navigate' && typeof a.path === 'string' && a.path.startsWith('/'))
+      const navAction = actions.find((a) => a.type === 'navigate' && typeof a.path === 'string' && a.path.startsWith('/'))
+      // 18 Oct: /data/visualize (Visualize Data's door) is the default map itself, so the overview is asked for under the map's address
+      const nav = navAction ? { ...navAction, path: resolveDoor(navAction.path) } : null
       const opened = actions.find((a) => a.type === 'open' && typeof a.url === 'string')
       const destination = data.destination && typeof data.destination === 'object' ? data.destination : null
       const id = nextId()
@@ -367,7 +370,8 @@ export function AssistantProvider({ children }) {
   const choose = useCallback((target, { ask = '', echoAsk = false, docked = false, inPlace = false } = {}) => {
     if (busy || travelling || !target) return false
     const title = shortTitle(target.title) || 'the page'
-    const path = typeof target.path === 'string' && target.path.startsWith('/') ? target.path : (typeof target.url === 'string' && target.url.startsWith('/') ? target.url : null)
+    const raw = typeof target.path === 'string' && target.path.startsWith('/') ? target.path : (typeof target.url === 'string' && target.url.startsWith('/') ? target.url : null)
+    const path = raw ? resolveDoor(raw) : null   // Visualize Data's door is the default map itself (18 Oct)
     const url = !path && typeof target.url === 'string' && /^https?:\/\//.test(target.url) ? target.url : null
     if (!path && !url) return false
     const q = (ask || '').trim()

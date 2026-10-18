@@ -81,10 +81,11 @@ EMBEDS: dict[str, dict] = {
     "/climate-summary": {"src": _SUMMARY_APP + "#/", "slug": "climate-summary", "title": "Monthly Climate Summary"},
 }
 # Our own addresses that have no HCDP copy but still get an AI overview for direct loads (18 Oct, the user: the app pages show
-# the AI overview above the app, closed): the app shells above and the Mesonet's live and Nolo viewers — written by the job
-# from the catalog (summary.Summarizer.app_overview), stored under overviews/app-<address>.json, served by
-# GET /api/portal/overview. (The Hawaiʻi Mesonet phone app, /mesonet?viewer=app, is not framed: it opens directly.)
-APP_OVERVIEWS: tuple[str, ...] = (*EMBEDS, "/mesonet?viewer=live", "/mesonet?viewer=nolo")
+# the AI overview above the app, closed): the app shells above, the Mesonet's live and Nolo viewers, and Access Data (its two
+# tiles, Visualize Data and Export Data) — written by the job from the catalog (summary.Summarizer.app_overview), stored under
+# overviews/app-<address>.json, served by GET /api/portal/overview. (The Hawaiʻi Mesonet phone app, /mesonet?viewer=app, is
+# not framed: it opens directly.)
+APP_OVERVIEWS: tuple[str, ...] = (*EMBEDS, "/mesonet?viewer=live", "/mesonet?viewer=nolo", "/data")
 # HCDP pages this site answers with its own native page.
 NATIVE = {
     "": "/", "data-portal": "/data", "hawaii-mesonet-data": "/mesonet?viewer=live", "hawaii-mesonet-data-access": "/mesonet?viewer=live",

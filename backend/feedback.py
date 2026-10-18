@@ -42,9 +42,9 @@ MAX_ROWS = 500
 # ── the review-period feedback (F1–F5) ───────────────────────────────────────
 KINDS = ("thumbs", "selection", "tab", "wrong_page")
 RATINGS = ("up", "down")
-# The feature picker: AI answer · Navigation result · AI Overview · Maps viewer · Downloads · Feedback itself · A page · Other
+# The feature picker: AI answer · Navigation result · AI Overview · Visualize Data (the map viewer) · Downloads · Feedback itself · A page · Other
 FEATURES = ("answer", "navigation", "overview", "viewer", "downloads", "feedback", "page", "other")
-FEATURE_LABELS = {"answer": "AI answer", "navigation": "Navigation result", "overview": "AI Overview", "viewer": "Maps viewer", "downloads": "Downloads",
+FEATURE_LABELS = {"answer": "AI answer", "navigation": "Navigation result", "overview": "AI Overview", "viewer": "Visualize Data", "downloads": "Downloads",
                   "feedback": "Feedback itself", "page": "A page", "other": "Other"}
 STATUSES = ("new", "reviewed", "fixed", "wontfix")
 FEEDBACK_COLUMNS = ["id", "created_at", "kind", "rating", "feature", "page_path", "page_title", "quote", "ask", "reply", "overview_id", "wanted", "text",

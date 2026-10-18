@@ -9,7 +9,7 @@ import DownloadPage from './DownloadPage'
 import AccessDataLine, { ACCESS_PLACEHOLDER } from './AccessDataLine'
 import { clearDownload, noteDownload } from './downloadStore'
 import { estimateFor, formatBytes, packagePath, parsePicks, pickedIds, prefillFromPlan, prepareBody } from './planApi'
-import { AccessData } from '../pages/content/DataPortal'
+import { ExportData } from '../pages/content/DataPortal'
 import { AssistantProvider } from '../assistant/AssistantProvider'
 import AssistantBar from '../assistant/AssistantBar'
 import { clearDateRanges } from '../viewer/map/dateRanges'
@@ -293,24 +293,24 @@ describe('the panel: counts, address, key, Download now / Email me (D3 A + D5 A)
   })
 })
 
-describe('the Access Data AI line (D1 D)', () => {
+describe('the Access Data AI line (D1 D; on Export Data since 18 Oct)', () => {
   it('plans from the sentence, pre-ticks the Export form, and offers Visualize and the full package', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-10-13T12:00:00-10:00'))
-    at(<AccessData />, '/data')
+    at(<ExportData />, '/data/export')
     const input = screen.getByTestId('access-ai-input')
     expect(input).toHaveAttribute('placeholder', ACCESS_PLACEHOLDER)
     expect(ACCESS_PLACEHOLDER).toBe('Tell me what the data is for and I will tick it')
     // the line sits at the very top of the page, before the heading
     const line = screen.getByTestId('access-ai-line')
-    const h1 = screen.getByRole('heading', { level: 1, name: 'Access Data' })
+    const h1 = screen.getByRole('heading', { level: 1, name: 'Export Data' })
     expect(line.compareDocumentPosition(h1) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     await waitFor(() => expect(screen.getByTestId('export-start')).toHaveValue('2025-10'))      // the form's own default first
     expect(screen.getByTestId('access-ai-prepare')).toBeDisabled()
     fireEvent.change(input, { target: { value: ASK } })
     fireEvent.click(screen.getByTestId('access-ai-prepare'))
     expect(await screen.findByTestId('access-ai-reading')).toHaveTextContent(READING)
-    expect(posted('/api/download/plan')[0]).toEqual({ ask: ASK, hints: {}, context: { path: '/data' }, extra: '', previous: [] })
+    expect(posted('/api/download/plan')[0]).toEqual({ ask: ASK, hints: {}, context: { path: '/data/export' }, extra: '', previous: [] })
     expect(screen.getByTestId('access-ai-ticked')).toHaveTextContent('The Export form below is ticked to match')
     expect(screen.getByTestId('access-ai-visualize')).toHaveAttribute('href', '/viewer/rainfall/day/2026-09-07/kauai')
     // the Export form now says what the plan says
@@ -334,7 +334,7 @@ describe('the Access Data AI line (D1 D)', () => {
 
   it('tells the visitor when the plan fails, and the form stays usable', async () => {
     planReply = () => new Error('The AI planner did not answer in time. Try again in a moment, or tick the Export form yourself.')
-    at(<AccessDataLine onPrefill={() => {}} />, '/data')
+    at(<AccessDataLine onPrefill={() => {}} />, '/data/export')
     fireEvent.change(screen.getByTestId('access-ai-input'), { target: { value: 'rain' } })
     fireEvent.submit(screen.getByTestId('access-ai-input').closest('form'))
     expect(await screen.findByTestId('access-ai-error')).toHaveTextContent('The AI planner did not answer in time.')

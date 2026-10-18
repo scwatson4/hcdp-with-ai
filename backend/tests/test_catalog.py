@@ -56,7 +56,7 @@ HCDP_HOSTS = {
 MUST_HAVE = {
     # menus
     "hcdp-home", "team", "hcdp-history", "rainfall-mapping-history", "climate-monitoring-history", "acknowledgements",
-    "how-to-cite", "access-data", "api", "tutorials", "cultural-resources", "library", "research-highlights",
+    "how-to-cite", "access-data", "visualize-data", "export-data", "api", "tutorials", "cultural-resources", "library", "research-highlights",
     "external-resources", "presentations", "climate-tools",
     # home-page sections
     "mesonet", "climate-summary", "pacific-portal", "extreme-events",

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { Download, Eye, Loader2, Sparkles } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -7,13 +7,15 @@ import { cn } from '@/lib/utils'
 import { fetchPlan, prefillFromPlan } from './planApi'
 import DownloadDrawer from './DownloadDrawer'
 
-// The AI line at the top of the Access Data page (gallery D1 D, 13 Oct): one field — "Tell me what the data is for and
+// The AI line at the top of the Export Data page (gallery D1 D, 13 Oct; on /data/export since 18 Oct, when Access Data became
+// its two tiles): one field — "Tell me what the data is for and
 // I will tick it" — and Prepare. The sentence goes through the same planner as the drawer; the plan's product, period,
 // dates, extents and files pre-tick the Export form below (onPrefill), "Visualize" opens the viewer on the plan's primary
 // map, and "Prepare the full package with AI" opens the drawer on the same plan (no second planner call).
 export const ACCESS_PLACEHOLDER = 'Tell me what the data is for and I will tick it'
 
 export default function AccessDataLine({ onPrefill, className }) {
+  const { pathname } = useLocation()
   const [text, setText] = useState('')
   const [state, setState] = useState({ kind: 'idle' })   // idle | working | ready | error
   const [drawer, setDrawer] = useState(false)
@@ -24,7 +26,7 @@ export default function AccessDataLine({ onPrefill, className }) {
     if (!ask || working) return
     setState({ kind: 'working', ask })
     try {
-      const plan = await fetchPlan({ ask, context: { path: '/data' } })
+      const plan = await fetchPlan({ ask, context: { path: pathname } })
       const prefill = prefillFromPlan(plan)
       setState({ kind: 'ready', ask, plan, prefill })
       if (prefill) onPrefill?.({ ...prefill, key: Date.now(), ask })
@@ -68,7 +70,7 @@ export default function AccessDataLine({ onPrefill, className }) {
           </div>
         </div>
       )}
-      <DownloadDrawer open={drawer} onOpenChange={setDrawer} ask={state.ask || text} context={{ path: '/data' }} initialPlan={state.plan || null} />
+      <DownloadDrawer open={drawer} onOpenChange={setDrawer} ask={state.ask || text} context={{ path: pathname }} initialPlan={state.plan || null} />
     </section>
   )
 }

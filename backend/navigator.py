@@ -73,7 +73,7 @@ HST = "Pacific/Honolulu"
 ROUTES = [
     "/", "/about", "/about/team", "/about/history", "/about/acknowledgements", "/about/how-to-cite",
     "/about/rainfall-mapping-history", "/about/climate-monitoring-history",
-    "/data", "/data/api", "/data/tutorials", "/mesonet", "/climate-summary", "/pacific", "/extreme-events", "/tools",
+    "/data", "/data/visualize", "/data/export", "/data/api", "/data/tutorials", "/mesonet", "/climate-summary", "/pacific", "/extreme-events", "/tools",
     "/cultural-resources", "/library", "/research/highlights", "/research/external-resources", "/research/presentations",
     "/conditions-of-use", "/download",
 ]
@@ -145,7 +145,7 @@ SEED_CATALOG = [
     {"id": "access-data", "kind": "tool", "title": "Access Data (interactive data portal)", "url": "https://www.hawaii.edu/climate-data-portal/data-portal/", "internal_path": "/data",
      "summary": "Interactive maps and downloads of gridded rainfall, temperature, SPI drought index, relative humidity, NDVI and ignition probability, plus station data, from 1920 to yesterday.",
      "when_to_use": "The visitor wants to see or download climate maps or station data for Hawaiʻi.", "example_queries": ["download rainfall data", "show me a temperature map"], "region": "hawaii", "tags": ["rainfall", "temperature", "download", "maps"]},
-    {"id": "viewer", "kind": "viewer", "title": "Climate viewer deep links", "url": None, "internal_path": "/viewer/{dataset}/{period}/{date}/{extent}",
+    {"id": "viewer", "kind": "viewer", "title": "Visualize Data deep links (the map viewer)", "url": None, "internal_path": "/viewer/{dataset}/{period}/{date}/{extent}",
      "summary": "This site's shareable map viewer: one URL per dataset, period, date and island.", "when_to_use": "The visitor wants to look at a specific map for a specific date or month.", "example_queries": ["rainfall map for October 21 2025 on the Big Island", "drought map August 2026"], "region": "hawaii", "tags": ["map", "viewer"]},
     {"id": "mesonet", "kind": "tool", "title": "Hawaiʻi Mesonet", "url": "https://www.hawaii.edu/climate-data-portal/hawaii-mesonet/", "internal_path": "/mesonet",
      "summary": "Live weather station network: readings every five minutes from 80+ stations. Viewer, station list, API.", "when_to_use": "Current conditions, a specific station, live rainfall or wind.", "example_queries": ["is it raining in Hilo right now", "stations on Kauaʻi"], "region": "hawaii", "tags": ["stations", "live", "mesonet"]},
@@ -552,6 +552,7 @@ WHAT YOU CAN DO
 7. download — the visitor wants DATA FILES rather than a page or a map: "download …", "data for …", "I need the rainfall data …", "get me the station totals …", "how do I download …", "export …", "GeoTIFFs/CSVs of …" for rainfall or temperature (HCDP's export packages gridded maps and station data by day or month). Answer intent "download" with ONE navigate action to /data/api (the API page, where the site offers to prepare the files with AI) and a "download" object: {{"ask": the request as typed, "offer": one sentence on what the AI would prepare (which product, dates, islands, as one zip), "hints": {{"product": rainfall|rainfall-legacy|temperature-max|temperature-min|temperature-mean, "period": day|month, "start": …, "end": …, "extents": [slugs], "event": name or null, "place": name or null}}}}. The reply says you are taking them to the API page where the files can be prepared. A storm's data uses its catalogued dates. Mesonet 5-minute readings, SPI, NDVI, ignition and projections are NOT in the export: for those, navigate or open as before. Never navigate to /download yourself.
 
 SITE PAGES (internal paths): {", ".join(ROUTES)}
+  /data is Access Data: two choices, as on HCDP — Visualize Data (/data/visualize: the map viewer, opening on its default map; prefer a viewer deep link when the visitor names a dataset, date or place) and Export Data (/data/export: the export form for grids and station files)
 VIEWER DEEP LINKS: /viewer/{{dataset}}/{{period}}/{{date}}/{{extent}}
   dataset: {datasets}
   period: month (date YYYY-MM) or day (date YYYY-MM-DD)
@@ -884,8 +885,8 @@ Respond with ONLY a JSON object:
 
     def sources_for(self, path: str, limit: int = 3) -> list[dict]:
         """The real HCDP pages behind a destination, for the AI summary's "From HCDP:" row — resolved from the
-        catalog only, never from the model: the destination entry's own url first (for a viewer map, Access Data,
-        the portal page that frames HCDP's map tool), then up to two related entries. Each is {title, url}."""
+        catalog only, never from the model: the destination entry's own url first (for a viewer map, Visualize Data — the
+        portal page that frames HCDP's map tool), then up to two related entries. Each is {title, url}."""
         matches = self.match_entries(path)
         out: list[dict] = []
         seen: set[str] = set()
@@ -897,7 +898,7 @@ Respond with ONLY a JSON object:
                 out.append({"title": str(e.get("title") or u)[:120], "url": u})
 
         if parse_viewer_path(path):
-            add(self.entry("access-data"))
+            add(self.entry("visualize-data") or self.entry("access-data"))   # Visualize Data, Access Data's map tool (18 Oct)
         if matches:
             add(matches[0])
             for e in self.related_entries(matches[0], seen):

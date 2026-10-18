@@ -6,7 +6,7 @@ export const FEATURES = [
   { id: 'answer', label: 'AI answer' },
   { id: 'navigation', label: 'Navigation result' },
   { id: 'overview', label: 'AI Overview' },
-  { id: 'viewer', label: 'Maps viewer' },
+  { id: 'viewer', label: 'Visualize Data' },   // the map viewer (18 Oct: its name for visitors)
   { id: 'downloads', label: 'Downloads' },
   { id: 'feedback', label: 'Feedback itself' },
   { id: 'page', label: 'A page' },

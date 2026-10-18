@@ -1,5 +1,5 @@
-// /viewer with nothing after it: what the viewer is, how its addresses
-// work, and ready-made links for the questions people ask most.
+// /viewer with nothing after it: what Visualize Data (this site's map viewer, 18 Oct: renamed for visitors) is, how its
+// addresses work, and ready-made links for the questions people ask most.
 
 import { Link } from 'react-router-dom'
 import { ArrowRight, ExternalLink } from 'lucide-react'
@@ -48,10 +48,10 @@ export default function Launcher({ now = new Date() }) {
   const places = Object.keys(EXTENTS)
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-10" data-testid="viewer-launcher">
-      <p className="font-mono text-[12px] font-medium uppercase tracking-wide text-subtle">Climate viewer</p>
+      <p className="font-mono text-[12px] font-medium uppercase tracking-wide text-subtle" data-testid="viewer-eyebrow">Visualize Data</p>
       <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight">A map for every day and month, with an address you can share</h1>
       <p className="mt-3 max-w-3xl text-subtle">
-        The viewer draws HCDP's gridded maps of Hawaiʻi — rainfall, temperature, relative humidity, vegetation greenness,
+        Visualize Data draws HCDP's gridded maps of Hawaiʻi — rainfall, temperature, relative humidity, vegetation greenness,
         wildfire ignition probability and the drought index — with the portal's colours and scales, one day or one month at a time.
         Whatever you pick shows up in the address bar, so a copied link opens exactly the same map for anyone.
       </p>
@@ -89,11 +89,16 @@ export default function Launcher({ now = new Date() }) {
       <section className="mt-10 rounded-lg border border-border bg-surface p-4 sm:p-5">
         <h2 className="font-display text-xl">Need the numbers?</h2>
         <p className="mt-1 max-w-3xl text-sm text-subtle">
-          The viewer shows maps. To download grids and station data, or to explore every product, use the HCDP data portal.
+          Visualize Data shows maps. To download grids and station data, use Export Data; to explore every product, the HCDP data portal.
         </p>
-        <a href={PORTAL_URL} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-accent underline-offset-4 hover:underline">
-          Open in the HCDP data portal <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /><span className="sr-only">(opens in a new tab)</span>
-        </a>
+        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+          <Link to="/data/export" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent underline-offset-4 hover:underline max-md:min-h-11" data-testid="launcher-export">
+            Export Data <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </Link>
+          <a href={PORTAL_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent underline-offset-4 hover:underline max-md:min-h-11">
+            Open in the HCDP data portal <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /><span className="sr-only">(opens in a new tab)</span>
+          </a>
+        </div>
       </section>
     </div>
   )

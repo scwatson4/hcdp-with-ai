@@ -222,15 +222,20 @@ def test_destination_and_sources_come_from_the_catalog_only():
     assert s[0] == {"title": "Hurricane Lowell report", "url": "https://www.hawaii.edu/climate-data-portal/hurricane-lowell/"}
     assert len(s) == 3 and all(x["url"] in by_url for x in s) and len({x["url"] for x in s}) == 3
     assert "lowell" in s[1]["title"].lower() and "lowell" in s[2]["title"].lower()
-    # a viewer map: Access Data (the portal page framing HCDP's map tool) first, then the storm's pages for a storm day
+    # a viewer map: Visualize Data (18 Oct: Access Data's map tool, the portal page framing HCDP's maps) first, then the storm's pages for a storm day
     v = nav.sources_for("/viewer/rainfall/day/2026-09-07/kauai")
-    assert v[0]["url"] == "https://www.hawaii.edu/climate-data-portal/data-portal/" and v[0]["title"].startswith("Access Data")
+    assert v[0]["url"] == "https://www.hawaii.edu/climate-data-portal/data-portal/" and v[0]["title"].startswith("Visualize Data")
     assert v[1]["url"] == "https://www.hawaii.edu/climate-data-portal/hurricane-lowell/"
     assert nav.destination("/viewer/rainfall/day/2026-09-07/kauai")["id"] == "lowell-rainfall-map"
-    # a plain day: the template entry is the destination; Access Data still first; nothing invented
+    # a plain day: the template entry is the destination; Visualize Data still first; nothing invented
     assert nav.destination("/viewer/rainfall/day/2026-09-20/oahu")["id"] == "rainfall-daily-map"
     plain = nav.sources_for("/viewer/rainfall/day/2026-09-20/oahu")
-    assert plain[0]["title"].startswith("Access Data") and all(x["url"] in by_url for x in plain)
+    assert plain[0]["title"].startswith("Visualize Data") and all(x["url"] in by_url for x in plain)
+    # Access Data's two doors (18 Oct): their own entries, and routes the navigator may use
+    assert nav.destination("/data/visualize")["id"] == "visualize-data" and nav.destination("/data/export")["id"] == "export-data"
+    assert nav.destination("/data")["id"] == "access-data"
+    assert valid_internal_path("/data/visualize") and valid_internal_path("/data/export") and not valid_internal_path("/data/elsewhere")
+    assert "/data/visualize" in nav.system_prompt({"path": "/"}) and "Export Data (/data/export" in nav.system_prompt({"path": "/"})
     # exact beats template beats parent; the query is part of the identity; the kind breaks ties
     assert nav.destination("/mesonet?viewer=live&station=0115&view=dashboard")["id"] == "mesonet-station-live"
     assert nav.destination("/mesonet")["id"] == "mesonet"

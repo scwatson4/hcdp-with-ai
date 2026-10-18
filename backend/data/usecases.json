@@ -544,6 +544,28 @@
       "notes": "Plain request."
     },
     {
+      "id": "visualize-data-plain",
+      "persona": "citizen",
+      "query": "visualize data",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "visualize-data"
+      ],
+      "notes": "Access Data's first tile (18 Oct): /data/visualize, the map viewer on its default map (a viewer deep link for that map is as good)."
+    },
+    {
+      "id": "export-data-plain",
+      "persona": "researcher",
+      "query": "where is the export form for data files",
+      "expected_intent": "navigate",
+      "expected_ids": [
+        "export-data",
+        "data-downloads"
+      ],
+      "expected_path_prefix": "/data/export",
+      "notes": "Access Data's second tile (18 Oct): the Export form, filled in by hand."
+    },
+    {
       "id": "portal-tutorial",
       "persona": "teacher",
       "query": "how do I use the data portal to make a map for class",

@@ -41,7 +41,7 @@ export const NAV = [
 
 // The landing page's tool cards, in the portal's own order and words.
 export const TOOL_CARDS = [
-  { key: 'data', title: 'Access Data', to: '/data', blurb: 'Interactive maps of rainfall, temperature, drought, humidity, vegetation and fire risk, from 1920 to yesterday. Download grids, station data and metadata.', icon: 'Map' },
+  { key: 'data', title: 'Access Data', to: '/data', blurb: 'Visualize Data: interactive maps of rainfall, temperature, drought, humidity, vegetation and fire risk, from 1920 to yesterday. Export Data: grids, station data and metadata.', icon: 'Map' },
   { key: 'mesonet', title: 'Hawaiʻi Mesonet', to: '/mesonet', blurb: 'Live readings every five minutes from some eighty weather stations across the islands, plus American Samoa.', icon: 'RadioTower' },
   { key: 'summary', title: 'Climate Summary', to: '/climate-summary', blurb: 'The monthly Hawaiʻi climate report: rainfall and temperature by island, moku and watershed, with ranks against the record.', icon: 'CalendarDays' },
   { key: 'pacific', title: 'Pacific Portal', to: '/pacific', blurb: 'Climate data portals for American Samoa and Guam, and the Pacific Marine National Monuments stations.', icon: 'Globe2' },
@@ -61,7 +61,7 @@ export const SIDEBAR = {
   // The portal's five buttons in its order, recoloured with the logo's spectrum (globals.css --hcdp-rainbow),
   // one shade deeper each so white type stays legible; linked to this site's pages where it has them.
   buttons: [
-    { label: "Access Data", to: "/data", href: "https://www.hawaii.edu/climate-data-portal/data-portal/", color: "#357c78", tip: "Maps of rainfall, temperature, drought, humidity, vegetation and fire risk, 1920 to yesterday, with downloads." },
+    { label: "Access Data", to: "/data", href: "https://www.hawaii.edu/climate-data-portal/data-portal/", color: "#357c78", tip: "Visualize Data or Export Data: rainfall, temperature, drought, humidity, vegetation and fire-risk maps, 1920 to yesterday, and their files." },
     { label: "Hawaiʻi Mesonet", to: "/mesonet", href: "https://www.hawaii.edu/climate-data-portal/hawaii-mesonet/", color: "#4f7a30", tip: "Live readings every five minutes from about eighty stations across the islands and American Samoa." },
     { label: "Climate Summary", to: "/climate-summary", href: "https://www.hawaii.edu/climate-data-portal/climate-summary/", color: "#a85a1c", tip: "The monthly climate report: rainfall and temperature by island, moku and watershed, ranked against the record." },
     { label: "Pacific Portal", to: "/pacific", href: "https://www.hawaii.edu/climate-data-portal/pacific-portal/", color: "#303078", tip: "Climate data for American Samoa, Guam and the Pacific Marine National Monuments." },

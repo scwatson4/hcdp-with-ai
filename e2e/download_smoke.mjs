@@ -93,10 +93,14 @@ try {
     }
   }
 
-  // 3. the Access Data line pre-ticks the Export form; Visualize opens the viewer
+  // 3. the Access Data line (on Export Data since 18 Oct: /data is the two tiles) pre-ticks the Export form; Visualize opens the viewer
   await page.goto(BASE + '/data', { waitUntil: 'networkidle' })
+  check('Access Data is the two tiles', (await page.locator('[data-testid="data-tile-visualize"]').getAttribute('href')) === '/data/visualize'
+    && (await page.locator('[data-testid="data-tile-export"]').getAttribute('href')) === '/data/export' && (await page.locator('[data-testid="access-ai-line"]').count()) === 0)
+  await page.locator('[data-testid="data-tile-export"]').click()
+  await page.waitForURL(/\/data\/export$/, { timeout: 15000 }).catch(() => {})
   const line = page.locator('[data-testid="access-ai-line"]')
-  check('Access Data AI line present at the top', await line.isVisible() && (await page.locator('[data-testid="access-ai-input"]').getAttribute('placeholder')) === 'Tell me what the data is for and I will tick it')
+  check('Export Data: the AI line present at the top', await line.isVisible() && (await page.locator('[data-testid="access-ai-input"]').getAttribute('placeholder')) === 'Tell me what the data is for and I will tick it')
   await page.locator('[data-testid="access-ai-input"]').fill('download the station data for Maui in August')
   await page.locator('[data-testid="access-ai-prepare"]').click()
   const t2 = Date.now()

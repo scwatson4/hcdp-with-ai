@@ -260,6 +260,8 @@ describe('/viewer with no parameters', () => {
     vi.setSystemTime(new Date('2026-09-25T20:00:00Z')) // 10:00 on 25 Sep in Hawaiʻi
     renderAt('/viewer')
     expect(screen.getByTestId('viewer-launcher')).toBeInTheDocument()
+    expect(screen.getByTestId('viewer-eyebrow')).toHaveTextContent('Visualize Data')          // 18 Oct: the viewer's name for visitors
+    expect(screen.getByTestId('launcher-export')).toHaveAttribute('href', '/data/export')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/address you can share/i)
     expect(screen.getByTestId('viewer-grammar')).toHaveTextContent('/viewer/{dataset}/{period}/{date}/{place}')
     const hrefs = () => screen.getAllByTestId('launcher-example').map((a) => a.getAttribute('href'))
@@ -442,6 +444,17 @@ describe('a viewer URL restores the controls and the map', () => {
     // A tap (click) keeps its readout; nodata says so.
     await act(async () => { fake.map.fire('click', { latlng: { lat: 21.5, lng: -159.5 } }) })
     expect(screen.getByTestId('value-readout')).toHaveTextContent('no data here')
+  })
+
+  it('calls itself Visualize Data (18 Oct): the breadcrumb Access Data › Visualize Data over the map’s title, and the tab’s title', async () => {
+    renderAt('/viewer/rainfall/day/2026-09-07/kauai')
+    const crumb = screen.getByTestId('viewer-eyebrow')
+    expect(crumb).toHaveTextContent('Access Data › Visualize Data')
+    expect(within(crumb).getByRole('link', { name: 'Access Data' })).toHaveAttribute('href', '/data')
+    expect(document.title).toBe('Rainfall, September 7, 2026, Kauaʻi · Visualize Data')
+    expect(screen.queryByText(/climate viewer/i)).toBeNull()
+    expect(screen.getByRole('link', { name: 'How map addresses work' })).toHaveAttribute('href', '/viewer')
+    await settle()
   })
 
   it('titles the map with describeViewer, units and the data source', async () => {

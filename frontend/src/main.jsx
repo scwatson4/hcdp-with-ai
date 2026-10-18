@@ -8,7 +8,7 @@ import { AssistantProvider } from './assistant/AssistantProvider'
 import App from './App'
 import Landing from './pages/Landing'
 import ViewerPage from './viewer/ViewerPage'
-import { AccessData } from './pages/content/DataPortal'
+import { AccessData, ExportData, VisualizeData } from './pages/content/DataPortal'
 // HCDP's own pages, mirrored live (CONTRACT.md "Mirrored pages", 14 Oct), and its app shells as native embeds
 import { Mirror } from './portal/MirroredPage'
 import LibraryPage from './portal/Library'
@@ -28,7 +28,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
               <Route index element={<Landing />} />
               <Route path="about" element={<Mirror />} />
               <Route path="about/:page" element={<Mirror />} />
-              <Route path="data" element={<AccessData />} />
+              <Route path="data" element={<AccessData />} />                {/* 18 Oct: two tiles, Visualize Data and Export Data */}
+              <Route path="data/visualize" element={<VisualizeData />} />   {/* → the default map in the viewer */}
+              <Route path="data/export" element={<ExportData />} />
               <Route path="data/api" element={<ApiRoute />} />
               <Route path="data/tutorials" element={<Mirror />} />
               <Route path="data/tutorials/:slug" element={<Mirror />} />

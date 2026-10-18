@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ExternalLink, X } from 'lucide-react'
-import { useAssistant } from './AssistantProvider'
+import { isViewerPage, useAssistant } from './AssistantProvider'
 import { AskBar, Conversation } from './AssistantPanel'
+import ChatHistory, { CHAT_SCROLL } from './ChatHistory'
 import { useNarrowScreen } from '../viewer/useMediaQuery'
 import { cn } from '../lib/utils'
 
@@ -23,8 +24,11 @@ import { cn } from '../lib/utils'
 // ride-up, so the travelling bar has a rectangle to arrive at.
 // M2 A (14 Oct): below 768 px there is no dropdown — a tap on the bar opens the Ask AI sheet (AskSheet.jsx), and a reply
 // with nowhere to go opens the sheet too.
+// 18 Oct: on the viewer's pages (Visualize Data) the dropdown is the Ask AI popup that holds the answers and their AI
+// overviews: it shows the visit's conversation (ChatHistory.jsx), opens when the bar takes the focus with a conversation
+// kept, opens with a question sent from the bar, and stays open when the answer opens another map.
 export default function AssistantBar() {
-  const { mode, setMode, minimize, reset, travel, strip, epoch, holdStrip, releaseStrip, hideStrip, heroOut, wait } = useAssistant()
+  const { mode, setMode, minimize, reset, travel, strip, epoch, holdStrip, releaseStrip, hideStrip, heroOut, wait, log } = useAssistant()
   const working = wait != null
   const { pathname } = useLocation()
   const onLanding = pathname === '/' && !heroOut   // L4 E: once the hero has scrolled away the bar docks here too
@@ -32,6 +36,8 @@ export default function AssistantBar() {
   const rootRef = useRef(null)
   const phone = useNarrowScreen()
   const open = mode === 'panel' && !measuring && !phone
+  const history = isViewerPage(pathname) && log.length > 0   // the viewer's popup keeps the conversation (18 Oct)
+  const openHistory = () => { if (history && !phone && mode === 'dock') setMode('panel') }
 
   // A click anywhere outside the bar and its dropdown closes the dropdown.
   useEffect(() => {
@@ -51,7 +57,7 @@ export default function AssistantBar() {
     <div ref={rootRef} data-testid="assistant-bar" aria-hidden={measuring || undefined}
       className={cn('border-b border-border bg-canvas/95 backdrop-blur', measuring ? 'invisible absolute inset-x-0 top-full' : 'relative')}>
       <div className="mx-auto flex h-14 w-full max-w-[720px] items-center px-4">
-        <div className="w-full"><AskBar key={epoch} docked /></div>
+        <div className="w-full" onFocus={openHistory}><AskBar key={epoch} docked /></div>
       </div>
       {working && !open && !measuring && (
         <div role="status" aria-live="polite" data-testid="docked-working" className="pointer-events-none absolute inset-x-0 top-full z-10 flex items-center justify-center gap-2 px-4 pt-1.5 text-center text-[13px] text-foreground/85">
@@ -79,7 +85,9 @@ export default function AssistantBar() {
                 <button type="button" aria-label="Close (Esc)" onClick={minimize} className="grid h-8 w-8 place-items-center rounded text-subtle hover:bg-muted hover:text-foreground [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11" data-testid="assistant-close"><X className="h-4 w-4" /></button>
               </div>
             </div>
-            <Conversation compact latestOnly className="max-h-[min(60vh,26rem)]" />
+            {history
+              ? <div className="max-h-[min(70vh,34rem)] overflow-y-auto overscroll-contain px-1 py-1.5" {...{ [CHAT_SCROLL]: '' }} data-testid="dropdown-history"><ChatHistory /></div>
+              : <Conversation compact latestOnly className="max-h-[min(60vh,26rem)]" />}
           </div>
         </div>
       )}

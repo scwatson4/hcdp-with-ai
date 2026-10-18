@@ -57,7 +57,7 @@ export function featureForPath(pathname = '') {
 export function featureForNode(node, pathname = '') {
   const el = node?.nodeType === 1 ? node : node?.parentElement
   if (el?.closest?.('[data-testid="ai-summary"]')) return 'overview'
-  if (el?.closest?.('[data-testid="conversation"], [data-testid="reply-strip"]')) return 'answer'
+  if (el?.closest?.('[data-testid="conversation"], [data-testid="reply-strip"], [data-testid="chat-history"]')) return 'answer'   // chat-history: the viewer's Ask AI popup (18 Oct)
   if (el?.closest?.('[data-feedback-ui]')) return 'feedback'
   return featureForPath(pathname)
 }

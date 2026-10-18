@@ -30,7 +30,7 @@ const NAV_ITEM = 'font-nav text-[12.5px] font-semibold uppercase tracking-[0.06e
 
 export default function SiteHeader() {
   const { pathname } = useLocation()
-  const { reset } = useAssistant()   // item 13: the logo always resets the landing page
+  const { reset } = useAssistant()   // item 13: the logo always resets the landing page (18 Oct: the Ask AI history kept for the visit stays)
   // M3 C (14 Oct): the landing page shows neither "Share this view" nor "Original HCDP version", at any width — every
   // inner page keeps them. The logo stays centred (the two side cells stay, empty). On the phone viewer (M1 C) they live
   // in its Controls sheet and its floating bar instead.
@@ -42,7 +42,7 @@ export default function SiteHeader() {
       <div className="hcdp-hairline" aria-hidden="true" data-testid="header-hairline" />
       <div className="mx-auto grid w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 pb-1 pt-3" data-testid="logo-row">
         <div className="flex min-w-0 items-center justify-start">{utility && <ShareView />}</div>
-        <Link to="/" aria-label="Hawaiʻi Climate Data Portal home" className="block max-md:-my-2 max-md:py-2" onClick={() => reset()} data-testid="logo-home">
+        <Link to="/" aria-label="Hawaiʻi Climate Data Portal home" className="block max-md:-my-2 max-md:py-2" onClick={() => reset({ keepHistory: true })} data-testid="logo-home">
           <img src="/hcdp_logo.png" alt="HCDP — Hawaiʻi Climate Data Portal" width="1120" height="150" decoding="async" fetchPriority="high" className="h-7 w-auto sm:h-[52px]" />
         </Link>
         <div className="flex min-w-0 items-center justify-end gap-1">

@@ -32,8 +32,39 @@ import { resolveDoor } from '../site/visualize'
 // (reportWrongPage → POST /api/feedback/wrong-page → {id}); for WRONG_PAGE_WINDOW_MS the next
 // navigation the visitor makes — an AI answer, a typeahead row, a tile, a rail change in the viewer —
 // is attached to that report (noteNavigation → POST …/{id}/chose, fire-and-forget; tab memory only).
+// 18 Oct (the user: "In the Visualize Data tool the AI overview should not appear automatically … I'd rather it appear inside
+// the 'Ask AI' popup. Also that popup should keep conversation history."): every exchange — the question, the answer and,
+// once it is written, the destination's overview (its sentences and sources) — is also kept in `log`, which the viewer's
+// Ask AI popup shows as a conversation (ChatHistory.jsx: the phone's sheet, the docked bar's dropdown, the full-screen map's
+// mini box). The log lives in sessionStorage (HISTORY_KEY) for the visit: it survives a reload, goes when the tab closes,
+// and Start over clears it; nothing is stored on a server. The rest of the site keeps showing the latest reply only.
 const Ctx = createContext(null)
 export const WRONG_PAGE_WINDOW_MS = 10 * 60 * 1000
+export const HISTORY_KEY = 'hcdp-ask-history'
+export const HISTORY_KEEP = 40
+/** This page load: message ids start over on a reload, so an exchange kept from an earlier load never matches one of this load. */
+export const PAGE_LOAD = Math.random().toString(36).slice(2, 8)
+
+const isExchange = (x) => x && typeof x === 'object' && typeof x.key === 'string' && typeof (x.ask ?? '') === 'string' && typeof (x.reply ?? '') === 'string'
+/** The kept conversation (sessionStorage; [] where there is none or the browser refuses storage). */
+export function readHistory() {
+  try {
+    const raw = typeof window !== 'undefined' ? window.sessionStorage.getItem(HISTORY_KEY) : null
+    const d = raw ? JSON.parse(raw) : null
+    return Array.isArray(d?.items) ? d.items.filter(isExchange).map((x) => (x.pending ? { ...x, pending: false, reply: x.reply || '' } : x)).slice(-HISTORY_KEEP) : []
+  } catch { return [] }
+}
+function writeHistory(items) {
+  try {
+    if (typeof window === 'undefined') return
+    if (items.length) window.sessionStorage.setItem(HISTORY_KEY, JSON.stringify({ v: 1, items }))
+    else window.sessionStorage.removeItem(HISTORY_KEY)
+  } catch { /* storage refused: the history lasts as long as the page */ }
+}
+/** The navigator's context (its last 8 turns) rebuilt from the kept conversation. */
+const turnsOf = (items) => items.flatMap((x) => [...(x.ask ? [{ role: 'user', content: x.ask }] : []), ...(x.reply ? [{ role: 'assistant', content: x.reply }] : [])]).slice(-8)
+/** Whether an address is a page of the Visualize Data tool (the viewer), where Ask AI keeps its history in view. */
+export const isViewerPage = (pathname) => /^\/viewer\//.test(String(pathname || ''))
 
 // The gpt-6-luna narration (/api/narrate) used to be the wait line. R6 C replaced it (13 Oct); flip to try it again.
 export const NARRATION = false
@@ -93,7 +124,6 @@ export function AssistantProvider({ children }) {
   const [summary, setSummaryState] = useState(null)
   const summaryRef = useRef(null)
   const setSummary = useCallback((next) => { summaryRef.current = typeof next === 'function' ? next(summaryRef.current) : next; setSummaryState(summaryRef.current) }, [])
-  const summaryAbort = useRef(null)
   const pendingStrip = useRef(null)   // { id, strip }: the strip to show if the summary fails after the page has arrived
   const pathRef = useRef(location.pathname)
   // Follow-up asks by address (pathname + search): { key: { list, source: 'summary' | 'view', at } }.
@@ -105,9 +135,19 @@ export function AssistantProvider({ children }) {
   // `target`: the bar that fills itself — 'hero' (the landing) or 'sheet' (the phone's Ask AI sheet, M2 A).
   const pickChip = useCallback((chip, target = 'hero') => { if (chip?.template) setChipTemplate({ template: chip.template, blanks: chip.blanks || [], target, seq: Date.now() + Math.random() }) }, [])
   const [epoch, setEpoch] = useState(0)      // bumped by reset(): the bars remount empty (item 13)
-  const historyRef = useRef([])
+  // 18 Oct: the kept conversation (sessionStorage) the viewer's Ask AI popup shows, and the navigator's context from it
+  const [log, setLogState] = useState(readHistory)
+  const logRef = useRef(log)
+  const setLog = useCallback((fn) => { logRef.current = fn(logRef.current).slice(-HISTORY_KEEP); setLogState(logRef.current) }, [])
+  useEffect(() => { writeHistory(log) }, [log])
+  const pushLog = useCallback((entry) => setLog((l) => [...l, { load: PAGE_LOAD, at: Date.now(), ...entry }]), [setLog])
+  const patchLog = useCallback((key, patch) => setLog((l) => (l.some((x) => x.key === key) ? l.map((x) => (x.key === key ? { ...x, ...patch } : x)) : l)), [setLog])
+  const historyRef = useRef(null)
+  if (historyRef.current === null) historyRef.current = turnsOf(log)
   const seq = useRef(0)
   const nextId = () => { seq.current += 1; return seq.current }
+  const logKey = () => `${PAGE_LOAD}-${nextId()}`
+  const keepPanelFor = useRef(null)   // the viewer map an answer from the popup opened: the popup stays open there
   const timers = useRef({})
   const travelling = travel.phase !== 'idle'
   const locStateRef = useRef(location.state)
@@ -203,28 +243,27 @@ export function AssistantProvider({ children }) {
   }, [])
 
   // ── the AI summary of a destination ──
-  const dismissSummary = useCallback(() => { summaryAbort.current?.abort(); summaryAbort.current = null; pendingStrip.current = null; setSummary(null) }, [setSummary])
+  const dismissSummary = useCallback(() => { pendingStrip.current = null; setSummary(null) }, [setSummary])
   /** Ask /api/summary for the page the navigator just chose. The block shows as pending at once; when the sentences
    *  arrive it fills in and the follow-ups are stored under the destination's address; if the call fails or comes back
-   *  empty the block goes and the reply strip shows (after the arrival, if the visitor is still on that page). */
-  const requestSummary = useCallback((id, question, data, navPath) => {
-    summaryAbort.current?.abort()
-    const ac = new AbortController(); summaryAbort.current = ac
+   *  empty the block goes and the reply strip shows (after the arrival, if the visitor is still on that page).
+   *  18 Oct: the call is no longer cancelled by the next question or a route change — the page only shows the newest
+   *  overview, but every answer's overview lands in its exchange in the kept conversation (`logKey`). */
+  const requestSummary = useCallback((id, question, data, navPath, lkey = null) => {
     const key = navPath.split('#')[0]
     const pathname = key.split('?')[0]
     const alternatives = (Array.isArray(data.alternatives) ? data.alternatives : []).filter((a) => a && typeof a.url === 'string' && a.title).slice(0, 4)
     // ask, reply and destination ride along for a "Wrong page?" report (P4 A); requestId comes back with the sentences
     setSummary({ id, path: pathname, destination: key, ask: question, reply: data.reply || '', requestId: null, status: 'pending', chunks: [], cites: [], more: [], moreCites: [], sources: [], followups: [], alternatives })
     const fail = () => {
-      if (ac.signal.aborted) return
+      if (lkey) patchLog(lkey, { overview: null })
       setSummary((cur) => (cur && cur.id === id ? null : cur))
       const p = pendingStrip.current
       if (p && p.id === id) { pendingStrip.current = null; if (pathRef.current === p.strip.path) showStrip(p.strip) }
     }
-    fetch('/api/summary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: question, reply: data.reply || '', path: navPath, intent: data.intent || 'navigate' }), signal: ac.signal })
+    fetch('/api/summary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: question, reply: data.reply || '', path: navPath, intent: data.intent || 'navigate' }) })
       .then((r) => (r && r.ok ? r.json() : null))
       .then((d) => {
-        if (ac.signal.aborted) return
         const chunks = Array.isArray(d?.chunks) ? d.chunks.filter((c) => typeof c === 'string' && c.trim()) : []
         if (!chunks.length) { fail(); return }
         const sources = Array.isArray(d.sources) ? d.sources.filter((x) => x && typeof x.url === 'string' && /^https?:\/\//.test(x.url) && typeof x.title === 'string' && x.title.trim()) : []
@@ -232,12 +271,14 @@ export function AssistantProvider({ children }) {
         const more = Array.isArray(d.more) ? d.more.filter((c) => typeof c === 'string' && c.trim()) : []
         const followupList = (Array.isArray(d.followups) ? d.followups : []).filter((f) => typeof f === 'string' && f.trim()).map((f) => f.trim()).slice(0, MAX_FOLLOWUPS)
         const requestId = typeof d.request_id === 'string' ? d.request_id : null
-        setSummary((cur) => (cur && cur.id === id ? { ...cur, status: 'ready', requestId, chunks, cites: citesOf(d.cites, chunks.length), more, moreCites: citesOf(d.more_cites, more.length), sources, followups: followupList } : cur))
+        const ready = { status: 'ready', requestId, chunks, cites: citesOf(d.cites, chunks.length), more, moreCites: citesOf(d.more_cites, more.length), sources, followups: followupList }
+        if (lkey) patchLog(lkey, { overview: ready })
+        setSummary((cur) => (cur && cur.id === id ? { ...cur, ...ready } : cur))
         setFollowups(key, followupList, { source: 'summary' })
         if (pendingStrip.current && pendingStrip.current.id === id) pendingStrip.current = null
       })
       .catch(fail)
-  }, [setSummary, setFollowups, showStrip])
+  }, [setSummary, setFollowups, showStrip, patchLog])
 
   // ── the staged wait line (R6 C) ──
   const clearWaitTimers = useCallback(() => { clearTimeout(timers.current.finding); clearTimeout(timers.current.lineHold); timers.current.finding = timers.current.lineHold = null }, [])
@@ -261,19 +302,27 @@ export function AssistantProvider({ children }) {
    *  14 Oct: an answer that arrives while an overlay owns the history entry (the phone's Ask AI sheet, the menu, the
    *  full-screen map) replaces that entry, so Back from the destination does not reopen the overlay; `inPlace` (the
    *  full-screen map's mini box, QB-T3 B) opens another map in the same full-screen entry. */
-  const arrive = useCallback((path, s, { inPlace = false } = {}) => {
+  const arrive = useCallback((path, s, { inPlace = false, keepPopup = false } = {}) => {
     clearTravel()
     endWait()
     setTravel({ phase: 'idle', path: null })
     noteNavigation(path)
     assistantPath.current = path.split('#')[0]
     const overlay = overlayOf(liveState() ?? locStateRef.current)
+    // 18 Oct: an answer asked in the viewer's Ask AI popup that opens another map keeps the popup open over it (the reply
+    // and its overview land in the popup's history): the phone's sheet keeps its overlay on the new entry, the docked
+    // bar's dropdown stays open; the full-screen map's mini box changes the map in place as before.
+    const stay = keepPopup && !inPlace && isViewerMap(path)
+    const pathname = path.split('?')[0].split('#')[0]
+    keepPanelFor.current = stay ? pathname : null
     if (inPlace && overlay === 'full' && isViewerMap(path)) navigate(path, { replace: true, state: { [OVERLAY]: 'full' } })
+    else if (stay && overlay === 'ask') navigate(path, { replace: true, state: { [OVERLAY]: 'ask' } })
     else if (overlay) navigate(path, { replace: true })
     else navigate(path)
-    setMode('dock')
-    const strip = { ...s, path: path.split('?')[0].split('#')[0] }
+    setMode(stay ? 'panel' : 'dock')
+    const strip = { ...s, path: pathname }
     pathRef.current = strip.path
+    if (stay || (inPlace && isViewerMap(path))) { pendingStrip.current = null; return }   // the popup shows the reply
     const sum = summaryRef.current
     // 13 Oct: when a summary is on its way (or here) it is the explanation; the strip shows only if it fails.
     if (sum && sum.id === s.id) pendingStrip.current = { id: s.id, strip }
@@ -304,8 +353,14 @@ export function AssistantProvider({ children }) {
     setNarration(null)
     startWait()   // R6 C: "Thinking…", then "Finding the right page…"
     // A new question replaces the last answer's summary and strip (the page shows the wait line meanwhile).
-    summaryAbort.current?.abort(); summaryAbort.current = null; pendingStrip.current = null; setSummary(null); hideStrip()
+    pendingStrip.current = null; setSummary(null); hideStrip()
     setMessages((m) => [...m, { id: nextId(), role: 'user', content: q }])
+    // 18 Oct: the question joins the kept conversation at once (the popup shows it with the wait line under it); on the
+    // viewer the Ask AI popup is where the answer shows, so the docked bar's dropdown opens with it.
+    const lkey = logKey()
+    pushLog({ key: lkey, ask: q, pending: true })
+    const fromViewer = isViewerPage(location.pathname) && !opts.inPlace
+    if (fromViewer) setMode('panel')
     // The gpt-6-luna narration, only while NARRATION is on: one short line in parallel with the answer (never delays it).
     if (NARRATION) {
       try {
@@ -336,6 +391,8 @@ export function AssistantProvider({ children }) {
       const destination = data.destination && typeof data.destination === 'object' ? data.destination : null
       const id = nextId()
       setMessages((m) => [...m, { id, role: 'assistant', content: data.reply || '', intent: data.intent, actions, alternatives, options: data.options }])
+      patchLog(lkey, { pending: false, mid: id, reply: data.reply || '', intent: data.intent, actions, alternatives, options: Array.isArray(data.options) ? data.options : undefined,
+        path: nav ? nav.path : null, overview: nav && !data.off_topic ? { status: 'pending' } : null })
       // 13 Oct (D1): a data ask carries a download offer for the page it opens (the OfferCard on /data/api); any other answer clears it.
       if (data.intent === 'download' && data.download && nav) noteDownload(id, data.download, nav.path)
       else clearDownload()
@@ -344,9 +401,9 @@ export function AssistantProvider({ children }) {
       if (nav) {
         const s = { id, reply: data.reply || '', alternatives: alternatives.slice(0, 2) }
         setWait(opening(destination?.title))   // "Opening Hurricane Lowell report…" for the hold and the travel (arrive() ends it)
-        if (!data.off_topic) requestSummary(id, q, data, nav.path)   // the destination's AI summary, in parallel with the travel
+        if (!data.off_topic) requestSummary(id, q, data, nav.path, lkey)   // the destination's AI summary, in parallel with the travel
         if (onLanding) beginTravel(nav.path, s)   // answer first, then the bar rides up
-        else arrive(nav.path, s, { inPlace: Boolean(opts.inPlace) })   // already docked: go now; the summary (or, failing that, the strip) explains
+        else arrive(nav.path, s, { inPlace: Boolean(opts.inPlace), keepPopup: fromViewer })   // already docked: go now; the summary (or, failing that, the strip) explains
       } else if (data.intent === 'analysis') {
         holdLine(WAIT_HANDOFF, () => { if (!onLanding) setMode('panel') })   // one hold, then the card with its countdown
       } else if (opened) {
@@ -357,9 +414,12 @@ export function AssistantProvider({ children }) {
       }
     } catch (e) {
       endWait()
-      setMessages((m) => [...m, { id: nextId(), role: 'assistant', content: 'I could not reach the navigator. Check the connection and try again.' }])
+      const failed = 'I could not reach the navigator. Check the connection and try again.'
+      const fid = nextId()
+      setMessages((m) => [...m, { id: fid, role: 'assistant', content: failed }])
+      patchLog(lkey, { pending: false, mid: fid, reply: failed, intent: 'info', actions: [], alternatives: [] })
     } finally { setBusy(false); narrateAbort.current?.abort(); narrateAbort.current = null }
-  }, [busy, travelling, context, startHandoff, beginTravel, arrive, location.pathname, requestSummary, setSummary, hideStrip, startWait, endWait, holdLine, noteNavigation])
+  }, [busy, travelling, context, startHandoff, beginTravel, arrive, location.pathname, requestSummary, setSummary, hideStrip, startWait, endWait, holdLine, noteNavigation, pushLog, patchLog])
 
   /** R6 D / R5 C: the visitor chose a catalogued place themselves (a typeahead row, a did-you-mean tile): no AI call.
    *  `target` is { title, path | url } (a url starting with "/" counts as a path). The wait line says "Opening {title}…"
@@ -376,7 +436,7 @@ export function AssistantProvider({ children }) {
     if (!path && !url) return false
     const q = (ask || '').trim()
     const reply = `You chose ${title}.`
-    summaryAbort.current?.abort(); summaryAbort.current = null; pendingStrip.current = null; setSummary(null); hideStrip()
+    pendingStrip.current = null; setSummary(null); hideStrip()
     const userId = echoAsk && q ? nextId() : null
     const id = nextId()
     const actions = path ? [{ type: 'navigate', path }] : [{ type: 'open', url }]
@@ -384,14 +444,16 @@ export function AssistantProvider({ children }) {
     if (url) noteNavigation(url)
     setMessages((m) => [...m, ...(userId ? [{ id: userId, role: 'user', content: q }] : []), { id, role: 'assistant', content: reply, intent: 'navigate', actions, alternatives: [] }])
     historyRef.current = [...historyRef.current, ...(userId ? [{ role: 'user', content: q }] : []), { role: 'assistant', content: reply }]
+    const lkey = logKey()
+    pushLog({ key: lkey, ask: userId ? q : '', pending: false, mid: id, reply, intent: 'navigate', actions, alternatives: [], path: path || null, overview: path ? { status: 'pending' } : null })
     const onLanding = location.pathname === '/' && !docked
     setMode((m) => (m === 'panel' ? 'dock' : m))   // the dropdown gives way to the wait line
     if (url) { holdLine(openingTab(title), () => { if (actions[0].blocked && !onLanding) setMode('panel') }); return true }
     setWait(opening(title))
-    requestSummary(id, q, { reply, intent: 'navigate', alternatives: [] }, path)
+    requestSummary(id, q, { reply, intent: 'navigate', alternatives: [] }, path, lkey)
     beginTravel(path, { id, reply, alternatives: [] }, { ride: onLanding, inPlace })
     return true
-  }, [busy, travelling, location.pathname, setSummary, hideStrip, holdLine, requestSummary, beginTravel, noteNavigation])
+  }, [busy, travelling, location.pathname, setSummary, hideStrip, holdLine, requestSummary, beginTravel, noteNavigation, pushLog])
 
   /** Put the cursor in the bar (the landing bar on /, the full-screen map's mini box, else the docked bar). */
   const open = useCallback(() => {
@@ -399,19 +461,22 @@ export function AssistantProvider({ children }) {
     for (const sel of sels) { const el = document.querySelector(sel); if (el) { el.focus(); return } }
   }, [location.pathname])
   const minimize = useCallback(() => setMode((m) => (m === 'panel' ? 'dock' : m)), [])
-  // Start over: the hero bar on the landing page, the docked bar anywhere else.
-  const reset = useCallback(() => {
+  // Start over: the hero bar on the landing page, the docked bar anywhere else. 18 Oct: Start over also clears the kept
+  // conversation; the logo's reset of the landing page (item 13) passes { keepHistory: true } and leaves it for the visit.
+  const reset = useCallback((opts) => {
     historyRef.current = []
     clearHandoffTimer(); setHandoff(null); clearTravel(); setTravel({ phase: 'idle', path: null }); hideStrip(); endWait()
     dismissSummary(); setFollowupsState({}); clearDownload()
+    if (!(opts && opts.keepHistory === true)) setLog(() => [])
     setMessages([WELCOME]); setMode(location.pathname === '/' ? 'inline' : 'dock'); setEpoch((n) => n + 1)
-  }, [location.pathname, clearTravel, hideStrip, dismissSummary, endWait])
+  }, [location.pathname, clearTravel, hideStrip, dismissSummary, endWait, setLog])
 
   // Arriving on the landing page brings the conversation back into the hero bar; on an inner page the
   // bar is docked and any open dropdown closes (a navigation happened).
   useEffect(() => {
     if (location.pathname === '/') setMode('inline')
-    else setMode((m) => (m === 'dock' ? m : 'dock'))
+    else if (keepPanelFor.current && keepPanelFor.current === location.pathname) { keepPanelFor.current = null; setMode('panel') }   // the popup stays (18 Oct)
+    else { keepPanelFor.current = null; setMode((m) => (m === 'dock' ? m : 'dock')) }
   }, [location.pathname])
   // A page change during the hold or the ride-up (the visitor clicked elsewhere) cancels the travel;
   // and the strip belongs to the page it was shown on.
@@ -450,10 +515,10 @@ export function AssistantProvider({ children }) {
   // The wait line the bars show: the staged line; gpt-6-luna's narration instead while it is on and has arrived.
   const waitLine = wait ? (NARRATION && busy && narration ? narration : wait) : null
   const value = useMemo(() => ({
-    messages, mode, busy, travelling, travel, strip, wait: waitLine, heroOut, setHeroOut, epoch, send, choose, open, minimize, setMode, reset,
+    messages, log, mode, busy, travelling, travel, strip, wait: waitLine, heroOut, setHeroOut, epoch, send, choose, open, minimize, setMode, reset,
     handoff, stayHere, settleHandoff, holdStrip, releaseStrip, hideStrip,
     summary, dismissSummary, followups, followupsFor, setFollowups, reportWrongPage, noteNavigation, wasAssistantNavigation, chipTemplate, pickChip,
-  }), [messages, mode, busy, travelling, travel, strip, waitLine, heroOut, epoch, send, choose, open, minimize, reset, handoff, stayHere, settleHandoff, holdStrip, releaseStrip, hideStrip,
+  }), [messages, log, mode, busy, travelling, travel, strip, waitLine, heroOut, epoch, send, choose, open, minimize, reset, handoff, stayHere, settleHandoff, holdStrip, releaseStrip, hideStrip,
     summary, dismissSummary, followups, followupsFor, setFollowups, reportWrongPage, noteNavigation, wasAssistantNavigation, chipTemplate, pickChip])
   return (
     <Ctx.Provider value={value}>

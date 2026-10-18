@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { X } from 'lucide-react'
-import { useAssistant, prefersReducedMotion, WELCOME_TEXT } from './AssistantProvider'
+import { useAssistant, prefersReducedMotion, isViewerPage, WELCOME_TEXT } from './AssistantProvider'
 import { AskBar, CHIPS, Conversation } from './AssistantPanel'
+import ChatHistory, { CHAT_SCROLL } from './ChatHistory'
 import { useNarrowScreen } from '../viewer/useMediaQuery'
 import { useOverlayHistory, useScrollLock, useVisualViewport } from '../components/overlayHistory'
 import { ASK_SHEET, clearSheetOrigin, sheetOrigin, takeFocusOnOpen } from './askSheetState'
@@ -10,7 +11,10 @@ import { cn } from '../lib/utils'
 
 // M2 A (14 Oct): below 768 px the assistant opens as a full-width bottom sheet, two-thirds of the screen high — the
 // welcome line; the four template chips (or, where the address has follow-up asks, those as chips); the conversation
-// (the latest reply only, never the history); the staged wait line while the AI works; and the question box pinned to
+// (the latest reply only, never the history — except on the viewer's pages, 18 Oct: there the sheet is where the answers
+// and their AI overviews show, so it keeps the visit's conversation, ChatHistory.jsx, with the follow-up chips under the
+// newest reply, and an answer that opens another map keeps the sheet open over it); the staged wait line while the AI
+// works; and the question box pinned to
 // the sheet's bottom, which rides above the on-screen keyboard (visualViewport: iOS overlays the page with the keyboard
 // and leaves the layout viewport alone). A scrim holds the page still; tapping the scrim, the ✕, dragging the handle
 // down, Esc, or the phone's Back gesture closes it — with the goo, the sheet melting into where it came from (the viewer's
@@ -24,7 +28,7 @@ const DRAG_CLOSE_PX = 80
 export default function AskSheet() {
   const phone = useNarrowScreen()
   const sheet = useOverlayHistory(ASK_SHEET)
-  const { messages, wait, mode, setMode, reset, epoch, followupsFor, send, pickChip, busy, travelling } = useAssistant()
+  const { messages, log, wait, mode, setMode, reset, epoch, followupsFor, send, pickChip, busy, travelling } = useAssistant()
   const { pathname, search } = useLocation()
   const open = phone && sheet.isOpen
   const [closing, setClosing] = useState(false)
@@ -69,7 +73,8 @@ export default function AskSheet() {
   // two-thirds of the screen; with the keyboard up, whatever the visual viewport leaves (less a sliver of page above)
   const height = Math.min(Math.round(innerH * (2 / 3)), Math.max(220, vp.height - 24))
   const followups = (followupsFor(pathname, search) || []).slice(0, 3)
-  const hasReply = messages.some((m) => m.role === 'assistant' && m.id !== 0)
+  const history = isViewerPage(pathname) && log.length > 0   // 18 Oct: the viewer's sheet keeps the conversation
+  const hasReply = history || messages.some((m) => m.role === 'assistant' && m.id !== 0)
   const from = sheetOrigin()
   const origin = from ? `${Math.round(from.x)}px ${Math.max(0, Math.round(from.y - (innerH - vp.inset - height)))}px` : '50% 100%'
   const onDown = (e) => { if (e.button != null && e.button !== 0) return; gesture.current = { y: e.clientY }; e.currentTarget.setPointerCapture?.(e.pointerId) }
@@ -106,8 +111,9 @@ export default function AskSheet() {
             </div>
           </div>
           {/* the body scrolls; its bottom padding keeps the last line clear of the pinned question box */}
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[5.5rem] pt-1" data-testid="ask-sheet-body">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[5.5rem] pt-1" data-testid="ask-sheet-body" {...{ [CHAT_SCROLL]: '' }}>
             <p className="text-[15px] leading-relaxed text-foreground/90" data-testid="ask-sheet-welcome">{WELCOME_TEXT}</p>
+            {history ? <ChatHistory className="mt-4" /> : (<>
             <ul role="list" aria-label={followups.length ? 'Follow-up questions' : 'Quick starts'} className="mt-3 flex flex-wrap gap-2" data-testid="ask-sheet-chips" data-pool={followups.length ? 'followups' : 'templates'}>
               {followups.length
                 ? followups.map((f) => (
@@ -129,6 +135,7 @@ export default function AskSheet() {
                 <span className="hcdp-comet-ring hcdp-comet-ring-sm" aria-hidden="true" /><span key={wait} className="hcdp-status-in">{wait}</span>
               </p>
             )}
+            </>)}
           </div>
           <div className="absolute inset-x-0 bottom-0 border-t border-border bg-card px-3 pb-3 pt-2" data-testid="ask-sheet-box">
             <AskBar key={epoch} docked inSheet />

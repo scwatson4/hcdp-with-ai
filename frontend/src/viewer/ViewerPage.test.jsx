@@ -9,7 +9,8 @@ import { clearDateRanges } from './map/dateRanges'
 import { clearStationCache } from './map/stationData'
 import { resetUrlWrites } from './urlWrites'
 import { NAMED_RAMPS, interpolateColorRamp } from './map/ramps'
-import { AssistantProvider, useAssistant } from '../assistant/AssistantProvider'
+import { AssistantProvider, HISTORY_KEY, useAssistant } from '../assistant/AssistantProvider'
+import App from '../App'
 
 // ── Leaflet, georaster and the GeoRasterLayer, mocked ───────────────────────
 // jsdom cannot run Leaflet; the mocks keep one fake map whose view and event
@@ -1557,7 +1558,7 @@ describe('below 768 px', () => {
     await settle()
   })
 
-  it('the AI overview of a map the assistant opened floats under the chips (the page still never scrolls)', async () => {
+  it('18 Oct: no AI overview over the map — an answer that opens a map leaves the map clear (the overview is in the Ask AI sheet)', async () => {
     narrowScreen(true)
     let assistant = null
     function Grab() { assistant = useAssistant(); return null }
@@ -1569,12 +1570,14 @@ describe('below 768 px', () => {
         </AssistantProvider>
       </MemoryRouter>,
     )
-    expect(screen.queryByTestId('phone-overview')).toBeNull()      // never on a direct load
-    act(() => { assistant.choose({ title: 'Daily rainfall map', path: '/viewer/rainfall/day/2026-09-07/kauai' }, { ask: 'rain on kauai', docked: true }) })
+    act(() => { assistant.choose({ title: 'Daily rainfall map', path: '/viewer/rainfall/day/2026-09-07/kauai' }, { ask: 'rain on kauai', echoAsk: true, docked: true }) })
     await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai'), { timeout: 3000 })
-    const card = await screen.findByTestId('phone-overview')
-    expect(await within(card).findByTestId('ai-summary-chunk')).toHaveTextContent('Daily rainfall on Kauaʻi for 7 September.')
-    expect(card.className).toContain('absolute')
+    await waitFor(() => expect(assistant.summary?.status).toBe('ready'))
+    expect(screen.queryByTestId('phone-overview')).toBeNull()
+    expect(within(screen.getByTestId('viewer')).queryByTestId('ai-summary')).toBeNull()
+    // the overview went into the kept conversation, with the reply, for the Ask AI sheet
+    expect(assistant.log.at(-1)).toMatchObject({ ask: 'rain on kauai', reply: 'You chose Daily rainfall map.', path: '/viewer/rainfall/day/2026-09-07/kauai' })
+    expect(assistant.log.at(-1).overview.chunks).toEqual(['Daily rainfall on Kauaʻi for 7 September.'])
     expect(screen.getByTestId('viewer').dataset.layout).toBe('phone-map')
   })
 
@@ -1642,7 +1645,7 @@ describe('the full-screen map on wide screens', () => {
     expect(box.className).toContain('w-[300px]')
     expect(within(box).getByTestId('mini-ask-bar')).toBeInTheDocument()
     expect(within(box).getByTestId('composer-ghost')).toHaveAttribute('data-variant', 'quiet')   // its ghost, quiet
-    expect(within(box).queryByTestId('conversation')).toBeNull()               // never the thread
+    expect(within(box).queryByTestId('chat-history')).toBeNull()               // nothing said yet: no conversation
     fireEvent.keyDown(window, { key: 'Escape' })
     await waitFor(() => expect(screen.getByTestId('map-column')).not.toHaveAttribute('data-full'))
     expect(overlay()).toBe('')
@@ -1688,7 +1691,7 @@ describe('the full-screen map on wide screens', () => {
     await waitFor(() => expect(screen.getByTestId('map-column')).not.toHaveAttribute('data-full'))
   })
 
-  it('an ask that opens another map changes it in place — still full screen, the entry replaced — and the overview waits for the normal page', async () => {
+  it('an ask that opens another map changes it in place — still full screen, the entry replaced — and its reply and overview are in the box’s history (18 Oct), never on the page', async () => {
     navigateReply = { intent: 'navigate', reply: 'Here is Oʻahu for the same month.', actions: [{ type: 'navigate', path: '/viewer/rainfall/month/2026-09/oahu' }], alternatives: [], destination: { title: 'Monthly rainfall map', path: '/viewer/rainfall/month/2026-09/oahu' } }
     renderWithAssistant('/viewer/rainfall/month/2026-09/statewide')
     fireEvent.click(screen.getByTestId('map-fullscreen'))
@@ -1701,16 +1704,23 @@ describe('the full-screen map on wide screens', () => {
     expect(overlay()).toBe('full')
     expect(screen.getByTestId('map-column')).toHaveAttribute('data-full', 'true')
     await waitFor(() => expect(assistant.summary?.status).toBe('ready'))
-    // the overview is in the rail, under the full-screen map — it is not drawn over the map
-    expect(within(screen.getByTestId('map-column')).queryByTestId('ai-summary')).toBeNull()
-    // exiting keeps the new map (the full-screen entry is replaced, not popped) and shows the overview on the page
+    // the box shows the conversation: the question, the reply and the map's overview inside it
+    const history = within(screen.getByTestId('mini-ask-box')).getByTestId('chat-history')
+    expect(within(history).getByTestId('user-bubble')).toHaveTextContent('oahu instead')
+    const reply = within(history).getByTestId('assistant-bubble')
+    expect(within(reply).getByTestId('chat-reply')).toHaveTextContent('Here is Oʻahu for the same month.')
+    await waitFor(() => expect(within(reply).getByTestId('ai-summary')).toHaveAttribute('data-status', 'ready'))
+    expect(within(reply).getByTestId('ai-summary-chunk')).toHaveTextContent('Daily rainfall on Kauaʻi for 7 September.')
+    expect(screen.getByTestId('mini-ask-box').className).toContain('w-[340px]')
+    // nothing on the page: not over the map, not in the rail after exiting, no strip
     fireEvent.keyDown(window, { key: 'Escape' })
     await waitFor(() => expect(screen.getByTestId('map-column')).not.toHaveAttribute('data-full'))
     expect(loc()).toBe('/viewer/rainfall/month/2026-09/oahu')
-    expect(screen.getByTestId('ai-summary')).toBeInTheDocument()
+    expect(screen.queryByTestId('ai-summary')).toBeNull()
+    expect(assistant.strip).toBeNull()
   })
 
-  it('when the overview cannot be written, the reply strip waits for the normal page too (held in full screen, five seconds after exit)', async () => {
+  it('when the overview cannot be written, the reply alone is in the box — and no strip waits for the normal page (18 Oct)', async () => {
     navigateReply = { intent: 'navigate', reply: 'Here is Oʻahu for the same month.', actions: [{ type: 'navigate', path: '/viewer/rainfall/month/2026-09/oahu' }], alternatives: [], destination: { title: 'Monthly rainfall map', path: '/viewer/rainfall/month/2026-09/oahu' } }
     const base = global.fetch
     global.fetch = vi.fn(async (url, init = {}) => (String(url) === '/api/summary' ? { ok: false, status: 503, json: async () => ({}) } : base(url, init)))
@@ -1720,15 +1730,15 @@ describe('the full-screen map on wide screens', () => {
     fireEvent.change(field, { target: { value: 'oahu instead' } })
     fireEvent.keyDown(field, { key: 'Enter' })
     await waitFor(() => expect(loc()).toBe('/viewer/rainfall/month/2026-09/oahu'))
-    await waitFor(() => expect(assistant.strip?.reply).toBe('Here is Oʻahu for the same month.'))
-    expect(within(screen.getByTestId('mini-ask')).queryByText('Here is Oʻahu for the same month.')).toBeNull()   // not drawn in full screen
-    await act(async () => { await new Promise((r) => setTimeout(r, 5300)) })   // longer than the strip's five seconds
-    expect(assistant.strip).not.toBeNull()                                         // held while the map is full screen
+    const history = within(screen.getByTestId('mini-ask-box')).getByTestId('chat-history')
+    await waitFor(() => expect(assistant.log.at(-1).overview).toBeNull())
+    expect(within(history).getByTestId('chat-reply')).toHaveTextContent('Here is Oʻahu for the same month.')
+    expect(within(history).queryByTestId('ai-summary')).toBeNull()
+    expect(assistant.strip).toBeNull()
     fireEvent.keyDown(window, { key: 'Escape' })
     await waitFor(() => expect(screen.getByTestId('map-column')).not.toHaveAttribute('data-full'))
-    expect(assistant.strip).not.toBeNull()                                         // the normal page shows it…
-    await waitFor(() => expect(assistant.strip).toBeNull(), { timeout: 6000 })     // …for its five seconds
-  }, 20000)
+    expect(assistant.strip).toBeNull()
+  })
 
   it('a typeahead choice in the mini box changes the map in place too, empties the field and lets go of it, so Esc leaves full screen', async () => {
     renderWithAssistant('/viewer/rainfall/month/2026-09/statewide')
@@ -1749,7 +1759,7 @@ describe('the full-screen map on wide screens', () => {
     await waitFor(() => expect(screen.getByTestId('map-column')).not.toHaveAttribute('data-full'))
   })
 
-  it('a reply with nowhere to go shows as one line under the box (never the thread)', async () => {
+  it('a reply with nowhere to go shows in the box’s history under its question (18 Oct: the box keeps the conversation)', async () => {
     navigateReply = { intent: 'info', reply: 'Monthly maps come out a few days after the month ends.', actions: [], alternatives: [] }
     renderWithAssistant('/viewer/rainfall/month/2026-09/statewide')
     fireEvent.click(screen.getByTestId('map-fullscreen'))
@@ -1757,10 +1767,11 @@ describe('the full-screen map on wide screens', () => {
     const field = within(box).getByTestId('assistant-input')
     fireEvent.change(field, { target: { value: 'when is the october map' } })
     fireEvent.keyDown(field, { key: 'Enter' })
-    expect(await within(box).findByTestId('mini-ask-reply')).toHaveTextContent('Monthly maps come out a few days after the month ends.')
-    expect(within(box).queryByTestId('user-bubble')).toBeNull()
-    fireEvent.click(within(box).getByRole('button', { name: 'Dismiss the reply' }))
-    expect(within(box).queryByTestId('mini-ask-reply')).toBeNull()
+    expect(await within(box).findByTestId('chat-reply')).toHaveTextContent('Monthly maps come out a few days after the month ends.')
+    expect(within(box).getByTestId('user-bubble')).toHaveTextContent('when is the october map')
+    expect(within(box).getByTestId('mini-ask-reset')).toHaveTextContent('Start over')
+    fireEvent.click(within(box).getByTestId('mini-ask-reset'))
+    expect(within(screen.getByTestId('mini-ask-box')).queryByTestId('chat-history')).toBeNull()
   })
 
   it('is not offered on phones (the phone viewer is full screen already)', async () => {
@@ -1775,6 +1786,163 @@ describe('the full-screen map on wide screens', () => {
     expect(sameMapIgnoringCamera('/viewer/rainfall/day/2026-09-07/kauai?units=in', '/viewer/rainfall/day/2026-09-07/kauai?units=in&lat=22&lng=-159&z=9')).toBe(true)
     expect(sameMapIgnoringCamera('/viewer/rainfall/day/2026-09-07/kauai', '/viewer/rainfall/day/2026-09-07/oahu')).toBe(false)
     expect(sameMapIgnoringCamera('/viewer/rainfall/day/2026-09-07/kauai', '/viewer/rainfall/day/2026-09-07/kauai?units=in')).toBe(false)
+  })
+})
+
+// ── the Ask AI popup on the viewer keeps the conversation (18 Oct) ─────────────────────────────────────────────────────
+// The user: "In the Visualize Data tool the AI overview should not appear automatically … I'd rather it appear inside the
+// 'Ask AI' popup. Also that popup should keep conversation history."
+describe('the Ask AI popup on the viewer keeps the conversation (18 Oct)', () => {
+  let assistant = null
+  let goTo = () => {}
+  function Grab() { assistant = useAssistant(); const navigate = useNavigate(); goTo = (p) => navigate(p); return null }
+  const mountApp = (path) => render(
+    <MemoryRouter initialEntries={[path]}>
+      <AssistantProvider>
+        <Grab />
+        <Routes>
+          <Route element={<App />}>
+            <Route path="/viewer/*" element={<><ViewerPage /><Probe /></>} />
+          </Route>
+        </Routes>
+      </AssistantProvider>
+    </MemoryRouter>,
+  )
+  const SOURCE = { title: 'Visualize Data (the data portal’s interactive maps)', url: 'https://www.hawaii.edu/climate-data-portal/data-portal/' }
+  const toMap = (path, reply) => ({ intent: 'navigate', reply, actions: [{ type: 'navigate', path }], alternatives: [], destination: { title: 'Daily rainfall map', path } })
+  let replies = []
+  beforeEach(() => {
+    replies = []
+    const base = global.fetch
+    global.fetch = vi.fn(async (url, init = {}) => {
+      if (String(url) === '/api/navigate') return { ok: true, status: 200, json: async () => replies.shift() }
+      if (String(url) === '/api/summary') {
+        const body = JSON.parse(init.body)
+        return { ok: true, status: 200, json: async () => ({ chunks: [`The map for ${body.path}. [1]`.replace(' [1]', '')], cites: [[1]], more: [], more_cites: [], sources: [SOURCE], followups: ['Show Maui instead', 'Where is the station data?'] }) }
+      }
+      return base(url, init)
+    })
+    vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} })
+    window.scrollTo = () => {}
+    Object.defineProperty(window, 'innerHeight', { value: 844, configurable: true, writable: true })
+  })
+  afterEach(() => { vi.unstubAllGlobals(); document.documentElement.classList.remove('hcdp-scroll-lock') })
+
+  it('on a phone: the sheet holds both answers with their overviews, stays open over each new map, and keeps them across a route change and a reload; Start over clears them', async () => {
+    narrowScreen(true)
+    replies = [toMap('/viewer/rainfall/day/2026-09-07/kauai', 'Here is Kauaʻi on 7 September.'), toMap('/viewer/rainfall/day/2026-09-07/oahu', 'Here is Oʻahu on the same day.')]
+    const { unmount } = mountApp('/viewer/rainfall/day/2026-09-01/kauai')
+    expect(screen.queryByTestId('ai-summary')).toBeNull()
+    fireEvent.click(screen.getByTestId('fab-ask'))
+    await screen.findByTestId('ask-sheet')
+    const ask = (q) => {
+      const field = within(within(screen.getByTestId('ask-sheet')).getByTestId('ask-sheet-box')).getByTestId('assistant-input')
+      fireEvent.change(field, { target: { value: q } })
+      fireEvent.keyDown(field, { key: 'Enter' })
+    }
+    ask('rain on kauai during lowell')
+    // the question is in the sheet at once, the staged wait line under it
+    expect(within(screen.getByTestId('ask-sheet')).getByTestId('user-bubble')).toHaveTextContent(/^rain on kauai during lowell/)
+    expect(within(screen.getByTestId('ask-sheet')).getByTestId('chat-working')).toHaveTextContent('Thinking…')
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai'))
+    expect(overlay()).toBe('ask')                                                         // the sheet stays open over the new map
+    let history = within(screen.getByTestId('ask-sheet')).getByTestId('chat-history')
+    await waitFor(() => expect(within(history).getByTestId('ai-summary')).toHaveAttribute('data-status', 'ready'))
+    expect(within(history).getByTestId('chat-reply')).toHaveTextContent('Here is Kauaʻi on 7 September.')
+    expect(within(history).getByTestId('ai-summary-chunk')).toHaveTextContent('The map for /viewer/rainfall/day/2026-09-07/kauai.')
+    expect(within(history).getByTestId('ai-summary-sources')).toHaveTextContent('Visualize Data')
+    expect(within(history).getByTestId('ai-overview-toggle')).toHaveAttribute('aria-expanded', 'true')
+    expect(within(screen.getByTestId('viewer')).queryByTestId('ai-summary')).toBeNull()   // nothing over the map
+    expect(within(history).getAllByTestId('chat-followup').map((b) => b.textContent)).toEqual(['Show Maui instead', 'Where is the station data?'])
+    // a second question: both answers in the sheet, the newest at the bottom with its overview open, the earlier one closed
+    ask('and oahu')
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/oahu'))
+    expect(overlay()).toBe('ask')
+    history = within(screen.getByTestId('ask-sheet')).getByTestId('chat-history')
+    await waitFor(() => expect(within(history).getAllByTestId('ai-summary')).toHaveLength(2))
+    await waitFor(() => expect(within(history).getAllByTestId('ai-summary')[1]).toHaveAttribute('data-status', 'ready'))
+    const exchanges = within(history).getAllByTestId('chat-exchange')
+    expect(exchanges).toHaveLength(2)
+    expect(within(exchanges[0]).getByTestId('user-bubble')).toHaveTextContent(/^rain on kauai during lowell/)
+    expect(within(exchanges[1]).getByTestId('user-bubble')).toHaveTextContent(/^and oahu/)
+    expect(within(exchanges[0]).getByTestId('ai-summary')).toHaveAttribute('data-status', 'collapsed')   // "AI Overview ›", reopenable
+    expect(within(exchanges[1]).getByTestId('ai-summary-chunk')).toHaveTextContent('The map for /viewer/rainfall/day/2026-09-07/oahu.')
+    fireEvent.click(within(exchanges[0]).getByTestId('ai-overview-toggle'))
+    expect(within(exchanges[0]).getByTestId('ai-summary')).toHaveAttribute('data-status', 'ready')
+    // a route change within the viewer that the assistant did not cause: the conversation stays
+    fireEvent.click(screen.getByTestId('ask-sheet-close'))
+    await waitFor(() => expect(screen.queryByTestId('ask-sheet')).toBeNull(), { timeout: 2000 })
+    act(() => goTo('/viewer/rainfall/day/2026-09-08/oahu'))
+    expect(loc()).toBe('/viewer/rainfall/day/2026-09-08/oahu')
+    fireEvent.click(screen.getByTestId('fab-ask'))
+    expect(within(await screen.findByTestId('ask-sheet')).getAllByTestId('chat-exchange')).toHaveLength(2)
+    // a reload in the same tab keeps it (sessionStorage, for the visit); Start over clears it
+    unmount()
+    expect(JSON.parse(sessionStorage.getItem(HISTORY_KEY)).items.map((x) => x.ask)).toEqual(['rain on kauai during lowell', 'and oahu'])
+    mountApp('/viewer/rainfall/day/2026-09-08/oahu')
+    fireEvent.click(screen.getByTestId('fab-ask'))
+    const reloaded = await screen.findByTestId('ask-sheet')
+    expect(within(reloaded).getAllByTestId('chat-exchange')).toHaveLength(2)
+    expect(within(reloaded).getAllByTestId('ai-summary-sources')[0]).toHaveTextContent('Visualize Data')
+    fireEvent.click(within(reloaded).getByTestId('ask-sheet-reset'))
+    expect(within(screen.getByTestId('ask-sheet')).queryByTestId('chat-history')).toBeNull()
+    expect(sessionStorage.getItem(HISTORY_KEY)).toBeNull()
+  }, 20000)
+
+  it('on a wide screen: the docked bar’s dropdown holds the conversation — it opens with the question, stays open over the new map, holds both answers, and opens again on focus after a route change', async () => {
+    replies = [toMap('/viewer/rainfall/day/2026-09-07/kauai', 'Here is Kauaʻi on 7 September.'), toMap('/viewer/rainfall/day/2026-09-07/oahu', 'Here is Oʻahu on the same day.')]
+    mountApp('/viewer/rainfall/day/2026-09-01/kauai')
+    const field = () => within(screen.getByTestId('assistant-bar')).getByTestId('assistant-input')
+    act(() => field().focus())
+    expect(screen.queryByTestId('assistant-dropdown')).toBeNull()                         // nothing said yet: no dropdown
+    fireEvent.change(field(), { target: { value: 'rain on kauai during lowell' } })
+    fireEvent.keyDown(field(), { key: 'Enter' })
+    const dd = screen.getByTestId('assistant-dropdown')                                    // it opens with the question
+    expect(within(dd).getByTestId('user-bubble')).toHaveTextContent(/^rain on kauai during lowell/)
+    expect(within(dd).getByTestId('chat-working')).toHaveTextContent('Thinking…')
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/kauai'))
+    expect(screen.getByTestId('assistant-dropdown')).toBeInTheDocument()                  // and stays open over the new map
+    await waitFor(() => expect(within(screen.getByTestId('assistant-dropdown')).getByTestId('ai-summary')).toHaveAttribute('data-status', 'ready'))
+    expect(within(screen.getByTestId('assistant-dropdown')).getByTestId('ai-summary-chunk')).toHaveTextContent('The map for /viewer/rainfall/day/2026-09-07/kauai.')
+    expect(within(screen.getByTestId('viewer')).queryByTestId('ai-summary')).toBeNull()   // the rail has no overview
+    expect(screen.queryByTestId('reply-strip')).toBeNull()
+    fireEvent.change(field(), { target: { value: 'and oahu' } })
+    fireEvent.keyDown(field(), { key: 'Enter' })
+    await waitFor(() => expect(loc()).toBe('/viewer/rainfall/day/2026-09-07/oahu'))
+    await waitFor(() => expect(within(screen.getByTestId('assistant-dropdown')).getAllByTestId('chat-exchange')).toHaveLength(2))
+    // a route change from the rail closes it; the bar's focus opens it again, both answers still there
+    act(() => goTo('/viewer/rainfall/day/2026-09-08/oahu'))
+    await waitFor(() => expect(screen.queryByTestId('assistant-dropdown')).toBeNull())
+    act(() => field().blur())
+    act(() => field().focus())
+    const again = await screen.findByTestId('assistant-dropdown')
+    expect(within(again).getAllByTestId('chat-exchange').map((x) => within(x).getByTestId('chat-reply').textContent)).toEqual(['Here is Kauaʻi on 7 September.', 'Here is Oʻahu on the same day.'])
+  }, 20000)
+
+  it('elsewhere the popup is as it was: the latest reply only', async () => {
+    narrowScreen(true)
+    replies = [{ intent: 'info', reply: 'The API page explains tokens.', actions: [], alternatives: [] }, { intent: 'info', reply: 'Tutorials show how.', actions: [], alternatives: [] }]
+    render(
+      <MemoryRouter initialEntries={['/data']}>
+        <AssistantProvider>
+          <Grab />
+          <Routes><Route element={<App />}><Route path="/data" element={<p>Access data page</p>} /><Route path="/" element={<p>Landing</p>} /></Route></Routes>
+        </AssistantProvider>
+      </MemoryRouter>,
+    )
+    await act(async () => { await assistant.send('where is the API', { docked: true }) })
+    await act(async () => { await assistant.send('and tutorials', { docked: true }) })
+    const sheet = await screen.findByTestId('ask-sheet')
+    expect(within(sheet).queryByTestId('chat-history')).toBeNull()
+    expect(within(sheet).getAllByTestId('assistant-bubble')).toHaveLength(1)
+    expect(within(sheet).getByTestId('assistant-bubble')).toHaveTextContent('Tutorials show how.')
+    expect(assistant.log).toHaveLength(2)                                                  // kept all the same, for the viewer's popup
+    // the logo resets the landing page (item 13) but leaves the visit's history; Start over clears it
+    fireEvent.click(screen.getByTestId('logo-home'))
+    expect(assistant.log).toHaveLength(2)
+    act(() => assistant.reset())
+    expect(assistant.log).toHaveLength(0)
+    expect(sessionStorage.getItem(HISTORY_KEY)).toBeNull()
   })
 })
 

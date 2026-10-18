@@ -32,7 +32,6 @@ import { useNarrowScreen } from './useMediaQuery'
 import { Compass, CornerStack, ExperimentalBadge, IGNITION_CAUTION, Legend, MapPill, TitleCard, ValueReadout } from './map/MapFurniture'
 import { GrammarError, MapStatus } from './map/ErrorStates'
 import Launcher from './map/Launcher'
-import AISummary from '../assistant/AISummary'
 import { useViewFollowups } from '../assistant/useViewFollowups'
 import { useAssistantOptional } from '../assistant/AssistantProvider'
 import { ASK_SHEET, openAskSheetFromTap } from '../assistant/askSheetState'
@@ -265,6 +264,7 @@ function Viewer({ v }) {
   const fullOn = fullMap.isOpen && !narrow
   useClaimShell('map-full', fullOn)
   const [miniFolded, setMiniFolded] = useState(false)
+  const [miniHeight, setMiniHeight] = useState(0)   // the mini box grows with the conversation it shows (18 Oct)
   useEffect(() => { if (!fullOn) setMiniFolded(false) }, [fullOn])
   useEffect(() => {
     if (!fullOn) return undefined
@@ -466,23 +466,17 @@ function Viewer({ v }) {
       const r = e?.currentTarget?.getBoundingClientRect?.()
       openAskSheetFromTap(askSheet.open, { focus: false, from: r && r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null })
     }
-    const overview = assistant?.summary && assistant.summary.path === pathname
     return (
       <TooltipProvider delayDuration={300}>
         {/* M1 C (14 Oct): a full-screen map like a maps app — the map fills the screen under the header and the page never
             scrolls; reading chips float at the top (dataset · date · place: a tap opens the sheet where that is set), the
             floating bar holds Controls (the bottom sheet with the rail's controls, 44 px rows and 16 px fields), Share and
             the Ask AI pill (the M2 A sheet); "Original HCDP version" and the viewer's own words live in the sheet; the
-            legend is a strip and the zoom control sits bottom-right, clear of the chips; Copy link confirms in a toast. */}
+            legend is a strip and the zoom control sits bottom-right, clear of the chips; Copy link confirms in a toast.
+            18 Oct: no AI overview over the map any more — an answer's overview is in the Ask AI sheet, with the conversation. */}
         <div className="fixed inset-x-0 bottom-0 z-30 overflow-hidden bg-inset" style={{ top: 'var(--hcdp-sticky-h, 3rem)', '--hcdp-fab-clear': 'calc(68px + env(safe-area-inset-bottom, 0px))' }} data-testid="viewer" data-layout="phone-map">
           <section className="absolute inset-0" aria-label="Map">{maps}</section>
           <ReadingChips v={v} onOpen={openControls} />
-          {overview && (
-            /* the AI overview of a page the assistant opened floats under the chips (✕ dismisses it) */
-            <div className="absolute inset-x-2 top-[3.75rem] z-[1001] max-h-[45%] overflow-y-auto overscroll-contain rounded-xl border border-border bg-card/95 p-3 shadow-lg backdrop-blur" data-testid="phone-overview">
-              <AISummary />
-            </div>
-          )}
           <div role="toolbar" aria-label="Map tools" data-testid="viewer-fab" className="absolute inset-x-3 z-[1002] flex items-center gap-2" style={{ bottom: 'calc(12px + env(safe-area-inset-bottom, 0px))' }}>
             <button type="button" onClick={() => openControls()} aria-expanded={controlsSheet.isOpen} data-testid="fab-controls"
               className="flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-[#1b1b1b] px-4 text-[15px] font-semibold text-white shadow-lg hover:bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
@@ -510,8 +504,8 @@ function Viewer({ v }) {
     <div className="mx-auto w-full max-w-[1440px] px-4 pb-8 pt-4" data-testid="viewer" data-layout="rail">
       <div className={cn('flex flex-col gap-4 lg:grid lg:items-start lg:gap-5', selection ? 'lg:grid-cols-[18rem_minmax(0,1fr)_20rem]' : 'lg:grid-cols-[18rem_minmax(0,1fr)]')}>
         <aside className="min-w-0 space-y-4" aria-label="Map settings">
-          {/* 13 Oct: the assistant's AI summary tops the rail when it brought the visitor here. */}
-          <AISummary />
+          {/* 18 Oct (the user): no AI overview on the page — an answer's overview is in the Ask AI popup (the docked bar's
+              dropdown, the full-screen map's mini box), with the conversation. */}
           <header>
             {/* 18 Oct: Access Data › Visualize Data (the tile this map is behind), where "Climate viewer" was */}
             <nav aria-label="Breadcrumb" className={EYEBROW} data-testid="viewer-eyebrow">
@@ -554,11 +548,11 @@ function Viewer({ v }) {
           })()}
         </aside>
         {/* Item 14: on desktop the map stays put under the sticky block while the rail scrolls. QB-T3 B: full screen, the
-            column covers the viewport (the rail stays mounted underneath, so its overview waits for the normal page). */}
+            column covers the viewport (the rail stays mounted underneath). */}
         <section className={cn('min-w-0', fullOn ? 'fixed inset-0 z-[60] bg-inset' : 'lg:sticky lg:top-[calc(var(--hcdp-sticky-h,10.5rem)+1rem)]')} aria-label="Map" data-testid="map-column"
-          data-full={fullOn ? 'true' : undefined} style={fullOn ? { '--hcdp-mini-clear': miniFolded ? '68px' : '150px' } : undefined}>
+          data-full={fullOn ? 'true' : undefined} style={fullOn ? { '--hcdp-mini-clear': miniFolded ? '68px' : `${Math.max(150, Math.round(miniHeight) + 24)}px` } : undefined}>
           {maps}
-          {fullOn && assistant && <MiniAsk folded={miniFolded} onFold={() => setMiniFolded(true)} onUnfold={() => setMiniFolded(false)} />}
+          {fullOn && assistant && <MiniAsk folded={miniFolded} onFold={() => setMiniFolded(true)} onUnfold={() => setMiniFolded(false)} onHeight={setMiniHeight} />}
         </section>
         {/* The time series: a 20 rem column beside the map on wide screens, below it otherwise. */}
         {selection && <div className="min-w-0" data-testid="timeseries-dock">{panel('lg:max-h-[calc(100dvh-var(--hcdp-sticky-h,10.5rem)-2rem)] lg:overflow-y-auto')}</div>}

@@ -9,7 +9,8 @@ interface. Once it has navigated, the ask bar **docks under the header** and sta
 inner page as the way to keep navigating (see "The assistant's states" below).
 
 It is NOT the analysis chatbot (that lives at the AI interface, `AI_INTERFACE_URL`). This site has
-no sign-in, saves no conversation history (memory only, per tab), and has no visualisation panel.
+no sign-in, keeps the conversation for the tab's visit only (sessionStorage, shown by the viewer's Ask AI popup, 18 Oct;
+nothing on a server), and has no visualisation panel.
 
 ## The hand-off link (shared with the AI interface, 2026-10-08)
 Every link into the AI data analysis tool has one shape, built by `frontend/src/site/handoff.js`
@@ -70,14 +71,15 @@ There is no entry in the header menu (item 12).
   below; small, centred, no background; the strip and the dropdown yield to it). After a navigation the destination opens with its **AI overview** (below); the one-line
   **reply strip** under the bar — the reply with "Also: a · b" for five seconds (hover/focus holds it; clicking it
   opens the dropdown) — shows only when no overview came (the call failed, timed out or returned nothing).
-- **panel** — the docked bar's dropdown: the conversation (questions and plain answers, about twenty lines,
-  scrolling), opened by focusing the bar once a conversation exists, by clicking the strip, or by a reply
-  that has nowhere to go; closed by Esc, a click outside, or the next navigation.
+- **panel** — the docked bar's dropdown: the latest reply, opened by clicking the strip or by a reply that has nowhere to
+  go; closed by Esc, a click outside, or the next navigation. On the viewer's pages (18 Oct) it is the Ask AI popup that
+  keeps the conversation — "The Ask AI popup on the viewer" below.
 - **sheet** (phones, M2 A, 14 Oct) — below 768 px there is no dropdown: a tap on the docked bar (read-only there; it keeps
   its quiet follow-up ghost) opens the **Ask AI sheet** (`assistant/AskSheet.jsx`, rendered once by the shell): full width,
   two-thirds of the screen high, a grab handle, "Ask AI" with Start over and a 44 px ✕, the welcome line, the four
   template chips (a tap fills the sheet's field with the first blank selected) — or, where the address has follow-up asks,
-  those as chips (a tap asks it) — the conversation's latest reply only (never the history), the staged wait line, and the
+  those as chips (a tap asks it) — the conversation's latest reply only (on the viewer's pages the visit's whole conversation,
+  18 Oct, below), the staged wait line, and the
   question box pinned to the sheet's bottom (44 px send, no Tab hint, its typeahead opening upward) riding above the
   on-screen keyboard (`useVisualViewport`: iOS overlays the page with the keyboard). A scrim holds the page still
   (`useScrollLock`); the scrim, the ✕, a drag on the handle (80 px), Esc or Back closes it with the **goo** (the sheet
@@ -363,7 +365,8 @@ a one-line title card). Floating over it:
   `--hcdp-fab-clear`, which lifts the map furniture above it: the **legend as a horizontal strip** at the bottom-left (header,
   a bar with low values at the left, low · middle · high labels, 12 px), the scale bar above it, Leaflet's **zoom control at
   the bottom-right at 44 px**; no compass; badges (Experimental, the ignition caution) under the chips;
-- the **AI overview** of a map the assistant opened, as a card under the chips (✕ dismisses it).
+- no AI overview over the map (18 Oct, the user: "should not appear automatically"): an answer's overview is in the Ask AI
+  sheet, with the conversation ("The Ask AI popup on the viewer" below).
 The **Controls sheet** (`BottomSheet` with `open`/`onClose`) opens at half the screen with the rail's controls at 44 px rows
 and 16 px fields in four 44 px tabs — Dataset (dataset, period, units, place, Analyze with AI, the share row, **"Original HCDP
 version"** as a 44 px row, the viewer's own text), Date, Layers, Stations; a tap on the handle toggles half ↔ full, a drag
@@ -381,15 +384,41 @@ change); **Esc**, the **✕** that takes the ⛶'s place, or **Back** exits. Exi
 so a map chosen in full screen stays in the history. The assistant there is the **mini Ask AI box** (`assistant/MiniAsk.jsx`)
 at the **bottom-left** (clear of Hawaiʻi Island), about 300 px wide: "Ask AI", a − button (44 px on touch), the chat box at a
 smaller size with its quiet ghost of this map's follow-up asks (typeahead opening upward, no Tab hint) and, under it while
-the AI works, the staged wait line — **never the question/answer thread**; a reply with nowhere to go shows as one line under
-the box (an analysis reply keeps its countdown and "Stay here"), ✕ dismisses it. The − button, or Esc inside the box, folds
+the AI works, the staged wait line. 18 Oct (superseding "never the question/answer thread"): above its field the box shows the
+visit's conversation — every question and reply, a map's AI overview inside its reply, the follow-up chips under the newest
+(an analysis reply keeps its countdown and "Stay here") — 340 px wide once there is one, scrolling inside at most 45 % of the
+screen, with Start over. The − button, or Esc inside the box, folds
 it into an **"Ask AI" pill** at the bottom-left with the **goo** (`hcdp-goo-close` toward the pill's corner, then the pill's
 `hcdp-goo-pop`); the pill opens it again; the compass and the scale bar rise above whichever is shown
-(`--hcdp-mini-clear`). An ask that navigates to another map **changes the map in place** (`send(…, { inPlace: true })`: the
-full-screen entry is replaced, still full screen) and its **AI overview is not shown in full screen** — it waits in the rail
-for the normal page; when the overview cannot be written, the reply strip that stands in for it waits too (held while the map
-is full screen, its five seconds start when the normal page returns). Not on phones: there the viewer is full screen already
-(M1 C), and its Ask AI is the pill in its bar.
+(`--hcdp-mini-clear`, the box's measured height). An ask that navigates to another map **changes the map in place**
+(`send(…, { inPlace: true })`: the full-screen entry is replaced, still full screen); its reply and AI overview are in the box,
+and neither the overview nor a reply strip shows on the page, in full screen or after. Not on phones: there the viewer is full
+screen already (M1 C), and its Ask AI is the pill in its bar.
+
+## The Ask AI popup on the viewer (18 Oct, the user's pick)
+"In the Visualize Data tool the AI overview should not appear automatically like it did in the screenshot. I'd rather it appear
+inside the 'Ask AI' popup. Also that popup should keep conversation history." (The user's own choice for DEC-20261008-NAV-P11.)
+- **No overview block on the viewer's pages** — not in the rail, not over the phone's map, not on the full-screen map.
+- **The popup is the answer's place**: the phone's Ask AI sheet, the docked bar's dropdown on wide screens, the full-screen
+  map's mini box. On `/viewer/…` each shows the visit's conversation (`assistant/ChatHistory.jsx`): every question (the user's
+  bubble) and its reply (the AI's bubble: the reply, "Opened in a new tab" links, the did-you-mean tiles, "Also:", 👍 / 👎), and
+  a reply that opened a page carries that page's **AI overview** inside it (`SummaryBlock` variant `chat`: the chevron header,
+  the numbered sources first, the sentences with their cites, Show more for the further sentences; "Writing an overview of this
+  page…" while it is written) — the newest exchange at the bottom with its overview open, the earlier ones closed ("AI Overview
+  ›", reopenable); the question being answered shows the staged wait line under it; the address's follow-up asks sit as chips
+  under the newest reply (a tap asks it). The box scrolls to its end on every change.
+- **When it opens**: on a phone, the Ask AI pill opens the sheet (as before); a question asked in it that opens another map
+  keeps the sheet open over the new map (the answer replaces the sheet's history entry with the new map, the overlay kept). On a
+  wide screen, a question sent from the docked bar on the viewer opens the dropdown with the question and the wait line, and
+  an answer that opens another map keeps it open (`keepPanelFor`); focusing the bar opens it whenever a conversation is kept.
+  A visitor arriving on the viewer from elsewhere sees nothing open: the overview waits in the popup. Esc, a click outside, a
+  rail change (the dropdown) or the sheet's ✕, scrim, handle and Back close it as before.
+- **Kept for the visit**: the provider's `log` — `{key, load, mid, ask, pending, reply, intent, actions, alternatives, options,
+  path, overview}` per exchange, at most 40 — lives in `sessionStorage` (`hcdp-ask-history`): it survives a route change and a
+  reload, goes when the tab closes, and Start over (the sheet, the dropdown, the mini box) clears it — the logo's reset of the
+  landing page (item 13) leaves it; the navigator's context (the last 8 turns) is rebuilt from it on a reload. Nothing is stored
+  on a server; there is still no sign-in.
+- Everywhere else the popups are as they were (the latest reply only); the quiet docked ghost and the follow-ups too.
 
 ## Viewer data endpoints (the HCDP token never leaves the server)
 ```
@@ -681,8 +710,8 @@ what is left. `backend/data/usecases.json` carries four `off-topic-*` cases; the
 ## The AI overview (13 Oct)
 After every navigation the assistant performs — from the landing (after the travel) or from the docked bar, to another page
 or to the same one — the destination opens with an **AI overview** at the top of its main content (`assistant/AISummary.jsx`,
-rendered by `PageShell` above the page heading; by the viewer at the top of the rail on desktop and, on phones, as a card
-floating under the reading chips (M1 C; the full-screen desktop map holds it back until the normal page returns, QB-T3 B);
+rendered by `PageShell` above the page heading; **not on the viewer's pages** (18 Oct: there the overview is inside the Ask AI
+popup, as part of the answer — "The Ask AI popup on the viewer" below);
 by Export Data above its heading (PageShell; Access Data's two tiles under it); and, on the pages that scroll to a target on
 load, where the visitor lands: a storm's own section on `/extreme-events/<slug>` or `#<id>`, the live viewers section on
 `/mesonet?viewer|station|view=`, the dashboard section on `/climate-summary?year&month`, and on `/tools/<slug>` the page lands
@@ -738,8 +767,9 @@ route change the assistant did not cause takes it away. Nothing is persisted.
   characters, at most 3, distinct).
 - its own `RateLimiter` (the navigator's numbers; `SUMMARY_GLOBAL_PER_DAY`). Off-topic or analysis intents, an address this
   site does not have, a spent limiter or any model failure answer **200 with everything empty** — the client then shows the
-  reply strip as before. The client fires it as soon as the answer arrives (in parallel with the travel), with an
-  `AbortController`; a new question cancels the old call.
+  reply strip as before. The client fires it as soon as the answer arrives (in parallel with the travel); since 18 Oct a new
+  question no longer cancels the old call: the page shows the newest overview only, and every answer's overview lands in its
+  exchange in the kept conversation.
 - a written overview also carries `request_id` (32 hex characters), which a "Wrong page?" report names as `overview_id`.
 - the model is told the latest available dates (the date rule above) so a dated follow-up uses yesterday or the last complete month.
 
@@ -821,13 +851,14 @@ Viewer entries carry `internal_path` templates such as `/viewer/rainfall/day/{da
   (Research Highlights, External Resources, Presentations) · Climate Tools — every entry a page of this site.
 - Every page works at phone width — by the phone checklist below. External links open in a new tab and say so.
 - No cookies, no analytics, no sign-in, no theme (the site is always light; a `hcdp-theme` key left by an earlier
-  visit is removed), nothing persisted — with three exceptions: the viewer's unit
+  visit is removed), nothing persisted — with four exceptions: the viewer's unit
   system (`mm`/`°C` or `in`/`°F`) is remembered per browser (`localStorage` key `hcdp-units`, read and written in
   try/catch; `frontend/src/viewer/unitsPreference.js`). It only fills in a viewer link that names no units, as a
   load-time `replaceState` (`?units=in` / `?units=f`); a `units=` key in the address always wins, even `units=mm`.
   And the admin key typed on `/admin/feedback` lives in `sessionStorage` for that tab only (P4 A). And, for the review
   period, the reviewer's name is remembered per browser (`localStorage` key `hcdp-reviewer-name`, F4 A; "Feedback" above).
-  The export email is never stored. A "Wrong page?" report stores the ask, the reply, the destination and the want —
+  And the Ask AI conversation is kept for the tab's visit (`sessionStorage` key `hcdp-ask-history`, 18 Oct: it survives a
+  reload, goes when the tab closes, Start over clears it; never sent to a server). The export email is never stored. A "Wrong page?" report stores the ask, the reply, the destination and the want —
   nothing about the visitor; a feedback item stores what the reviewer sent and the name they typed — nothing else.
 
 ## The phone checklist (M6 A, 14 Oct)

@@ -227,7 +227,7 @@ export function SummaryBlock({ summary, open = true, onToggle, send, choose, rep
         <button type="button" onClick={toggle} aria-expanded={open} aria-controls={bodyId} data-testid="ai-overview-toggle"
           className="inline-flex items-center gap-2 rounded-md py-1 pr-1 text-[13px] font-medium text-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:min-h-11">
           <Star id={gradId} /><span data-testid="ai-overview-title">AI Overview</span>
-          <Chevron className="-ml-1 h-3.5 w-3.5 shrink-0 translate-y-px text-subtle" strokeWidth={2.25} aria-hidden="true" data-testid="ai-overview-chevron" data-direction={open ? 'down' : 'right'} />
+          <Chevron className="-ml-1 h-3.5 w-3.5 shrink-0 -translate-y-[1.5px] text-subtle" strokeWidth={2.25} aria-hidden="true" data-testid="ai-overview-chevron" data-direction={open ? 'down' : 'right'} />
         </button>
       </div>
       <div id={bodyId} hidden={!open} data-testid="ai-summary-body">

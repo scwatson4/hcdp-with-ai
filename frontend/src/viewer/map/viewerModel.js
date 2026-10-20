@@ -223,21 +223,26 @@ export function portalLabelFor(v) {
 }
 
 // T9D in the AI interface: one honest line on where each product comes from.
-const SOURCE_LINES = {
-  rainfall: 'HCDP gridded rainfall, 250 m — monthly: Frazier et al. 2016; daily: Longman et al. 2019',
-  temperature: 'HCDP gridded air temperature, 250 m — Longman et al. 2019',
-  spi: 'Standardized Precipitation Index (McKee et al. 1993) from HCDP monthly rainfall',
+// Citations follow HCDP's How to Cite page (corrected 20 Oct 2026 after the
+// data-access audit: new-production rainfall is Lucas et al. 2022 and Longman
+// et al. 2024, not Frazier et al. 2016, which is the legacy 1920–2012 maps).
+export const SOURCE_LINES = {
+  rainfall_month: 'HCDP gridded rainfall, 250 m — monthly maps 1990–2019: Lucas et al. 2022; 2020 on: Longman et al. 2024',
+  rainfall_day: 'HCDP gridded rainfall, 250 m — daily maps 1990–2014: Longman et al. 2019; 1990–2019: Lucas et al. 2022; 2020 on: Longman et al. 2024',
+  rainfall_legacy: 'HCDP legacy rainfall, 250 m — month-year maps 1920–2012: Frazier et al. 2016',
+  temperature: 'HCDP gridded air temperature, 250 m — 1990–2018 maps: Kodama et al. 2024; 2020 on: Longman et al. 2024',
+  spi: 'Standardized Precipitation Index maps: Lucas et al. 2020 (method: McKee et al. 1993), from HCDP monthly rainfall',
   ndvi_modis: 'MODIS NDVI vegetation greenness (Tucker 1979 index)',
   ignition_probability: 'HCDP wildfire ignition probability model',
-  relative_humidity: 'HCDP gridded near-surface relative humidity',
+  relative_humidity: 'HCDP gridded near-surface relative humidity (Longman et al. 2024)',
 }
 
 export function sourceLineFor(v) {
-  const dt = DATASETS[v.dataset]?.api?.datatype
+  const api = DATASETS[v.dataset]?.api || {}
+  const dt = api.datatype
   if (dt === 'rainfall') {
-    return v.period === 'day'
-      ? 'HCDP gridded rainfall, 250 m — daily: Longman et al. 2019'
-      : 'HCDP gridded rainfall, 250 m — monthly: Frazier et al. 2016'
+    if (api.production === 'legacy') return SOURCE_LINES.rainfall_legacy
+    return v.period === 'day' ? SOURCE_LINES.rainfall_day : SOURCE_LINES.rainfall_month
   }
   return SOURCE_LINES[dt] || 'Hawaiʻi Climate Data Portal gridded data'
 }

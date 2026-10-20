@@ -473,7 +473,7 @@
    "title": "Legacy monthly rainfall maps, 1920–2012",
    "url": "https://www.hawaii.edu/climate-data-portal/data-portal/",
    "internal_path": "/data",
-   "summary": "Month-by-month rainfall maps for every month from January 1920 to December 2012 (Frazier et al. 2016), offered in Access Data as 'Legacy Rainfall'; this site's viewer covers the 1990-onward product only.",
+   "summary": "Month-by-month rainfall maps for every month from January 1920 to December 2012 (Frazier et al. 2016), offered in Access Data as 'Legacy Rainfall' and mapped on this site at /viewer/rainfall-legacy/month/YYYY-MM/statewide. HCDP's own rule: legacy maps for 1920–1989, the new production from January 1990 (its Monthly Climate Summary switches there); the two productions overlap 1990–2012 and differ (9 % statewide in December 2012).",
    "when_to_use": "The visitor wants rainfall maps from before 1990, long historical records or century-scale comparisons.",
    "example_queries": [
     "rainfall map from 1926",
@@ -4102,7 +4102,7 @@
    "title": "Drought index SPI-1 map (viewer)",
    "url": null,
    "internal_path": "/viewer/spi-1/month/{date}/statewide",
-   "summary": "Standardized Precipitation Index for the past 1 month: below 0 is drier than normal (below −1 is drought), above 0 wetter; monthly from about 1990 (SPI-3 starts March 1990) to the last complete month. HCDP publishes SPI statewide only, so keep extent statewide (zoom with ?lat=&lng=&z=); Access Data also has 36-, 48- and 60-month SPI.",
+   "summary": "Standardized Precipitation Index for the past 1 month: below 0 is drier than normal (below −1 is drought), above 0 wetter; monthly from January 1990 (HCDP's first SPI-1 month) to the last complete month. HCDP publishes SPI statewide only, so keep extent statewide (zoom with ?lat=&lng=&z=); this viewer maps every timescale HCDP serves (1, 3, 6, 9, 12, 24, 36, 48 and 60 months).",
    "when_to_use": "Someone wants a drought map for very short-term dryness or wetness: last month's rainfall against the record.",
    "example_queries": [
     "SPI-1 map for last month",
@@ -4110,7 +4110,10 @@
     "one month drought index August 2026"
    ],
    "region": "hawaii",
-   "dates": null,
+   "dates": {
+    "start": "1990-01-01",
+    "end": null
+   },
    "tags": [
     "drought",
     "spi",
@@ -4151,7 +4154,7 @@
    "title": "Drought index SPI-3 map (viewer)",
    "url": null,
    "internal_path": "/viewer/spi-3/month/{date}/statewide",
-   "summary": "Standardized Precipitation Index for the past 3 months: below 0 is drier than normal (below −1 is drought), above 0 wetter; monthly from March 1990 to the last complete month. HCDP publishes SPI statewide only, so keep extent statewide (zoom with ?lat=&lng=&z=); Access Data also has 36-, 48- and 60-month SPI.",
+   "summary": "Standardized Precipitation Index for the past 3 months: below 0 is drier than normal (below −1 is drought), above 0 wetter; monthly from March 1990 (HCDP's first SPI-3 month) to the last complete month. HCDP publishes SPI statewide only, so keep extent statewide (zoom with ?lat=&lng=&z=); this viewer maps every timescale HCDP serves (1, 3, 6, 9, 12, 24, 36, 48 and 60 months).",
    "when_to_use": "Someone wants a drought map for short-term (seasonal) drought; the Monthly Climate Summary's D0–D4 drought categories come from SPI-3.",
    "example_queries": [
     "drought map August 2026",
@@ -4203,7 +4206,7 @@
    "title": "Drought index SPI-6 map (viewer)",
    "url": null,
    "internal_path": "/viewer/spi-6/month/{date}/statewide",
-   "summary": "Standardized Precipitation Index for the past 6 months: below 0 is drier than normal (below −1 is drought), above 0 wetter; monthly from about 1990 (SPI-3 starts March 1990) to the last complete month. HCDP publishes SPI statewide only, so keep extent statewide (zoom with ?lat=&lng=&z=); Access Data also has 36-, 48- and 60-month SPI.",
+   "summary": "Standardized Precipitation Index for the past 6 months: below 0 is drier than normal (below −1 is drought), above 0 wetter; monthly from June 1990 (HCDP's first SPI-6 month) to the last complete month. HCDP publishes SPI statewide only, so keep extent statewide (zoom with ?lat=&lng=&z=); this viewer maps every timescale HCDP serves (1, 3, 6, 9, 12, 24, 36, 48 and 60 months).",
    "when_to_use": "Someone wants a drought map for medium-term drought over a season or two.",
    "example_queries": [
     "6-month SPI map",
@@ -4211,7 +4214,10 @@
     "SPI 6 for the dry season"
    ],
    "region": "hawaii",
-   "dates": null,
+   "dates": {
+    "start": "1990-06-01",
+    "end": null
+   },
    "tags": [
     "drought",
     "spi",
@@ -4252,7 +4258,7 @@
    "title": "Drought index SPI-9 map (viewer)",
    "url": null,
    "internal_path": "/viewer/spi-9/month/{date}/statewide",
-   "summary": "Standardized Precipitation Index for the past 9 months: below 0 is drier than normal (below −1 is drought), above 0 wetter; monthly from about 1990 (SPI-3 starts March 1990) to the last complete month. HCDP publishes SPI statewide only, so keep extent statewide (zoom with ?lat=&lng=&z=); Access Data also has 36-, 48- and 60-month SPI.",
+   "summary": "Standardized Precipitation Index for the past 9 months: below 0 is drier than normal (below −1 is drought), above 0 wetter; monthly from September 1990 (HCDP's first SPI-9 month) to the last complete month. HCDP publishes SPI statewide only, so keep extent statewide (zoom with ?lat=&lng=&z=); this viewer maps every timescale HCDP serves (1, 3, 6, 9, 12, 24, 36, 48 and 60 months).",
    "when_to_use": "Someone wants a drought map for medium- to long-term drought.",
    "example_queries": [
     "9 month SPI",
@@ -4260,7 +4266,10 @@
     "SPI-9 July 2026"
    ],
    "region": "hawaii",
-   "dates": null,
+   "dates": {
+    "start": "1990-09-01",
+    "end": null
+   },
    "tags": [
     "drought",
     "spi",
@@ -4301,7 +4310,7 @@
    "title": "Drought index SPI-12 map (viewer)",
    "url": null,
    "internal_path": "/viewer/spi-12/month/{date}/statewide",
-   "summary": "Standardized Precipitation Index for the past 12 months: below 0 is drier than normal (below −1 is drought), above 0 wetter; monthly from about 1990 (SPI-3 starts March 1990) to the last complete month. HCDP publishes SPI statewide only, so keep extent statewide (zoom with ?lat=&lng=&z=); Access Data also has 36-, 48- and 60-month SPI.",
+   "summary": "Standardized Precipitation Index for the past 12 months: below 0 is drier than normal (below −1 is drought), above 0 wetter; monthly from January 1991 (HCDP's first SPI-12 month) to the last complete month. HCDP publishes SPI statewide only, so keep extent statewide (zoom with ?lat=&lng=&z=); this viewer maps every timescale HCDP serves (1, 3, 6, 9, 12, 24, 36, 48 and 60 months).",
    "when_to_use": "Someone wants a drought map for long-term drought that affects streams, reservoirs and groundwater.",
    "example_queries": [
     "12 month SPI for august",
@@ -4309,7 +4318,10 @@
     "has it been a dry year"
    ],
    "region": "hawaii",
-   "dates": null,
+   "dates": {
+    "start": "1991-01-01",
+    "end": null
+   },
    "tags": [
     "drought",
     "spi",
@@ -4350,7 +4362,7 @@
    "title": "Drought index SPI-24 map (viewer)",
    "url": null,
    "internal_path": "/viewer/spi-24/month/{date}/statewide",
-   "summary": "Standardized Precipitation Index for the past 24 months: below 0 is drier than normal (below −1 is drought), above 0 wetter; monthly from about 1990 (SPI-3 starts March 1990) to the last complete month. HCDP publishes SPI statewide only, so keep extent statewide (zoom with ?lat=&lng=&z=); Access Data also has 36-, 48- and 60-month SPI.",
+   "summary": "Standardized Precipitation Index for the past 24 months: below 0 is drier than normal (below −1 is drought), above 0 wetter; monthly from December 1991 (HCDP's first SPI-24 month) to the last complete month. HCDP publishes SPI statewide only, so keep extent statewide (zoom with ?lat=&lng=&z=); this viewer maps every timescale HCDP serves (1, 3, 6, 9, 12, 24, 36, 48 and 60 months).",
    "when_to_use": "Someone wants a drought map for multi-year drought.",
    "example_queries": [
     "24 month SPI",
@@ -4358,7 +4370,10 @@
     "two year drought index"
    ],
    "region": "hawaii",
-   "dates": null,
+   "dates": {
+    "start": "1991-12-01",
+    "end": null
+   },
    "tags": [
     "drought",
     "spi",
@@ -4672,7 +4687,7 @@
    "title": "Drought index SPI-36 map (viewer)",
    "url": null,
    "internal_path": "/viewer/spi-36/month/{date}/statewide",
-   "summary": "Standardized Precipitation Index for the past 36 months: below 0 is drier than normal (below −1 is drought), above 0 wetter; monthly to the last complete month. HCDP publishes SPI statewide only, so keep extent statewide (zoom with ?lat=&lng=&z=).",
+   "summary": "Standardized Precipitation Index for the past 36 months: below 0 is drier than normal (below −1 is drought), above 0 wetter; monthly from December 1992 (HCDP's first SPI-36 month) to the last complete month. HCDP publishes SPI statewide only, so keep extent statewide (zoom with ?lat=&lng=&z=); this viewer maps every timescale HCDP serves (1, 3, 6, 9, 12, 24, 36, 48 and 60 months).",
    "when_to_use": "Someone wants a drought map over a 3-year window (36-month SPI).",
    "example_queries": [
     "36 month SPI",
@@ -4680,7 +4695,10 @@
     "long-term drought map"
    ],
    "region": "hawaii",
-   "dates": null,
+   "dates": {
+    "start": "1992-12-01",
+    "end": null
+   },
    "tags": [
     "drought",
     "spi",
@@ -4715,7 +4733,7 @@
    "title": "Drought index SPI-48 map (viewer)",
    "url": null,
    "internal_path": "/viewer/spi-48/month/{date}/statewide",
-   "summary": "Standardized Precipitation Index for the past 48 months: below 0 is drier than normal (below −1 is drought), above 0 wetter; monthly to the last complete month. HCDP publishes SPI statewide only, so keep extent statewide (zoom with ?lat=&lng=&z=).",
+   "summary": "Standardized Precipitation Index for the past 48 months: below 0 is drier than normal (below −1 is drought), above 0 wetter; monthly from December 1993 (HCDP's first SPI-48 month) to the last complete month. HCDP publishes SPI statewide only, so keep extent statewide (zoom with ?lat=&lng=&z=); this viewer maps every timescale HCDP serves (1, 3, 6, 9, 12, 24, 36, 48 and 60 months).",
    "when_to_use": "Someone wants a drought map over a 4-year window (48-month SPI).",
    "example_queries": [
     "48 month SPI",
@@ -4723,7 +4741,10 @@
     "long-term drought map"
    ],
    "region": "hawaii",
-   "dates": null,
+   "dates": {
+    "start": "1993-12-01",
+    "end": null
+   },
    "tags": [
     "drought",
     "spi",
@@ -4758,7 +4779,7 @@
    "title": "Drought index SPI-60 map (viewer)",
    "url": null,
    "internal_path": "/viewer/spi-60/month/{date}/statewide",
-   "summary": "Standardized Precipitation Index for the past 60 months: below 0 is drier than normal (below −1 is drought), above 0 wetter; monthly to the last complete month. HCDP publishes SPI statewide only, so keep extent statewide (zoom with ?lat=&lng=&z=).",
+   "summary": "Standardized Precipitation Index for the past 60 months: below 0 is drier than normal (below −1 is drought), above 0 wetter; monthly from December 1994 (HCDP's first SPI-60 month) to the last complete month. HCDP publishes SPI statewide only, so keep extent statewide (zoom with ?lat=&lng=&z=); this viewer maps every timescale HCDP serves (1, 3, 6, 9, 12, 24, 36, 48 and 60 months).",
    "when_to_use": "Someone wants a drought map over a 5-year window (60-month SPI).",
    "example_queries": [
     "60 month SPI",
@@ -4766,7 +4787,10 @@
     "long-term drought map"
    ],
    "region": "hawaii",
-   "dates": null,
+   "dates": {
+    "start": "1994-12-01",
+    "end": null
+   },
    "tags": [
     "drought",
     "spi",
@@ -4930,7 +4954,7 @@
    "title": "Legacy rainfall map, 1920–2012 (viewer, monthly)",
    "url": null,
    "internal_path": "/viewer/rainfall-legacy/month/{date}/statewide",
-   "summary": "HCDP's legacy monthly rainfall grids (older production methods), statewide, January 1920 to December 2012 — for months before 1990, which the current rainfall product does not cover.",
+   "summary": "HCDP's legacy monthly rainfall grids (Frazier et al. 2016 month-year maps), statewide, January 1920 to December 2012 — the product for months before 1990. From January 1990 HCDP's own summaries use the new production (/viewer/rainfall/month/…); use legacy for 1990–2012 only to compare the two, and say so.",
    "when_to_use": "Someone wants a monthly rainfall map for a month before 1990.",
    "example_queries": [
     "rainfall map for March 1950",

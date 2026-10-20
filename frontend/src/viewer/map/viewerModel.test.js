@@ -160,8 +160,15 @@ describe('the portal facts behind the legend', () => {
     expect(unitsLineFor(v('rainfall', 'day', '2026-09-07'))).toBe('Units: millimetres (mm)')
     expect(unitsLineFor(v('spi-3', 'month', '2026-08'))).toBe('Units: none (an index)')
     expect(unitsLineFor(v('ignition', 'day', '2026-09-01'))).toBe('Units: probability, 0 to 1')
-    expect(sourceLineFor(v('rainfall', 'month', '2026-08'))).toMatch(/Frazier et al\. 2016/)
+    // HCDP's How to Cite (audit 20 Oct 2026): Frazier et al. 2016 is the LEGACY maps only.
+    expect(sourceLineFor(v('rainfall', 'month', '2026-08'))).toMatch(/Lucas et al\. 2022.*Longman et al\. 2024/)
+    expect(sourceLineFor(v('rainfall', 'month', '2026-08'))).not.toMatch(/Frazier/)
+    expect(sourceLineFor(v('rainfall', 'day', '2026-09-07'))).toMatch(/Longman et al\. 2019.*Lucas et al\. 2022.*Longman et al\. 2024/)
+    expect(sourceLineFor(v('rainfall-legacy', 'month', '1950-01', 'statewide'))).toMatch(/1920–2012: Frazier et al\. 2016/)
+    expect(sourceLineFor(v('temperature-max', 'day', '2026-10-18'))).toMatch(/Kodama et al\. 2024.*Longman et al\. 2024/)
+    expect(sourceLineFor(v('temperature-mean', 'month', '1990-01'))).not.toMatch(/Longman et al\. 2019/)
     expect(sourceLineFor(v('spi-3', 'month', '2026-08'))).toMatch(/McKee et al\. 1993/)
+    expect(sourceLineFor(v('spi-12', 'month', '2026-08'))).toMatch(/Lucas et al\. 2020/)
   })
 })
 

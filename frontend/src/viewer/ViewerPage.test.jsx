@@ -395,7 +395,8 @@ describe('a viewer URL restores the controls and the map', () => {
     expect(labels[0]).toBe('+95+')
     expect(labels[labels.length - 1]).toBe('+14-')
     expect(screen.getByTestId('viewer-units')).toHaveTextContent('°F')
-    expect(screen.getByTestId('viewer-source')).toHaveTextContent('Longman et al. 2019')
+    // HCDP's How to Cite: temperature maps are Kodama et al. 2024 and Longman et al. 2024 (audit, 20 Oct 2026).
+    expect(screen.getByTestId('viewer-source')).toHaveTextContent('Kodama et al. 2024')
     // The map, the portal furniture and the raster request.
     expect(await screen.findByTestId('leaflet-map')).toBeInTheDocument()
     expect(screen.getByTestId('scale-control')).toBeInTheDocument()

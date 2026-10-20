@@ -1,0 +1,919 @@
+{
+ "generated_utc": "2026-10-20T09:07:47Z",
+ "entries": [
+  {
+   "product": "Rainfall, new production",
+   "period": "month",
+   "extent": "statewide, bi, ka, oa, mn",
+   "api_first": "1990-01",
+   "api_last": "2026-09",
+   "api_error": null,
+   "api_query": {
+    "datatype": "rainfall",
+    "production": "new",
+    "period": "month",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "HCDP /raster via the raster service (rainfall_new_month; nightly preload 1990-01 on, statewide); island numbers = statewide grid masked by our island polygons",
+   "reachable": "yes",
+   "how": "numeric + map",
+   "notes": "Island extents verified for bi (1990-01 to 2026-09).",
+   "catalog_claims": [
+    {
+     "where": "services/jetstream2/hcdp_raster.py:165",
+     "says": "citation 'Frazier et al. 2016'",
+     "should_say": "Lucas et al. 2022 (1990-2019 maps) and Longman et al. 2024 (2020-present), per HCDP's How to Cite"
+    },
+    {
+     "where": "frontend/src/components/RasterSpecMap.jsx:52 (interface) and frontend/src/viewer/map/viewerModel.js:227,240 (website)",
+     "says": "'monthly: Frazier et al. 2016'",
+     "should_say": "monthly 1990-present: Lucas et al. 2022; Longman et al. 2024"
+    },
+    {
+     "where": "jetstream2/agent_reference/reproduction.md:35",
+     "says": "'Contemporary method (Frazier et al.)'",
+     "should_say": "Lucas et al. 2022 / Longman et al. 2024"
+    }
+   ],
+   "gap_owner": null
+  },
+  {
+   "product": "Rainfall, new production",
+   "period": "day",
+   "extent": "statewide, bi, ka, oa, mn",
+   "api_first": "1990-01-01",
+   "api_last": "2026-10-18",
+   "api_error": null,
+   "api_query": {
+    "datatype": "rainfall",
+    "production": "new",
+    "period": "day",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "HCDP /raster on demand (rainfall_new_day; ~5,200 days cached); event volumes integrate it",
+   "reachable": "yes",
+   "how": "numeric + map",
+   "notes": "Long daily series are slow: each uncached day is one paced request (600 an hour shared).",
+   "catalog_claims": [
+    {
+     "where": "services/jetstream2/hcdp_raster.py:176",
+     "says": "citation 'Frazier et al. 2016'",
+     "should_say": "Longman et al. 2019 (1990-2014), Lucas et al. 2022 and Longman et al. 2024"
+    },
+    {
+     "where": "jetstream2/agent_reference/data_products.md:136",
+     "says": "'pre-2022 with no daily raster'",
+     "should_say": "daily rainfall maps exist from 1990-01-01"
+    }
+   ],
+   "gap_owner": null
+  },
+  {
+   "product": "Rainfall, legacy production",
+   "period": "month",
+   "extent": "statewide",
+   "api_first": "1920-01",
+   "api_last": "2012-12",
+   "api_error": null,
+   "api_query": {
+    "datatype": "rainfall",
+    "production": "legacy",
+    "period": "month",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "HCDP /raster (rainfall_legacy_month; all 1,116 months preloaded)",
+   "reachable": "yes",
+   "how": "numeric + map",
+   "notes": "No automatic switch at 1990 or 2012; the agent is told to pick and say. Legacy 2013-01 and new 1989-12 return 404 (checked).",
+   "catalog_claims": [
+    {
+     "where": "services/jetstream2/hcdp_raster.py:187",
+     "says": "citation 'Giambelluca et al. 2013 Rainfall Atlas of Hawaii'",
+     "should_say": "Frazier et al. 2016 (month-year maps); the Rainfall Atlas is the 1978-2007 mean climatology"
+    },
+    {
+     "where": "jetstream2/agent_reference/reproduction.md:34",
+     "says": "'Rainfall Atlas-era (Giambelluca) method'",
+     "should_say": "Frazier et al. 2016 legacy month-year maps"
+    }
+   ],
+   "gap_owner": null
+  },
+  {
+   "product": "Rainfall, legacy production",
+   "period": "day",
+   "extent": "statewide",
+   "api_first": null,
+   "api_last": null,
+   "api_error": "HTTP 404: Could not find date range for the provided dataset.",
+   "api_query": {
+    "datatype": "rainfall",
+    "production": "legacy",
+    "period": "day",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "none",
+   "reachable": "no (not published)",
+   "how": "-",
+   "notes": "HCDP publishes no legacy daily grids.",
+   "catalog_claims": [],
+   "gap_owner": "HCDP"
+  },
+  {
+   "product": "Temperature mean",
+   "period": "month",
+   "extent": "statewide, islands",
+   "api_first": "1990-01",
+   "api_last": "2026-09",
+   "api_error": null,
+   "api_query": {
+    "datatype": "temperature",
+    "aggregation": "mean",
+    "period": "month",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "HCDP /raster (temperature_mean_month; preloaded 1990-01 on)",
+   "reachable": "yes",
+   "how": "numeric + map",
+   "notes": "Cached from 1990-01; anomalies vs 1991-2020 normals.",
+   "catalog_claims": [
+    {
+     "where": "services/jetstream2/hcdp_raster.py:197",
+     "says": "temporal_coverage '~2014 to present' (caveat says 1991-01)",
+     "should_say": "1990-01 to the latest month (2026-09 today)"
+    },
+    {
+     "where": "services/jetstream2/hcdp_raster.py:201",
+     "says": "citation 'Frazier/Giambelluca temperature product'",
+     "should_say": "Kodama et al. 2024 (1990-2018 maps) and Longman et al. 2024 (2020-present)"
+    },
+    {
+     "where": "jetstream2/agent_reference/reproduction.md:37",
+     "says": "'1991-01 to present'",
+     "should_say": "1990-01 to present"
+    }
+   ],
+   "gap_owner": null
+  },
+  {
+   "product": "Temperature mean",
+   "period": "day",
+   "extent": "statewide, islands",
+   "api_first": "1990-01-01",
+   "api_last": "2026-10-18",
+   "api_error": null,
+   "api_query": {
+    "datatype": "temperature",
+    "aggregation": "mean",
+    "period": "day",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "map only",
+   "reachable": "partly",
+   "how": "map only (no numbers from the grid)",
+   "notes": "Not in the analysis catalog; cannot be sampled, averaged or compared. HCDP publishes no daily mean station values.",
+   "catalog_claims": [
+    {
+     "where": "frontend/src/components/RasterSpecMap.jsx:53 and website viewerModel.js",
+     "says": "'Longman et al. 2019'",
+     "should_say": "Kodama et al. 2024 and Longman et al. 2024 (Longman 2019 covers only 1990-2014)"
+    }
+   ],
+   "gap_owner": null
+  },
+  {
+   "product": "Temperature min",
+   "period": "month",
+   "extent": "statewide, islands",
+   "api_first": "1990-01",
+   "api_last": "2026-09",
+   "api_error": null,
+   "api_query": {
+    "datatype": "temperature",
+    "aggregation": "min",
+    "period": "month",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "HCDP /raster (temperature_min_month; preloaded 1990-01 on)",
+   "reachable": "yes",
+   "how": "numeric + map",
+   "notes": "Cached from 1990-01; anomalies vs 1991-2020 normals.",
+   "catalog_claims": [
+    {
+     "where": "services/jetstream2/hcdp_raster.py:208",
+     "says": "temporal_coverage '~2014 to present' (caveat says 1991-01)",
+     "should_say": "1990-01 to the latest month (2026-09 today)"
+    },
+    {
+     "where": "services/jetstream2/hcdp_raster.py:212",
+     "says": "citation 'Frazier/Giambelluca temperature product'",
+     "should_say": "Kodama et al. 2024 (1990-2018 maps) and Longman et al. 2024 (2020-present)"
+    },
+    {
+     "where": "jetstream2/agent_reference/reproduction.md:37",
+     "says": "'1991-01 to present'",
+     "should_say": "1990-01 to present"
+    }
+   ],
+   "gap_owner": null
+  },
+  {
+   "product": "Temperature min",
+   "period": "day",
+   "extent": "statewide, islands",
+   "api_first": "1990-01-01",
+   "api_last": "2026-10-18",
+   "api_error": null,
+   "api_query": {
+    "datatype": "temperature",
+    "aggregation": "min",
+    "period": "day",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "map only (show_climate_raster_on_map); station daily max/min via get_station_values",
+   "reachable": "partly",
+   "how": "map only (no numbers from the grid)",
+   "notes": "Not in the analysis catalog; cannot be sampled, averaged or compared.",
+   "catalog_claims": [],
+   "gap_owner": null
+  },
+  {
+   "product": "Temperature max",
+   "period": "month",
+   "extent": "statewide, islands",
+   "api_first": "1990-01",
+   "api_last": "2026-09",
+   "api_error": null,
+   "api_query": {
+    "datatype": "temperature",
+    "aggregation": "max",
+    "period": "month",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "HCDP /raster (temperature_max_month; preloaded 1990-01 on)",
+   "reachable": "yes",
+   "how": "numeric + map",
+   "notes": "Cached from 1990-01; anomalies vs 1991-2020 normals.",
+   "catalog_claims": [
+    {
+     "where": "services/jetstream2/hcdp_raster.py:219",
+     "says": "temporal_coverage '~2014 to present' (caveat says 1991-01)",
+     "should_say": "1990-01 to the latest month (2026-09 today)"
+    },
+    {
+     "where": "services/jetstream2/hcdp_raster.py:223",
+     "says": "citation 'Frazier/Giambelluca temperature product'",
+     "should_say": "Kodama et al. 2024 (1990-2018 maps) and Longman et al. 2024 (2020-present)"
+    },
+    {
+     "where": "jetstream2/agent_reference/reproduction.md:37",
+     "says": "'1991-01 to present'",
+     "should_say": "1990-01 to present"
+    }
+   ],
+   "gap_owner": null
+  },
+  {
+   "product": "Temperature max",
+   "period": "day",
+   "extent": "statewide, islands",
+   "api_first": "1990-01-01",
+   "api_last": "2026-10-18",
+   "api_error": null,
+   "api_query": {
+    "datatype": "temperature",
+    "aggregation": "max",
+    "period": "day",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "map only (show_climate_raster_on_map); station daily max/min via get_station_values",
+   "reachable": "partly",
+   "how": "map only (no numbers from the grid)",
+   "notes": "Not in the analysis catalog; cannot be sampled, averaged or compared.",
+   "catalog_claims": [],
+   "gap_owner": null
+  },
+  {
+   "product": "Relative humidity",
+   "period": "day",
+   "extent": "statewide, islands",
+   "api_first": "2002-01-01",
+   "api_last": "2026-10-18",
+   "api_error": null,
+   "api_query": {
+    "datatype": "relative_humidity",
+    "period": "day",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "map only",
+   "reachable": "partly",
+   "how": "map only",
+   "notes": "Station RH (HCDP station values) not reachable: get_station_values accepts rainfall and temperature only. Mesonet RH via SQL (2022 on).",
+   "catalog_claims": [
+    {
+     "where": "services/jetstream2/raster_service/HANDOFF_TO_CHATBOT.md:501 and /opt/hcdp/HCDP_RASTER_GUIDE.md",
+     "says": "'relative_humidity ... return 404. Not currently published'",
+     "should_say": "published daily 2002-01-01 to yesterday"
+    }
+   ],
+   "gap_owner": null
+  },
+  {
+   "product": "Relative humidity",
+   "period": "month",
+   "extent": "statewide",
+   "api_first": null,
+   "api_last": null,
+   "api_error": "HTTP 404: Could not find date range for the provided dataset.",
+   "api_query": {
+    "datatype": "relative_humidity",
+    "period": "month",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "none",
+   "reachable": "no (not published)",
+   "how": "-",
+   "notes": "",
+   "catalog_claims": [],
+   "gap_owner": "HCDP"
+  },
+  {
+   "product": "NDVI (MODIS)",
+   "period": "day",
+   "extent": "statewide, islands",
+   "api_first": "2000-03-10",
+   "api_last": "2026-10-14",
+   "api_error": null,
+   "api_query": {
+    "datatype": "ndvi_modis",
+    "period": "day",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "map only",
+   "reachable": "partly",
+   "how": "map only",
+   "notes": "Runs ~5 days behind the other daily maps (to 2026-10-14 today).",
+   "catalog_claims": [
+    {
+     "where": "services/jetstream2/raster_service/HANDOFF_TO_CHATBOT.md:501 and /opt/hcdp/HCDP_RASTER_GUIDE.md",
+     "says": "'ndvi_modis ... return 404'",
+     "should_say": "published daily 2000-03-10 on"
+    }
+   ],
+   "gap_owner": null
+  },
+  {
+   "product": "NDVI (MODIS)",
+   "period": "month",
+   "extent": "statewide",
+   "api_first": null,
+   "api_last": null,
+   "api_error": "HTTP 404: Could not find date range for the provided dataset.",
+   "api_query": {
+    "datatype": "ndvi_modis",
+    "period": "month",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "none",
+   "reachable": "no (not published)",
+   "how": "-",
+   "notes": "",
+   "catalog_claims": [],
+   "gap_owner": "HCDP"
+  },
+  {
+   "product": "Ignition probability (lead 0)",
+   "period": "day",
+   "extent": "statewide, islands",
+   "api_first": "2002-01-01",
+   "api_last": "2026-10-18",
+   "api_error": null,
+   "api_query": {
+    "datatype": "ignition_probability",
+    "period": "day",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "map only",
+   "reachable": "partly",
+   "how": "map only",
+   "notes": "",
+   "catalog_claims": [
+    {
+     "where": "HANDOFF_TO_CHATBOT.md:501 and /opt/hcdp/HCDP_RASTER_GUIDE.md",
+     "says": "'ignition_probability ... return 404'",
+     "should_say": "published daily 2002-01-01 on"
+    }
+   ],
+   "gap_owner": null
+  },
+  {
+   "product": "Ignition probability (leads 1-3 days)",
+   "period": "day",
+   "extent": "statewide, islands",
+   "api_first": "2025-04-28",
+   "api_last": "2026-10-18",
+   "api_error": null,
+   "api_query": {
+    "datatype": "ignition_probability",
+    "period": "day",
+    "extent": "statewide",
+    "lead": "lead01"
+   },
+   "source_ai_uses": "map only (lead 1-3)",
+   "reachable": "partly",
+   "how": "map only",
+   "notes": "",
+   "catalog_claims": [],
+   "gap_owner": null
+  },
+  {
+   "product": "Ignition probability",
+   "period": "month",
+   "extent": "statewide",
+   "api_first": null,
+   "api_last": null,
+   "api_error": "HTTP 404: Could not find date range for the provided dataset.",
+   "api_query": {
+    "datatype": "ignition_probability",
+    "period": "month",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "none",
+   "reachable": "no (not published)",
+   "how": "-",
+   "notes": "",
+   "catalog_claims": [],
+   "gap_owner": "HCDP"
+  },
+  {
+   "product": "SPI-1",
+   "period": "month",
+   "extent": "statewide only",
+   "api_first": "1990-01",
+   "api_last": "2026-09",
+   "api_error": null,
+   "api_query": {
+    "datatype": "spi",
+    "timescale": "timescale001",
+    "period": "month",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "map only, and only in Deep Research (the Climate Agent's map tool has no timescale field, so it always draws SPI-3)",
+   "reachable": "partly",
+   "how": "map only",
+   "notes": "Island extents return 404 (HCDP publishes SPI statewide only).",
+   "catalog_claims": [],
+   "gap_owner": null
+  },
+  {
+   "product": "SPI-3",
+   "period": "month",
+   "extent": "statewide only",
+   "api_first": "1990-03",
+   "api_last": "2026-09",
+   "api_error": null,
+   "api_query": {
+    "datatype": "spi",
+    "timescale": "timescale003",
+    "period": "month",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "HCDP /raster (spi_003_month; preloaded from 2000-01, earlier on demand ~14 MB each)",
+   "reachable": "yes",
+   "how": "numeric + map",
+   "notes": "Island extents return 404 (HCDP publishes SPI statewide only). Preload starts 2000-01: 1990s months are fetched on demand.",
+   "catalog_claims": [
+    {
+     "where": "services/jetstream2/hcdp_raster.py:230",
+     "says": "temporal_coverage 'varies'",
+     "should_say": "1990-03 to the latest month"
+    }
+   ],
+   "gap_owner": null
+  },
+  {
+   "product": "SPI-6",
+   "period": "month",
+   "extent": "statewide only",
+   "api_first": "1990-06",
+   "api_last": "2026-09",
+   "api_error": null,
+   "api_query": {
+    "datatype": "spi",
+    "timescale": "timescale006",
+    "period": "month",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "map only, and only in Deep Research (the Climate Agent's map tool has no timescale field, so it always draws SPI-3)",
+   "reachable": "partly",
+   "how": "map only",
+   "notes": "Island extents return 404 (HCDP publishes SPI statewide only).",
+   "catalog_claims": [],
+   "gap_owner": null
+  },
+  {
+   "product": "SPI-9",
+   "period": "month",
+   "extent": "statewide only",
+   "api_first": "1990-09",
+   "api_last": "2026-09",
+   "api_error": null,
+   "api_query": {
+    "datatype": "spi",
+    "timescale": "timescale009",
+    "period": "month",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "map only, and only in Deep Research (the Climate Agent's map tool has no timescale field, so it always draws SPI-3)",
+   "reachable": "partly",
+   "how": "map only",
+   "notes": "Island extents return 404 (HCDP publishes SPI statewide only).",
+   "catalog_claims": [],
+   "gap_owner": null
+  },
+  {
+   "product": "SPI-12",
+   "period": "month",
+   "extent": "statewide only",
+   "api_first": "1991-01",
+   "api_last": "2026-09",
+   "api_error": null,
+   "api_query": {
+    "datatype": "spi",
+    "timescale": "timescale012",
+    "period": "month",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "HCDP /raster (spi_012_month; preloaded from 2000-01, earlier on demand ~14 MB each)",
+   "reachable": "yes",
+   "how": "numeric + map",
+   "notes": "Island extents return 404 (HCDP publishes SPI statewide only). Preload starts 2000-01: 1990s months are fetched on demand.",
+   "catalog_claims": [
+    {
+     "where": "services/jetstream2/hcdp_raster.py:244",
+     "says": "temporal_coverage 'varies'",
+     "should_say": "1991-01 to the latest month"
+    }
+   ],
+   "gap_owner": null
+  },
+  {
+   "product": "SPI-24",
+   "period": "month",
+   "extent": "statewide only",
+   "api_first": "1991-12",
+   "api_last": "2026-09",
+   "api_error": null,
+   "api_query": {
+    "datatype": "spi",
+    "timescale": "timescale024",
+    "period": "month",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "map only, and only in Deep Research (the Climate Agent's map tool has no timescale field, so it always draws SPI-3)",
+   "reachable": "partly",
+   "how": "map only",
+   "notes": "Island extents return 404 (HCDP publishes SPI statewide only).",
+   "catalog_claims": [
+    {
+     "where": "website catalog.json spi-24-map",
+     "says": "'monthly from about 1990'",
+     "should_say": "1991-12 on"
+    }
+   ],
+   "gap_owner": null
+  },
+  {
+   "product": "SPI-36",
+   "period": "month",
+   "extent": "statewide only",
+   "api_first": "1992-12",
+   "api_last": "2026-09",
+   "api_error": null,
+   "api_query": {
+    "datatype": "spi",
+    "timescale": "timescale036",
+    "period": "month",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "map only, and only in Deep Research (the Climate Agent's map tool has no timescale field, so it always draws SPI-3)",
+   "reachable": "partly",
+   "how": "map only",
+   "notes": "Island extents return 404 (HCDP publishes SPI statewide only).",
+   "catalog_claims": [],
+   "gap_owner": null
+  },
+  {
+   "product": "SPI-48",
+   "period": "month",
+   "extent": "statewide only",
+   "api_first": "1993-12",
+   "api_last": "2026-09",
+   "api_error": null,
+   "api_query": {
+    "datatype": "spi",
+    "timescale": "timescale048",
+    "period": "month",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "map only, and only in Deep Research (the Climate Agent's map tool has no timescale field, so it always draws SPI-3)",
+   "reachable": "partly",
+   "how": "map only",
+   "notes": "Island extents return 404 (HCDP publishes SPI statewide only).",
+   "catalog_claims": [],
+   "gap_owner": null
+  },
+  {
+   "product": "SPI-60",
+   "period": "month",
+   "extent": "statewide only",
+   "api_first": "1994-12",
+   "api_last": "2026-09",
+   "api_error": null,
+   "api_query": {
+    "datatype": "spi",
+    "timescale": "timescale060",
+    "period": "month",
+    "extent": "statewide"
+   },
+   "source_ai_uses": "map only, and only in Deep Research (the Climate Agent's map tool has no timescale field, so it always draws SPI-3)",
+   "reachable": "partly",
+   "how": "map only",
+   "notes": "Island extents return 404 (HCDP publishes SPI statewide only).",
+   "catalog_claims": [],
+   "gap_owner": null
+  },
+  {
+   "product": "SPI island extents",
+   "period": "month",
+   "extent": "bi, ka, oa, mn",
+   "api_first": null,
+   "api_last": null,
+   "api_error": "HTTP 404: Could not find date range for the provided dataset.",
+   "api_query": {
+    "datatype": "spi",
+    "timescale": "timescale003",
+    "period": "month",
+    "extent": "bi"
+   },
+   "source_ai_uses": "none",
+   "reachable": "no (not published)",
+   "how": "-",
+   "notes": "HCDP serves SPI statewide only (404 for islands); our staging tool does not block island SPI requests, so they come back as 'raster service unavailable'.",
+   "catalog_claims": [],
+   "gap_owner": "HCDP"
+  },
+  {
+   "product": "Station values: rainfall (SKN gauges), new production",
+   "period": "month",
+   "extent": "station",
+   "api_first": "1990-01",
+   "api_last": "2026-09",
+   "api_query": "/stations hcdp_station_value rainfall new month partial",
+   "source_ai_uses": "local copy historical_station_values (671 gauges, 1990-01 to 2026-09) via SQL; get_station_values for raw/partial",
+   "reachable": "yes",
+   "how": "numeric",
+   "notes": "270 gauges in 1990-01, 184 in 2026-09.",
+   "catalog_claims": [
+    {
+     "where": "jetstream2/agent_reference/data_products.md:8,38",
+     "says": "'1990-01 to 2026-03', '~4 months behind'",
+     "should_say": "1990-01 to 2026-09 (about one month behind)"
+    }
+   ],
+   "gap_owner": null
+  },
+  {
+   "product": "Station values: rainfall (SKN gauges)",
+   "period": "day",
+   "extent": "station",
+   "api_first": "1990-01-01",
+   "api_last": "2026-10-18",
+   "api_query": "/stations hcdp_station_value rainfall new day partial|raw",
+   "source_ai_uses": "get_station_values (live, paced; <= 20 stations a call)",
+   "reachable": "yes",
+   "how": "numeric",
+   "notes": "313 gauges on 1990-01-01, 229 on 2026-10-18.",
+   "catalog_claims": [],
+   "gap_owner": null
+  },
+  {
+   "product": "Station values: rainfall before 1990 (legacy, by SKN)",
+   "period": "month",
+   "extent": "station",
+   "api_first": null,
+   "api_last": null,
+   "api_query": "/stations hcdp_station_value rainfall legacy month partial 1920-01 -> 0 rows",
+   "source_ai_uses": "none (get_station_values forces production 'new'; the station catalog lists records from 1990 only)",
+   "reachable": "no",
+   "how": "-",
+   "notes": "The API returns no legacy station values with the documented key set; pre-1990 gauge data lives in the Rainfall Atlas downloads (station data through 2012), outside the API.",
+   "catalog_claims": [],
+   "gap_owner": "HCDP (not in the API)"
+  },
+  {
+   "product": "Station values: temperature max/min (SKN)",
+   "period": "month and day",
+   "extent": "station",
+   "api_first": "1990-01 (month)",
+   "api_last": "2026-09 (month), 2026-10-18 (day)",
+   "api_query": "/stations hcdp_station_value temperature max|min",
+   "source_ai_uses": "historical_station_values (284 gauges, monthly) via SQL; get_station_values (daily, monthly)",
+   "reachable": "yes",
+   "how": "numeric",
+   "notes": "56 gauges with Tmin in 1990-01; 135 with Tmax on 2026-10-18. HCDP publishes no mean-temperature station values.",
+   "catalog_claims": [],
+   "gap_owner": null
+  },
+  {
+   "product": "Station values: relative humidity (SKN)",
+   "period": "day",
+   "extent": "station",
+   "api_first": "(not checked)",
+   "api_last": "2026-10-18",
+   "api_query": "/stations hcdp_station_value relative_humidity day partial",
+   "source_ai_uses": "none",
+   "reachable": "no",
+   "how": "-",
+   "notes": "130 stations on 2026-10-18; get_station_values rejects relative_humidity.",
+   "catalog_claims": [],
+   "gap_owner": "ours"
+  },
+  {
+   "product": "Hawaii Mesonet (5-min and 15-min, all variables)",
+   "period": "5 min / 15 min",
+   "extent": "station (Hawaii)",
+   "api_first": "2021-08-31 (official database)",
+   "api_last": "live (minutes)",
+   "api_query": "/mesonet/db/measurements; official database hawaii_measurements_tsdb",
+   "source_ai_uses": "our mesonet_measurements (SQL; QC views drop 7999 and other sentinels)",
+   "reachable": "partly",
+   "how": "numeric",
+   "notes": "Ours starts 2022-01-01 (1 station) / mid-April 2022 (others): Aug 2021 to Mar 2022 missing. Complete Jan to 8 Apr 2026; 9 Apr to 11 Oct 2026 incomplete (see coverage table); complete again from 12 Oct (official sync).",
+   "catalog_claims": [
+    {
+     "where": "jetstream2/agent_reference/data_products.md:7",
+     "says": "'2022-01-01 to present'",
+     "should_say": "ours from 2022-01-01 (most stations from April 2022); HCDP's record starts 2021-08-31; 9 Apr to 11 Oct 2026 partly missing"
+    }
+   ],
+   "gap_owner": "ours"
+  },
+  {
+   "product": "American Samoa Mesonet",
+   "period": "5 min",
+   "extent": "10 stations",
+   "api_first": "2024-01-18 (official database)",
+   "api_last": "live",
+   "api_query": "/mesonet/db/measurements?location=american_samoa",
+   "source_ai_uses": "none (every ingest pins location=hawaii; the prompt refuses places outside Hawaii)",
+   "reachable": "no",
+   "how": "-",
+   "notes": "API returned 30 variables for Poloa (1311) at 2026-10-18T10:00Z.",
+   "catalog_claims": [],
+   "gap_owner": "ours"
+  },
+  {
+   "product": "American Samoa gridded rainfall (month)",
+   "period": "month",
+   "extent": "American Samoa",
+   "api_first": null,
+   "api_last": null,
+   "api_error": "HTTP 404: Could not find date range for the provided dataset.",
+   "api_query": {
+    "datatype": "rainfall",
+    "production": "new",
+    "period": "month",
+    "location": "american_samoa"
+   },
+   "source_ai_uses": "none",
+   "reachable": "no",
+   "how": "-",
+   "notes": "The spec lists location=american_samoa for /raster, but the date-range endpoint returned 404 for the parameters tried (unverified whether other parameters work). HCDP's American Samoa viewer is a separate site.",
+   "catalog_claims": [],
+   "gap_owner": "unverified"
+  },
+  {
+   "product": "American Samoa gridded rainfall (day)",
+   "period": "day",
+   "extent": "American Samoa",
+   "api_first": null,
+   "api_last": null,
+   "api_error": "HTTP 404: Could not find date range for the provided dataset.",
+   "api_query": {
+    "datatype": "rainfall",
+    "production": "new",
+    "period": "day",
+    "location": "american_samoa"
+   },
+   "source_ai_uses": "none",
+   "reachable": "no",
+   "how": "-",
+   "notes": "The spec lists location=american_samoa for /raster, but the date-range endpoint returned 404 for the parameters tried (unverified whether other parameters work). HCDP's American Samoa viewer is a separate site.",
+   "catalog_claims": [],
+   "gap_owner": "unverified"
+  },
+  {
+   "product": "American Samoa gridded temperature (month)",
+   "period": "month",
+   "extent": "American Samoa",
+   "api_first": null,
+   "api_last": null,
+   "api_error": "HTTP 404: Could not find date range for the provided dataset.",
+   "api_query": {
+    "datatype": "temperature",
+    "aggregation": "mean",
+    "period": "month",
+    "location": "american_samoa"
+   },
+   "source_ai_uses": "none",
+   "reachable": "no",
+   "how": "-",
+   "notes": "The spec lists location=american_samoa for /raster, but the date-range endpoint returned 404 for the parameters tried (unverified whether other parameters work). HCDP's American Samoa viewer is a separate site.",
+   "catalog_claims": [],
+   "gap_owner": "unverified"
+  },
+  {
+   "product": "Guam",
+   "period": "-",
+   "extent": "Guam",
+   "api_first": null,
+   "api_last": null,
+   "api_query": "not in the API spec (location enum: hawaii, american_samoa)",
+   "source_ai_uses": "none",
+   "reachable": "no",
+   "how": "-",
+   "notes": "Guam Data Viewer is a separate site (hcdp.github.io/gcdp).",
+   "catalog_claims": [],
+   "gap_owner": "HCDP (no API)"
+  },
+  {
+   "product": "Monthly Climate Summary (island and statewide means, anomalies, ranks; SPI-3 drought areas)",
+   "period": "month",
+   "extent": "statewide + 7 islands",
+   "api_first": "1920-01 (rainfall), 1990-01 (temperature), 1990-03 (drought)",
+   "api_last": "2026-09 (rainfall, in the 6 Oct fetch); temperature and drought 2026-09 unverified",
+   "api_query": "/mesonet/climate_report/*_stats",
+   "source_ai_uses": "local climate_summary_* tables via SQL",
+   "reachable": "partly",
+   "how": "numeric",
+   "notes": "Our tables end 2026-08: the 6 Oct refresh fetched September rainfall into the CSV, then timed out on temperature and never loaded anything. The model never sees the climate_summary section of schema.md (cut at 12,000 characters).",
+   "catalog_claims": [
+    {
+     "where": "jetstream2/agent_reference/schema.md:263-267 and data_products.md:165",
+     "says": "'through 2026-07'",
+     "should_say": "through 2026-08 in our tables (2026-09 published by HCDP, not loaded)"
+    }
+   ],
+   "gap_owner": "ours"
+  },
+  {
+   "product": "Climate normals 1991-2020 (rainfall; temperature mean/min/max)",
+   "period": "monthly + annual",
+   "extent": "statewide grid",
+   "api_first": null,
+   "api_last": null,
+   "api_query": "HCDP Access Data files (not the /raster date API); our copies from the Climate Summary pipeline",
+   "source_ai_uses": "local derived grids (climatology_rasters; temperature normals as files)",
+   "reachable": "yes (rainfall) / partly (temperature normals not registered in climatology_rasters, so not sampleable at a point)",
+   "how": "numeric",
+   "notes": "Also 1991-2010 rainfall normals (built locally from legacy maps).",
+   "catalog_claims": [
+    {
+     "where": "jetstream2/agent_reference/data_products.md:11-23, schema.md:232,291-293",
+     "says": "'1991-2010' as THE normal",
+     "should_say": "1991-2020 is HCDP's normal (1991-2010 is a local legacy-based build)"
+    }
+   ],
+   "gap_owner": "ours"
+  },
+  {
+   "product": "Rainfall Atlas, Evapotranspiration, Solar Radiation, Climate of Hawaii atlases",
+   "period": "climatology",
+   "extent": "statewide",
+   "api_first": null,
+   "api_last": null,
+   "api_query": "not in the API (separate websites)",
+   "source_ai_uses": "only the annual rainfall normal reference map; ET, solar and the other atlases are not reachable",
+   "reachable": "no",
+   "how": "-",
+   "notes": "HCDP does not expose the atlases through its API.",
+   "catalog_claims": [],
+   "gap_owner": "HCDP (no API)"
+  },
+  {
+   "product": "Future climate projections (downscaled)",
+   "period": "-",
+   "extent": "statewide",
+   "api_first": null,
+   "api_last": null,
+   "api_query": "Access Data files only",
+   "source_ai_uses": "none",
+   "reachable": "no",
+   "how": "-",
+   "notes": "",
+   "catalog_claims": [],
+   "gap_owner": "HCDP (no API) / ours"
+  }
+ ]
+}

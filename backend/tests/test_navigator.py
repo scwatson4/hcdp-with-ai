@@ -329,3 +329,12 @@ def test_clarify_options_are_resolved_from_the_catalog_and_unknowns_dropped():
     assert "options" not in nav.normalize({"intent": "clarify", "reply": "Which?", "actions": [], "alternatives": []}, "x")
     assert "options" not in nav.normalize({"intent": "info", "reply": "x", "actions": [], "alternatives": [], "options": ["lowell", "lala"]}, "x")
     assert "options" not in nav.normalize({"intent": "navigate", "reply": "x", "actions": [{"type": "navigate", "path": "/data"}], "alternatives": [], "options": ["lowell", "lala"]}, "x")
+
+
+def test_prompt_states_hcdps_rainfall_switch_at_1990():
+    """Data-access audit, 20 Oct 2026: HCDP's summaries switch from the legacy to the new rainfall
+    production at January 1990; a pre-1990 month is a legacy map, never a 404 on the new one."""
+    nav, _ = make()
+    s = nav.system_prompt({"path": "/"})
+    assert "Rainfall months before January 1990 are the legacy maps: /viewer/rainfall-legacy/month/YYYY-MM/statewide" in s
+    assert "HCDP's own rule (its Monthly Climate Summary switches there)" in s

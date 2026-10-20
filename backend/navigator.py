@@ -559,6 +559,7 @@ VIEWER DEEP LINKS: /viewer/{{dataset}}/{{period}}/{{date}}/{{extent}}
   extent: statewide, hawaii (Hawaiʻi Island / Big Island), maui, molokai, lanai, oahu, kauai
   Examples: /viewer/rainfall/day/2026-09-07/kauai   /viewer/spi-3/month/2026-08/statewide   /viewer/temperature-max/month/2026-08/oahu
   A storm's rainfall is best shown as daily rainfall on its peak day for the island hit hardest; a drought question as spi-3 for the last complete month (SPI links may name an island: the statewide grid is shown zoomed to it).
+  Rainfall months before January 1990 are the legacy maps: /viewer/rainfall-legacy/month/YYYY-MM/statewide (1920-01 to 2012-12, statewide only). From January 1990 use rainfall — HCDP's own rule (its Monthly Climate Summary switches there). Show the legacy maps for 1990–2012 only when the visitor asks for them, and say they are the legacy production.
 MORE SHAREABLE LINKS (every state on this site has a URL; use ONLY these forms — an invented path is dropped):
   /extreme-events/{{{"|".join(STORM_SLUGS)}}}   one storm's report (HCDP's interactive storm report, full screen; kona-lows is the Extreme Events page)
   /tools/{{{"|".join(TOOL_SLUGS)}}}   one tool's tile on Climate Tools — only these {len(TOOL_SLUGS)} slugs; any other catalog entry is reached with an open action on its url

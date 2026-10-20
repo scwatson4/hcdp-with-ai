@@ -181,7 +181,7 @@ export function ExportData() {
             </tbody>
           </table>
         </div>
-        <p className="mt-2 text-xs text-subtle">Rainfall 1990 onward is the contemporary product; 1920–2012 is the legacy product. Future periods: mid-century 2040–2069; late century 2070–2099 (statistical) or 2080–2099 (dynamical).</p>
+        <p className="mt-2 text-xs text-subtle">Rainfall 1990 onward is the contemporary product; 1920–2012 is the legacy product (HCDP's own summaries use it to 1989 and switch to the contemporary product in January 1990). Future periods: mid-century 2040–2069; late century 2070–2099 (statistical) or 2080–2099 (dynamical).</p>
       </Section>
     </PageShell>
   )

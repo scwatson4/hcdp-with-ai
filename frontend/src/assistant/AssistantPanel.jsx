@@ -318,14 +318,21 @@ export function AskBar({ docked = false, glass = false, onChipsState = null, inS
             style={{ height: `${lines * lineHeight}px` }} />
           {ghostQuery && (
             <>
-              <span id="ask-ghost-hint" className="sr-only">{activeKind === 'followups' ? 'Press Tab to insert the suggested follow-up question.' : 'Press Tab to insert the suggested example question.'}</span>
+              <span id="ask-ghost-hint" className="sr-only">{activeKind === 'followups' ? 'Press Tab, or tap Use it, to insert the suggested follow-up question.' : 'Press Tab, or tap Use it, to insert the suggested example question.'}</span>
               <div aria-hidden="true" data-testid="composer-ghost" data-pool={activeKind} data-variant={quiet ? 'quiet' : 'typewriter'} className={cn('pointer-events-none absolute top-1/2 -translate-y-1/2 truncate text-[16px] transition-opacity duration-300 motion-reduce:transition-none', docked ? cn('left-[38px] right-12 text-subtle', !listUp && !opensSheet && 'sm:right-28') : 'left-[42px] right-14 text-foreground/70 sm:right-32 sm:text-[18px]')} style={{ opacity: ghostShown ? 1 : 0 }}>
-                {/* a tap on the follow-up's text drops it into the field (the rest of the field still just focuses) */}
-                <span key={quiet ? typed : 'typed'} data-testid="composer-ghost-text" onClick={activeKind === 'followups' ? insertGhost : undefined} className={cn(activeKind === 'followups' && 'pointer-events-auto cursor-text', quiet && 'hcdp-ghost-in inline-block')}>{typed}</span>
+                {/* a tap on the suggested words drops them into the field — examples and follow-ups alike (user, 23 Oct 2026); the rest of the field still just focuses */}
+                <span key={quiet ? typed : 'typed'} data-testid="composer-ghost-text" onClick={insertGhost} className={cn('pointer-events-auto cursor-text', quiet && 'hcdp-ghost-in inline-block')}>{typed}</span>
                 {!quiet && <span className={cn('ml-px inline-block h-[1.1em] w-px translate-y-[3px] bg-subtle align-baseline', reduceMotion || typed.length >= ghostQuery.length ? 'opacity-0' : 'hcdp-caret')} />}
                 {quiet && outgoing && <span aria-hidden="true" data-testid="composer-ghost-outgoing" className="hcdp-ghost-out absolute left-0 top-0 truncate">{outgoing}</span>}
               </div>
             </>
+          )}
+          {/* M6 A on the website (user, 23 Oct 2026): there is no Tab key on a phone — a 44 px "Use it" chip takes the suggestion; hidden wherever a pointer can hover */}
+          {ghostQuery && !text && (
+            <button type="button" onClick={insertGhost} data-testid="ask-use-ghost" aria-label={`Use this example: ${ghostQuery}`}
+              className="my-auto mr-1 hidden h-11 shrink-0 items-center rounded-full border border-border bg-surface px-3 text-[13px] font-medium text-foreground active:bg-muted [@media(hover:none)]:inline-flex">
+              Use it
+            </button>
           )}
           {ghostQuery && focused && !listUp && !opensSheet && <kbd className="mr-2 hidden shrink-0 rounded-md border border-border bg-surface px-1.5 py-px font-mono text-[12px] text-foreground sm:inline-block [@media(hover:none)]:!hidden" data-testid="ask-tab-hint">Tab ↹</kbd>}
           {/* QB-Q1 B: a round × that empties the field, only while there is text (44 px hit on coarse pointers) */}

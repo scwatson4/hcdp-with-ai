@@ -21,6 +21,18 @@ describe.each([['hero', false], ['docked', true]])('the %s bar', (_, docked) => 
     expect(field.querySelector('.hcdp-ask-field').firstElementChild).toBe(input())   // the textarea leads; the up arrow is the only mark
   })
 
+  it('offers "Use it" and tappable suggested words while the field is empty; either fills the field (phones have no Tab)', () => {
+    mount(docked)
+    const ghostText = screen.queryByTestId('composer-ghost-text')
+    if (!ghostText) return                                             // no suggestion in this mount; nothing to take
+    const use = screen.getByTestId('ask-use-ghost')
+    expect(use.getAttribute('aria-label')).toMatch(/^Use this example: /)
+    expect(use.className).toContain('h-11')
+    fireEvent.click(use)
+    expect(input().value.length).toBeGreaterThan(0)
+    expect(screen.queryByTestId('ask-use-ghost')).toBeNull()           // gone once there is text
+  })
+
   it('shows a round × only while there is text, 44 px on coarse pointers; it empties the field and keeps focus', async () => {
     mount(docked)
     expect(screen.queryByTestId('ask-clear')).toBeNull()

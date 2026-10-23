@@ -5,7 +5,7 @@ import { AssistantProvider } from './AssistantProvider'
 import { AskBar } from './AssistantPanel'
 import { DEBOUNCE_MS } from './localMatch'
 
-// QB-Q1 B (13 Oct): the magnifier, the × that clears, Esc's order (list first, then the text), the solid send arrow.
+// QB-Q1 B (13 Oct): the × that clears, Esc's order (list first, then the text), the solid send arrow; no magnifier since 23 Oct 2026.
 const mount = (docked) => render(<MemoryRouter initialEntries={[docked ? '/data' : '/']}><AssistantProvider><AskBar docked={docked} /></AssistantProvider></MemoryRouter>)
 const tick = async (ms) => { await act(async () => { await vi.advanceTimersByTimeAsync(ms) }) }
 const input = () => screen.getByTestId('assistant-input')
@@ -14,14 +14,11 @@ beforeEach(() => { vi.useFakeTimers(); vi.stubGlobal('fetch', vi.fn(() => Promis
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
 
 describe.each([['hero', false], ['docked', true]])('the %s bar', (_, docked) => {
-  it('has an 18 px grey magnifier at the left edge, hidden from readers', () => {
+  it('has no magnifier: the field is the first thing in the pill (user, 23 Oct 2026)', () => {
     mount(docked)
     const field = screen.getByTestId('ask-field')
-    const glass = within(field).getByTestId('ask-magnifier')
-    expect(glass).toHaveAttribute('aria-hidden', 'true')
-    const cls = glass.getAttribute('class')
-    expect(cls).toContain('h-[18px]'); expect(cls).toContain('w-[18px]'); expect(cls).toContain('text-subtle')
-    expect(field.querySelector('.hcdp-ask-field').firstElementChild).toBe(glass)   // left of the field and the ghost
+    expect(within(field).queryByTestId('ask-magnifier')).toBeNull()
+    expect(field.querySelector('.hcdp-ask-field').firstElementChild).toBe(input())   // the textarea leads; the up arrow is the only mark
   })
 
   it('shows a round × only while there is text, 44 px on coarse pointers; it empties the field and keeps focus', async () => {

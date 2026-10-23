@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { ArrowUp, ExternalLink, Link2, Search, X } from 'lucide-react'
+import { ArrowUp, ExternalLink, Link2, X } from 'lucide-react'
 import { useAssistant } from './AssistantProvider'
 import { cn } from '../lib/utils'
 import { handoffUrl } from '../site/handoff'
@@ -305,8 +305,7 @@ export function AskBar({ docked = false, glass = false, onChipsState = null, inS
         onClick={opensSheet ? openSheet : (e) => { if (!e.target.closest?.('button, a, textarea, [data-testid="composer-ghost-text"]')) inputRef.current?.focus() }}>
         <span aria-hidden="true" className="hcdp-ask-ring" />
         <div className={cn('hcdp-ask-field relative flex min-h-[inherit] items-end', docked ? 'py-1 pl-3 pr-1' : 'py-2 pl-4 pr-2', glass && 'hcdp-ask-glass')}>
-          {/* QB-Q1 B: an 18 px grey magnifier at the left edge; the ghost and the typeahead sit to its right */}
-          <Search className="my-auto mr-2 h-[18px] w-[18px] shrink-0 text-subtle" aria-hidden="true" data-testid="ask-magnifier" />
+          {/* no magnifier (user, 23 Oct 2026): the field starts at the left edge; the up arrow is the only mark */}
           <textarea ref={inputRef} value={text} rows={1} onChange={(e) => setText(e.target.value.slice(0, 500))} autoComplete="off" enterKeyHint="send" readOnly={opensSheet || undefined}
             onKeyDown={onKeyDown}
             onFocus={() => { setFocused(true); focusRef.current = true }} onBlur={() => { setFocused(false); focusRef.current = false }}

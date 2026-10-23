@@ -21,16 +21,16 @@ describe.each([['hero', false], ['docked', true]])('the %s bar', (_, docked) => 
     expect(field.querySelector('.hcdp-ask-field').firstElementChild).toBe(input())   // the textarea leads; the up arrow is the only mark
   })
 
-  it('offers "Use it" and tappable suggested words while the field is empty; either fills the field (phones have no Tab)', () => {
+  it('a finger slide to the right across the box takes the suggestion (phones have no Tab); no chip', () => {
     mount(docked)
-    const ghostText = screen.queryByTestId('composer-ghost-text')
-    if (!ghostText) return                                             // no suggestion in this mount; nothing to take
-    const use = screen.getByTestId('ask-use-ghost')
-    expect(use.getAttribute('aria-label')).toMatch(/^Use this example: /)
-    expect(use.className).toContain('h-11')
-    fireEvent.click(use)
+    expect(screen.queryByTestId('ask-use-ghost')).toBeNull()
+    if (docked || !screen.queryByTestId('composer-ghost-text')) return      // the docked bar on a phone opens the sheet instead
+    const zone = screen.getByTestId('ask-swipe')
+    fireEvent.touchStart(zone, { touches: [{ clientX: 30, clientY: 20 }] })
+    fireEvent.touchMove(zone, { touches: [{ clientX: 60, clientY: 22 }] })
+    fireEvent.touchMove(zone, { touches: [{ clientX: 110, clientY: 24 }] })
+    fireEvent.touchEnd(zone, { changedTouches: [{ clientX: 110, clientY: 24 }] })
     expect(input().value.length).toBeGreaterThan(0)
-    expect(screen.queryByTestId('ask-use-ghost')).toBeNull()           // gone once there is text
   })
 
   it('shows a round × only while there is text, 44 px on coarse pointers; it empties the field and keeps focus', async () => {

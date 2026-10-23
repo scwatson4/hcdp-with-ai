@@ -1106,3 +1106,10 @@ html.hcdp-scroll-lock, html.hcdp-scroll-lock body { overflow: hidden; overscroll
   table.hcdp-stack th[scope="row"], table.hcdp-stack td { padding: 3px 0; text-align: left; white-space: normal; }
   table.hcdp-stack td[data-label]::before { content: attr(data-label); display: block; font-size: 12px; line-height: 1.4; letter-spacing: 0.04em; text-transform: uppercase; color: hsl(var(--subtle-foreground)); }
 }
+
+/* The suggested question in the Ask AI box wraps to three lines on narrow screens instead of being cut off (user, 23 Oct 2026);
+   wider screens keep it on one line. */
+.hcdp-ghost-wrap { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 639px) {
+  .hcdp-ghost-wrap { white-space: normal; text-overflow: clip; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow-wrap: anywhere; line-height: 1.35; }
+}

@@ -249,13 +249,32 @@ export function AskBar({ docked = false, glass = false, onChipsState = null, inS
     if (opensSheet) { e?.stopPropagation?.(); pickChip({ template: ghostQuery, blanks: [] }, 'sheet'); openSheet(); return }
     setText(ghostQuery); inputRef.current?.focus()
   }
+  // Swipe right across the box to take the suggestion (user, 23 Oct 2026: no chip on phones; a finger slide instead). The
+  // suggestion follows the finger; past 56 px it drops into the field. Keyboards keep Tab.
+  const swipeRef = useRef({ x: 0, y: 0, on: false, dx: 0 })
+  const [dragX, setDragX] = useState(0)
+  const onTouchStart = (e) => {
+    const t = e.touches?.[0]; if (!t || !ghostQuery || text) { swipeRef.current.on = false; return }
+    swipeRef.current = { x: t.clientX, y: t.clientY, on: false, dx: 0 }
+  }
+  const onTouchMove = (e) => {
+    const t = e.touches?.[0]; const sw = swipeRef.current; if (!t || !ghostQuery || text) return
+    const dx = t.clientX - sw.x, dy = t.clientY - sw.y
+    if (!sw.on && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) sw.on = true
+    if (sw.on) { sw.dx = dx; setDragX(Math.max(0, Math.min(96, dx))) }
+  }
+  const onTouchEnd = () => {
+    const sw = swipeRef.current
+    if (sw.on && sw.dx >= 56) insertGhost()
+    swipeRef.current = { x: 0, y: 0, on: false, dx: 0 }; setDragX(0)
+  }
   // The field wraps long questions and grows to three lines; beyond that it scrolls inside (Enter sends, Shift+Enter breaks a line).
   const lineHeight = docked ? 24 : (typeof window !== 'undefined' && window.matchMedia?.('(min-width: 640px)').matches ? 28 : 24)
   const [lines, setLines] = useState(1)
   useLayoutEffect(() => {
     const el = inputRef.current
     if (!el) return
-    if (!text) { setLines(1); return }
+    if (!text) { const g = ghostMeasureRef.current; const n = g && g.offsetHeight ? Math.max(1, Math.min(MAX_LINES, Math.round(g.offsetHeight / lineHeight))) : 1; setLines(n); return }
     el.style.height = `${lineHeight}px`
     const n = Math.max(1, Math.min(MAX_LINES, Math.round(el.scrollHeight / lineHeight) || 1))
     setLines(n)
@@ -295,7 +314,8 @@ export function AskBar({ docked = false, glass = false, onChipsState = null, inS
     selectRef.current = null
     const el = inputRef.current
     if (el) { el.focus(); try { el.setSelectionRange(sel.start, sel.end) } catch { /* not focusable yet */ } }
-  }, [text])
+  }, [text, ghostQuery, lineHeight])
+  const ghostMeasureRef = useRef(null)
   const placeholder = ghostQuery ? '' : docked && hasConversation ? 'Ask for another page or map…' : 'What are you looking for?'
   return (
     <form ref={formRef} onSubmit={submit} onMouseEnter={() => { hoverRef.current = true }} onMouseLeave={() => { hoverRef.current = false }} data-testid={inSheet ? 'sheet-ask-bar' : mini ? 'mini-ask-bar' : docked ? 'docked-ask-bar' : 'ask-bar'} data-opens-sheet={opensSheet ? 'true' : undefined} className="relative">
@@ -304,7 +324,7 @@ export function AskBar({ docked = false, glass = false, onChipsState = null, inS
         // 44 / 56 px pill is the target, not just the line of text (M6 A)
         onClick={opensSheet ? openSheet : (e) => { if (!e.target.closest?.('button, a, textarea, [data-testid="composer-ghost-text"]')) inputRef.current?.focus() }}>
         <span aria-hidden="true" className="hcdp-ask-ring" />
-        <div className={cn('hcdp-ask-field relative flex min-h-[inherit] items-end', docked ? 'py-1 pl-3 pr-1' : 'py-2 pl-4 pr-2', glass && 'hcdp-ask-glass')}>
+        <div className={cn('hcdp-ask-field relative flex min-h-[inherit] items-end', docked ? 'py-1 pl-3 pr-1' : 'py-2 pl-4 pr-2', glass && 'hcdp-ask-glass')} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} onTouchCancel={onTouchEnd} data-testid="ask-swipe">
           {/* no magnifier (user, 23 Oct 2026): the field starts at the left edge; the up arrow is the only mark */}
           <textarea ref={inputRef} value={text} rows={1} onChange={(e) => setText(e.target.value.slice(0, 500))} autoComplete="off" enterKeyHint="send" readOnly={opensSheet || undefined}
             onKeyDown={onKeyDown}
@@ -318,21 +338,17 @@ export function AskBar({ docked = false, glass = false, onChipsState = null, inS
             style={{ height: `${lines * lineHeight}px` }} />
           {ghostQuery && (
             <>
-              <span id="ask-ghost-hint" className="sr-only">{activeKind === 'followups' ? 'Press Tab, or tap Use it, to insert the suggested follow-up question.' : 'Press Tab, or tap Use it, to insert the suggested example question.'}</span>
-              <div aria-hidden="true" data-testid="composer-ghost" data-pool={activeKind} data-variant={quiet ? 'quiet' : 'typewriter'} className={cn('pointer-events-none absolute top-1/2 -translate-y-1/2 truncate text-[16px] transition-opacity duration-300 motion-reduce:transition-none', docked ? cn('left-[38px] right-12 text-subtle', !listUp && !opensSheet && 'sm:right-28') : 'left-[42px] right-14 text-foreground/70 sm:right-32 sm:text-[18px]')} style={{ opacity: ghostShown ? 1 : 0 }}>
-                {/* a tap on the suggested words drops them into the field — examples and follow-ups alike (user, 23 Oct 2026); the rest of the field still just focuses */}
-                <span key={quiet ? typed : 'typed'} data-testid="composer-ghost-text" onClick={insertGhost} className={cn('pointer-events-auto cursor-text', quiet && 'hcdp-ghost-in inline-block')}>{typed}</span>
+              <span ref={ghostMeasureRef} aria-hidden="true" className={cn('hcdp-ghost-wrap invisible absolute top-0 text-[16px]', docked ? 'left-[16px] right-12' : 'left-[20px] right-14 sm:right-32 sm:text-[18px]')}>{ghostQuery}</span>
+              <span id="ask-ghost-hint" className="sr-only">{activeKind === 'followups' ? 'Press Tab, or swipe right across the box, to insert the suggested follow-up question.' : 'Press Tab, or swipe right across the box, to insert the suggested example question.'}</span>
+              <div aria-hidden="true" data-testid="composer-ghost" data-pool={activeKind} data-variant={quiet ? 'quiet' : 'typewriter'} className={cn('hcdp-ghost-wrap pointer-events-none absolute top-1/2 text-[16px] transition-opacity duration-300 motion-reduce:transition-none', docked ? cn('left-[16px] right-12 text-subtle', !listUp && !opensSheet && 'sm:right-28') : 'left-[20px] right-14 text-foreground/70 sm:right-32 sm:text-[18px]')} style={{ opacity: ghostShown ? 1 : 0, transform: `translate(${dragX}px, -50%)`, transition: dragX ? 'opacity .3s' : 'transform .18s ease, opacity .3s' }}>
+                {/* a tap on the follow-up's text drops it into the field (the rest of the field still just focuses) */}
+                <span key={quiet ? typed : 'typed'} data-testid="composer-ghost-text" onClick={activeKind === 'followups' ? insertGhost : undefined} className={cn(activeKind === 'followups' && 'pointer-events-auto cursor-text', quiet && 'hcdp-ghost-in inline-block')}>{typed}</span>
                 {!quiet && <span className={cn('ml-px inline-block h-[1.1em] w-px translate-y-[3px] bg-subtle align-baseline', reduceMotion || typed.length >= ghostQuery.length ? 'opacity-0' : 'hcdp-caret')} />}
+                {/* a faint › on devices without hover: the suggestion can be slid in */}
+                <span aria-hidden="true" data-testid="ask-swipe-mark" className="ml-1.5 hidden text-subtle/70 [@media(hover:none)]:inline">›</span>
                 {quiet && outgoing && <span aria-hidden="true" data-testid="composer-ghost-outgoing" className="hcdp-ghost-out absolute left-0 top-0 truncate">{outgoing}</span>}
               </div>
             </>
-          )}
-          {/* M6 A on the website (user, 23 Oct 2026): there is no Tab key on a phone — a 44 px "Use it" chip takes the suggestion; hidden wherever a pointer can hover */}
-          {ghostQuery && !text && (
-            <button type="button" onClick={insertGhost} data-testid="ask-use-ghost" aria-label={`Use this example: ${ghostQuery}`}
-              className="my-auto mr-1 hidden h-11 shrink-0 items-center rounded-full border border-border bg-surface px-3 text-[13px] font-medium text-foreground active:bg-muted [@media(hover:none)]:inline-flex">
-              Use it
-            </button>
           )}
           {ghostQuery && focused && !listUp && !opensSheet && <kbd className="mr-2 hidden shrink-0 rounded-md border border-border bg-surface px-1.5 py-px font-mono text-[12px] text-foreground sm:inline-block [@media(hover:none)]:!hidden" data-testid="ask-tab-hint">Tab ↹</kbd>}
           {/* QB-Q1 B: a round × that empties the field, only while there is text (44 px hit on coarse pointers) */}

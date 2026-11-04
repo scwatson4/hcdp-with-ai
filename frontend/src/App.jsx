@@ -6,6 +6,7 @@ import BackToTop from './components/BackToTop'
 import AssistantBar from './assistant/AssistantBar'
 import AskSheet from './assistant/AskSheet'
 import ReturnStrip from './components/ReturnStrip'
+import MaintenanceStrip from './components/MaintenanceStrip'
 import GooFilter from './components/GooFilter'
 import { ShellModeProvider, useShellMode } from './components/shellMode'
 import { useScrollLock, useStripOverlayOnLoad } from './components/overlayHistory'
@@ -59,6 +60,7 @@ function Shell() {
     <div className="flex min-h-screen flex-col bg-canvas text-foreground" data-shell={mode}>
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-card focus:px-3 focus:py-2 focus:text-sm focus:shadow">Skip to content</a>
       <div ref={stickyRef} className={cn('sticky top-0 z-40', full && 'hidden')} data-testid="sticky-header">
+        <MaintenanceStrip />
         <SiteHeader />
         {page && <AssistantBar />}
       </div>

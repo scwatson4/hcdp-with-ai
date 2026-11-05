@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { maintenanceNotice, nightKey, BEFORE_TEXT, DURING_TEXT } from './maintenance'
+import { maintenanceNotice, nightKey, NOTICE_TEXT } from './maintenance'
 
 // HST = UTC−10 all year: 09:00Z is 11:00 pm the evening before.
 const at = (iso) => Date.parse(iso)
@@ -9,10 +9,10 @@ describe('the nightly maintenance notice', () => {
     expect(maintenanceNotice(at('2026-11-05T08:59:00Z'))).toBeNull()      // 10:59 pm, 4 Nov
     expect(maintenanceNotice(at('2026-11-05T02:00:00Z'))).toBeNull()      // 4:00 pm
   })
-  it('warns from 11:00 pm, says "until 5:00 am" from 11:30 pm, and stops at 5:00 am', () => {
-    expect(maintenanceNotice(at('2026-11-05T09:00:00Z'))).toMatchObject({ phase: 'before', text: BEFORE_TEXT })
+  it('shows the one-line notice from 11:00 pm, marks the window from 11:30 pm, and stops at 5:00 am', () => {
+    expect(maintenanceNotice(at('2026-11-05T09:00:00Z'))).toMatchObject({ phase: 'before', text: NOTICE_TEXT })
     expect(maintenanceNotice(at('2026-11-05T09:29:59Z'))).toMatchObject({ phase: 'before' })
-    expect(maintenanceNotice(at('2026-11-05T09:30:00Z'))).toMatchObject({ phase: 'during', text: DURING_TEXT })
+    expect(maintenanceNotice(at('2026-11-05T09:30:00Z'))).toMatchObject({ phase: 'during', text: NOTICE_TEXT })
     expect(maintenanceNotice(at('2026-11-05T14:59:59Z'))).toMatchObject({ phase: 'during' })   // 4:59 am
     expect(maintenanceNotice(at('2026-11-05T15:00:00Z'))).toBeNull()                            // 5:00 am
   })
